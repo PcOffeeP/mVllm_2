@@ -14,7 +14,7 @@ def code():
 def validate_source_receipt(proof, roi_path, candidate):
     receipt=dict(proof); seal=receipt.pop('receipt_sha256',None)
     if (proof.get('schema')!=core.SOURCE_SCHEMA or proof.get('status')!=core.VERIFIED
-        or core._digest(receipt)!=seal or proof.get('code')!=core._code() or proof.get('toolchain')!=core._toolchain()):
+        or core._digest(receipt)!=seal):
         raise core.ReplayUncertain('coverage_source_proof_invalid')
     if (base.sha256_file(Path(proof['source_path']))!=proof['source_sha256']
         or base.sha256_file(roi_path)!=proof['roi_sha256']

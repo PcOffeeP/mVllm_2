@@ -16,7 +16,6 @@ from script.subvideo_generation.pilot import aligned, geometry, pilot as base
 from script.subvideo_generation._legacy.core import anchors, verification
 
 SCHEMA = "tensile-sub-video/2"
-ROLE_NAMES = {"pre_event": "pre", "transition": "fracture", "post_event": "post", "stable_negative": "no_fracture", "unclamped": "unclamped"}
 ANOMALIES = ("未夹紧", "视频异常", "爆炸性断裂")
 PHENOMENA = ("伸长", "颈缩", "开裂", "界面分离", "断后脱夹")
 
@@ -149,7 +148,8 @@ def candidate_labels(row: dict, role: str) -> dict:
 
 def _name_candidates(windows: list[dict], row: dict, folds: dict, source_sha: str, roi_sha: str) -> list[dict]:
     candidates = []
-    for old_role, role in ROLE_NAMES.items():
+    from script.subvideo_generation import rules
+    for old_role, role in rules.ROLE_NAMES.items():
         selected = sorted((w for w in windows if w["window_role"] == old_role), key=lambda w: (w["start_frame"], w["end_frame"]))
         for serial, window in enumerate(selected, 1):
             name = f"{row['id']}_{role}_{serial:02d}"

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
+import subprocess
 
 from script.subvideo_generation.pilot import aligned
 from script.subvideo_generation.pilot import pilot as base
@@ -130,22 +131,94 @@ def summarize(manifest: dict) -> dict:
             "candidate_status": dict(Counter(c["status"] for c in candidates)),
             "roles": dict(Counter(c["role"] for c in candidates)),
             "complete": manifest["complete"], "for_training": False, "published": False,
+            "toolchain": _recorded_toolchain(manifest),
             "manual_review": "required_for_every_publishable_clip"}
 
 
 def _identity(hashes: dict) -> dict:
-    """Pin the readable inputs, the window policy and the probe/crop pipeline used."""
-    module = Path(__file__).resolve()
-    script = module.parents[1]
-    pipeline = {"subvideo_generation/virtual.py": module,
-                "subvideo_generation/pilot/pilot.py": script / "subvideo_generation/pilot/pilot.py",
-                "subvideo_generation/pilot/aligned.py": script / "subvideo_generation/pilot/aligned.py"}
-    code = {name: base.sha256_file(path) for name, path in pipeline.items()}
-    return {"schema": SCHEMA, "input_mode": INPUT_MODE,
-            "videos": dict(hashes),
-            "strategy": {"window_seconds": WINDOW_SECONDS, "step_seconds": STEP_SECONDS,
-                         "role": ROLE},
-            "code": code}
+    """The virtual batch identity: readable inputs plus the shared rule fingerprint.
+
+    Same shape as the official batch identity, so one judge covers both:
+    ``schema`` / ``input_mode`` / ``inputs`` / ``rules.digest`` decide equality and
+    ``info`` is informative only. No source file is hashed here.
+    """
+    from script.subvideo_generation import rules
+
+    return {"schema": SCHEMA, "input_mode": INPUT_MODE, "inputs": dict(hashes),
+            "rules": rules.stored_rules(), "info": _info()}
+
+
+def _info() -> dict:
+    """Informative only: which checkout and toolchain produced the batch."""
+    return {"code_version": _code_version(), "toolchain": _toolchain_info()}
+
+
+def _code_version():
+    """Short commit of this checkout, when git is reachable; ``None`` otherwise."""
+    try:
+        result = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                                cwd=str(Path(__file__).resolve().parents[2]),
+                                capture_output=True, text=True, check=False)
+    except (OSError, ValueError):
+        return None
+    revision = result.stdout.strip()
+    return revision or None if result.returncode == 0 else None
+
+
+def _degraded_toolchain() -> dict:
+    return {"degraded": True, "equivalent_to_verified_toolchain": False,
+            "ffmpeg": {}, "ffprobe": {}}
+
+
+def _toolchain_status() -> dict:
+    """Reuse the official reporter; never raise, never decide a batch identity."""
+    from script.subvideo_generation._legacy.core import verification
+
+    try:
+        status = verification._toolchain()
+    except (verification.ReplayUncertain, OSError):
+        return _degraded_toolchain()
+    if not isinstance(status, dict):
+        return _degraded_toolchain()
+    normalized = dict(status)
+    normalized.setdefault("degraded", not bool(normalized.get("equivalent_to_verified_toolchain")))
+    normalized.setdefault("equivalent_to_verified_toolchain", not bool(normalized["degraded"]))
+    normalized.setdefault("ffmpeg", {})
+    normalized.setdefault("ffprobe", {})
+    return normalized
+
+
+def _toolchain_info() -> dict:
+    """Recorded in the identity's info block: context only, never a criterion."""
+    return _toolchain_status()
+
+
+def _recorded_toolchain(manifest: dict) -> dict:
+    """The toolchain block as written into this batch, not as the host runs now."""
+    identity = manifest.get("identity") or {}
+    info = identity.get("info") or {}
+    recorded = info.get("toolchain")
+    return recorded if isinstance(recorded, dict) and recorded else _degraded_toolchain()
+
+
+def _judge(identity: dict) -> dict:
+    """The only fields that decide whether two virtual batches are the same batch."""
+    rules = identity.get("rules") or {}
+    return {"schema": identity.get("schema"), "input_mode": identity.get("input_mode"),
+            "inputs": identity.get("inputs"), "rules_digest": rules.get("digest")}
+
+
+def _has_rules(manifest: dict) -> bool:
+    identity = manifest.get("identity") or {}
+    return isinstance(identity.get("rules"), dict) and bool(identity["rules"].get("digest"))
+
+
+def _check_identity(recorded: dict, expected: dict) -> None:
+    have, want = _judge(recorded), _judge(expected)
+    if have["rules_digest"] != want["rules_digest"]:
+        raise VirtualError("rules digest differs: the window rules changed since this batch was written")
+    if (have["schema"], have["input_mode"], have["inputs"]) != (want["schema"], want["input_mode"], want["inputs"]):
+        raise VirtualError("input identity differs: the inputs, batch schema or input mode changed")
 
 
 def _candidate_records(path: Path, source_sha256: str, windows: list[dict]) -> list[dict]:
@@ -241,32 +314,41 @@ def _complete(manifest: dict) -> bool:
 def run(project_root, videos_dir, output_dir, *, plan_only: bool = False, resume: bool = False) -> dict:
     """Build (or resume) one unpublished videos-directory batch.
 
-    The batch identity pins the readable source bytes and the probe/crop pipeline,
-    so a source that becomes readable (or whose bytes change) makes the identity
-    differ: such a batch cannot be resumed, it has to be rebuilt in a new output
-    directory.
+    The batch identity is the readable input bytes plus the shared rule fingerprint:
+    a changed window policy or changed input bytes makes it differ, while a moved
+    module or a different checkout does not. A source that becomes readable (or
+    whose bytes change) therefore means "rebuild in a new output directory".
     """
     root = Path(project_root).resolve()
     output = _safe_output(root, output_dir)
     inputs = Path(videos_dir).resolve()
     videos = scan_videos_dir(inputs)
     _reject_inside_videos_dir(output, inputs)
-    hashes, hash_errors = {}, {}
-    for path in videos:
-        # One unreadable file must not take the batch down with it.
-        try:
-            hashes[path.name] = base.sha256_file(path)
-        except SOURCE_ERRORS as exc:
-            hash_errors[path.name] = f"{type(exc).__name__}: {exc}"
-    identity = _identity(hashes)
     with base._run_lock(output):
-        if output.exists() and any(output.iterdir()):
+        nonempty = output.exists() and any(output.iterdir())
+        manifest_path = output / "manifest.json"
+        existing = base._load(manifest_path) if nonempty and manifest_path.is_file() else None
+        # A virtual batch written before the rule registry cannot prove its rules.
+        # Decide that before hashing or probing anything, so an old batch never
+        # fails for a reason that belongs to the rebuild it needs anyway.
+        if resume and existing is not None and not _has_rules(existing):
+            raise VirtualError("legacy batch has no rules digest: rebuild it into a new output directory")
+        hashes, hash_errors = {}, {}
+        for path in videos:
+            # One unreadable file must not take the batch down with it.
+            try:
+                hashes[path.name] = base.sha256_file(path)
+            except SOURCE_ERRORS as exc:
+                hash_errors[path.name] = f"{type(exc).__name__}: {exc}"
+        identity = _identity(hashes)
+        if nonempty:
             if not resume:
                 raise VirtualError("nonempty output exists; choose an empty directory or explicit --resume")
-            manifest = base._load(output / "manifest.json")
-            if manifest.get("identity") != identity:
-                raise VirtualError("virtual resume metadata identity differs")
-            _validate_existing(output, manifest)
+            if existing is None:
+                raise VirtualError("virtual resume requires an existing manifest.json")
+            _check_identity(existing.get("identity") or {}, identity)
+            _validate_existing(output, existing)
+            manifest = existing
             resuming = True
         else:
             if resume:

@@ -482,7 +482,7 @@ def test_resume_with_unchanged_inputs_keeps_the_candidates_and_skips_re_encoding
 
 
 def test_resume_rejects_changed_input_video_bytes(videos, tmp_path):
-    """Contract wording: 'virtual resume metadata identity differs'."""
+    """Contract wording: 'input identity differs' (same judge as the official batch)."""
     inputs = tmp_path / "inputs"
     shutil.copytree(videos, inputs)
     project = tmp_path / "project"
@@ -501,7 +501,7 @@ def test_resume_rejects_changed_input_video_bytes(videos, tmp_path):
                       "--output-dir", output, "--resume")
 
     assert resumed.returncode != 0
-    assert "virtual resume metadata identity differs" in console(resumed)
+    assert "input identity differs" in console(resumed)
     after = snapshot(output)
     assert after["clips"] == before["clips"], "a refused resume must not re-encode or add clips"
     assert after["manifest"] == before["manifest"], "a refused resume must not rewrite the manifest"
@@ -647,9 +647,11 @@ def test_resume_finishes_candidates_left_unfinished_by_a_failed_run(videos, tmp_
         "short_03s": "cropped", "long_25s": "cropped"}, "the recovered source must report cropped"
 
 
-def test_identity_records_the_window_strategy_and_the_virtual_code(videos, tmp_path):
-    """H4: the batch identity must pin the window policy and the virtual module."""
+def test_identity_records_the_rules_digest_and_the_window_policy(videos, tmp_path):
+    """H4: the virtual batch uses the same identity shape as the official batch."""
+    from script.subvideo_generation.tests.rules_support import rules_module
     virtual = import_virtual()
+    rules = rules_module()
     project = tmp_path / "project"
     project.mkdir()
     output = project / "batch"
@@ -657,14 +659,17 @@ def test_identity_records_the_window_strategy_and_the_virtual_code(videos, tmp_p
     virtual.run(project, videos, output)
 
     identity = load_json(output / "manifest.json")["identity"]
-    assert {"window_seconds", "step_seconds", "role"} <= set(identity.get("strategy", {})), (
-        f"identity.strategy must record the window policy, got {identity.get('strategy')!r}")
-    assert identity["strategy"]["window_seconds"] == virtual.WINDOW_SECONDS
-    assert identity["strategy"]["step_seconds"] == virtual.STEP_SECONDS
-    assert identity["strategy"]["role"] == "window"
-    code_keys = list(identity.get("code", {}))
-    assert any(str(key).endswith("virtual.py") for key in code_keys), (
-        f"identity.code must hash the virtual mode module itself, got {code_keys}")
+    assert set(identity) == {"schema", "input_mode", "inputs", "rules", "info"}, (
+        "the virtual identity must be {schema, input_mode, inputs, rules, info}, "
+        f"got {sorted(identity)}")
+    assert {"code", "strategy"} & set(identity) == set(), (
+        "code hashes and the ad-hoc strategy block must be replaced by the rules digest")
+    assert identity["rules"]["digest"] == rules.digest(), (
+        "the virtual batch must record the shared rules digest")
+    assert identity["rules"]["fields"]["virtual_window_seconds"] == virtual.WINDOW_SECONDS
+    assert identity["rules"]["fields"]["virtual_step_seconds"] == virtual.STEP_SECONDS
+    assert identity["rules"]["fields"]["virtual_role"] == "window"
+    assert identity["inputs"], "the virtual identity must still pin the input files"
 
 
 def test_resume_rejects_a_changed_window_strategy(videos, tmp_path, monkeypatch):
@@ -683,7 +688,8 @@ def test_resume_rejects_a_changed_window_strategy(videos, tmp_path, monkeypatch)
     with pytest.raises(base.PilotError) as caught:
         virtual.run(project, videos, output, resume=True)
 
-    assert "virtual resume metadata identity differs" in str(caught.value)
+    assert "rules digest differs" in str(caught.value), (
+        f"a changed window policy is a changed rule set, got: {caught.value}")
     assert (output / "manifest.json").read_bytes() == before, "a refused resume must not rewrite records"
 
 
@@ -780,7 +786,7 @@ def test_an_unreadable_video_is_isolated_instead_of_aborting_the_batch(tmp_path)
         assert sources["locked_03s"].get("reason"), "an unreadable source must explain itself"
         assert sources["locked_03s"].get("source_sha256") is None, (
             "an unreadable source cannot claim a source hash")
-        assert "locked_03s.mp4" not in manifest["identity"]["videos"], (
+        assert "locked_03s.mp4" not in manifest["identity"]["inputs"], (
             "identity must not claim to pin a file whose bytes were never hashed")
         assert sources["good_03s"]["status"] == "cropped"
         good_clips = [c for c in manifest["candidates"] if c["source_video_id"] == "good_03s"]
@@ -855,23 +861,3 @@ def test_resumed_sources_carry_the_same_media_fields_as_fresh_ones(videos, tmp_p
         f"a source recovered by resume must record the same media fields as a fresh one: "
         f"{sorted(recovered)} != {sorted(healthy)}")
     assert sources["short_03s"]["status"] == "cropped"
-
-
-def test_identity_pins_the_shared_media_pipeline(videos, tmp_path):
-    """M5: the batch identity must pin the probe/crop pipeline it actually used."""
-    virtual = import_virtual()
-    project = tmp_path / "project"
-    project.mkdir()
-    output = project / "batch"
-
-    virtual.run(project, videos, output)
-
-    code = load_json(output / "manifest.json")["identity"]["code"]
-    keys = list(code)
-    for filename in ("virtual.py", "pilot.py", "aligned.py"):
-        located = [key for key in keys if str(key).endswith(filename)]
-        assert located, (
-            f"identity.code must pin {filename}, got {keys}")
-        for key in located:
-            assert isinstance(code[key], str) and re.fullmatch(r"[0-9a-f]{64}", code[key]), (
-                f"identity.code[{key!r}] must be a sha256 hex digest, got {code[key]!r}")

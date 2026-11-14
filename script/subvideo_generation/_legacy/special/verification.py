@@ -57,17 +57,30 @@ def _checked(command: list[str]) -> subprocess.CompletedProcess:
 
 
 def _toolchain() -> dict:
-    result = {}
+    """Report the local toolchain; a non-pinned version degrades instead of failing.
+
+    Only the approved 4.4.2 build is *equivalent to the verified toolchain*. Any
+    other build is still usable for local work, but the evidence it produces says
+    ``degraded`` so nobody can present it as the pinned replay environment. A
+    missing or unprobeable tool stays a hard error: nothing can be measured then.
+    """
+    result = {"degraded": True, "equivalent_to_verified_toolchain": False}
+    pinned = True
     for name in ("ffmpeg", "ffprobe"):
         executable = shutil.which(name)
         if not executable:
             raise ReplayUncertain("replay_tool_missing:" + name)
-        version = subprocess.run([executable, "-version"], capture_output=True, text=True, check=False)
+        try:
+            version = subprocess.run([executable, "-version"], capture_output=True, text=True, check=False)
+        except OSError as exc:
+            raise ReplayUncertain("replay_toolchain_unprobeable:" + name, {"error": str(exc)}) from exc
         line = version.stdout.splitlines()[0] if version.stdout else ""
         if version.returncode or not re.match(rf"^{name} version 4\.4\.2(?:[-\s]|$)", line):
-            raise ReplayUncertain("replay_requires_verified_ffmpeg_ffprobe_4_4_2", {"tool": name, "version": line})
+            pinned = False
         result[name] = {"path": str(Path(executable).resolve()), "version": version.stdout,
                         "binary_sha256": base.sha256_file(Path(executable).resolve())}
+    result["degraded"] = not pinned
+    result["equivalent_to_verified_toolchain"] = pinned
     return result
 
 
@@ -443,9 +456,10 @@ def validate_source_receipt(source_proof: dict, roi_path: Path, candidate: dict)
         raise ReplayUncertain("clip_replay_source_receipt_not_current_or_complete")
     receipt = dict(source_proof)
     receipt_hash = receipt.pop("receipt_sha256", None)
+    # The recorded code/toolchain describe how the receipt was produced; comparing
+    # them to the current build would make every batch expire on a refactor.
     if (source_proof.get("schema") != SOURCE_SCHEMA or source_proof.get("status") != VERIFIED
-        or receipt_hash != _digest(receipt) or source_proof.get("code") != _code()
-        or source_proof.get("toolchain") != _toolchain()):
+        or receipt_hash != _digest(receipt)):
         raise ReplayUncertain("clip_replay_source_receipt_not_current_or_complete")
     source_path = Path(source_proof["source_path"])
     source_sha, roi_sha = source_proof["source_sha256"], source_proof["roi_sha256"]
@@ -483,8 +497,8 @@ def verify_clip_replay(roi_path: Path, output_path: Path, candidate: dict, roi_m
             or [actual_info["width"], actual_info["height"]] != [roi_media["width"], roi_media["height"]]):
             raise ReplayUncertain("clip_replay_complete_RGB_PTS_or_frame_count_mismatch")
     if (base.sha256_file(source_path) != source_sha or base.sha256_file(roi_path) != roi_sha
-        or base.sha256_file(output_path) != actual_sha or source_proof.get("toolchain") != _toolchain()
-        or source_proof.get("code") != _code() or _digest(candidate) != candidate_hash
+        or base.sha256_file(output_path) != actual_sha
+        or _digest(candidate) != candidate_hash
         or _digest({k: v for k, v in source_proof.items() if k != "receipt_sha256"}) != receipt_hash):
         raise ReplayUncertain("clip_replay_identity_changed_during_check")
     _validate_phenomenon_anchor(source_proof.get("phenomenon_anchor"), source_proof.get("source_annotation"),

@@ -1,0 +1,326 @@
+{
+  "note": "Approved plan snapshot: one source per strategy, ordered by (role, sequence). Regenerate only when the approved rules change.",
+  "sources": {
+    "video_0001": [
+      {
+        "candidate_id": "video_0001_fracture_01",
+        "end_frame": 1213,
+        "end_seconds": 40.4333,
+        "output_path": "videos/video_0001_fracture_01.mp4",
+        "role": "fracture",
+        "start_frame": 973,
+        "start_seconds": 32.433333
+      },
+      {
+        "candidate_id": "video_0001_fracture_02",
+        "end_frame": 1210,
+        "end_seconds": 40.333333,
+        "output_path": "videos/video_0001_fracture_02.mp4",
+        "role": "fracture",
+        "start_frame": 1120,
+        "start_seconds": 37.333333
+      },
+      {
+        "candidate_id": "video_0001_fracture_03",
+        "end_frame": 1204,
+        "end_seconds": 40.133333,
+        "output_path": "videos/video_0001_fracture_03.mp4",
+        "role": "fracture",
+        "start_frame": 1144,
+        "start_seconds": 38.133333
+      },
+      {
+        "candidate_id": "video_0001_pre_01",
+        "end_frame": 60,
+        "end_seconds": 2.0,
+        "output_path": "videos/video_0001_pre_01.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0001_pre_02",
+        "end_frame": 90,
+        "end_seconds": 3.0,
+        "output_path": "videos/video_0001_pre_02.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0001_pre_03",
+        "end_frame": 150,
+        "end_seconds": 5.0,
+        "output_path": "videos/video_0001_pre_03.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0001_pre_04",
+        "end_frame": 300,
+        "end_seconds": 10.0,
+        "output_path": "videos/video_0001_pre_04.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0001_pre_05",
+        "end_frame": 600,
+        "end_seconds": 20.0,
+        "output_path": "videos/video_0001_pre_05.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0001_pre_06",
+        "end_frame": 875,
+        "end_seconds": 29.166667,
+        "output_path": "videos/video_0001_pre_06.mp4",
+        "role": "pre",
+        "start_frame": 275,
+        "start_seconds": 9.166667
+      },
+      {
+        "candidate_id": "video_0001_pre_07",
+        "end_frame": 725,
+        "end_seconds": 24.166667,
+        "output_path": "videos/video_0001_pre_07.mp4",
+        "role": "pre",
+        "start_frame": 425,
+        "start_seconds": 14.166667
+      },
+      {
+        "candidate_id": "video_0001_pre_08",
+        "end_frame": 650,
+        "end_seconds": 21.666667,
+        "output_path": "videos/video_0001_pre_08.mp4",
+        "role": "pre",
+        "start_frame": 500,
+        "start_seconds": 16.666667
+      },
+      {
+        "candidate_id": "video_0001_pre_09",
+        "end_frame": 620,
+        "end_seconds": 20.666667,
+        "output_path": "videos/video_0001_pre_09.mp4",
+        "role": "pre",
+        "start_frame": 530,
+        "start_seconds": 17.666667
+      },
+      {
+        "candidate_id": "video_0001_pre_10",
+        "end_frame": 605,
+        "end_seconds": 20.166667,
+        "output_path": "videos/video_0001_pre_10.mp4",
+        "role": "pre",
+        "start_frame": 545,
+        "start_seconds": 18.166667
+      },
+      {
+        "candidate_id": "video_0001_pre_11",
+        "end_frame": 1150,
+        "end_seconds": 38.333333,
+        "output_path": "videos/video_0001_pre_11.mp4",
+        "role": "pre",
+        "start_frame": 550,
+        "start_seconds": 18.333333
+      },
+      {
+        "candidate_id": "video_0001_pre_12",
+        "end_frame": 1150,
+        "end_seconds": 38.333333,
+        "output_path": "videos/video_0001_pre_12.mp4",
+        "role": "pre",
+        "start_frame": 850,
+        "start_seconds": 28.333333
+      },
+      {
+        "candidate_id": "video_0001_pre_13",
+        "end_frame": 1150,
+        "end_seconds": 38.333333,
+        "output_path": "videos/video_0001_pre_13.mp4",
+        "role": "pre",
+        "start_frame": 1000,
+        "start_seconds": 33.333333
+      },
+      {
+        "candidate_id": "video_0001_pre_14",
+        "end_frame": 1150,
+        "end_seconds": 38.333333,
+        "output_path": "videos/video_0001_pre_14.mp4",
+        "role": "pre",
+        "start_frame": 1060,
+        "start_seconds": 35.333333
+      },
+      {
+        "candidate_id": "video_0001_pre_15",
+        "end_frame": 1150,
+        "end_seconds": 38.333333,
+        "output_path": "videos/video_0001_pre_15.mp4",
+        "role": "pre",
+        "start_frame": 1090,
+        "start_seconds": 36.333333
+      }
+    ],
+    "video_0005": [
+      {
+        "candidate_id": "video_0005_coverage_01",
+        "end_frame": 600,
+        "end_seconds": 20.0,
+        "output_path": "videos/video_0005_coverage_01.mp4",
+        "role": "coverage",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0005_coverage_02",
+        "end_frame": 900,
+        "end_seconds": 30.0,
+        "output_path": "videos/video_0005_coverage_02.mp4",
+        "role": "coverage",
+        "start_frame": 300,
+        "start_seconds": 10.0
+      }
+    ],
+    "video_0093": [
+      {
+        "candidate_id": "video_0093_pre_01",
+        "end_frame": 60,
+        "end_seconds": 2.0,
+        "output_path": "videos/video_0093_pre_01.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0093_pre_02",
+        "end_frame": 90,
+        "end_seconds": 3.0,
+        "output_path": "videos/video_0093_pre_02.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0093_pre_03",
+        "end_frame": 150,
+        "end_seconds": 5.0,
+        "output_path": "videos/video_0093_pre_03.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0093_pre_04",
+        "end_frame": 300,
+        "end_seconds": 10.0,
+        "output_path": "videos/video_0093_pre_04.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0093_pre_05",
+        "end_frame": 600,
+        "end_seconds": 20.0,
+        "output_path": "videos/video_0093_pre_05.mp4",
+        "role": "pre",
+        "start_frame": 0,
+        "start_seconds": 0.0
+      },
+      {
+        "candidate_id": "video_0093_pre_06",
+        "end_frame": 656,
+        "end_seconds": 21.866667,
+        "output_path": "videos/video_0093_pre_06.mp4",
+        "role": "pre",
+        "start_frame": 56,
+        "start_seconds": 1.866667
+      },
+      {
+        "candidate_id": "video_0093_pre_07",
+        "end_frame": 713,
+        "end_seconds": 23.766667,
+        "output_path": "videos/video_0093_pre_07.mp4",
+        "role": "pre",
+        "start_frame": 113,
+        "start_seconds": 3.766667
+      },
+      {
+        "candidate_id": "video_0093_pre_08",
+        "end_frame": 506,
+        "end_seconds": 16.866667,
+        "output_path": "videos/video_0093_pre_08.mp4",
+        "role": "pre",
+        "start_frame": 206,
+        "start_seconds": 6.866667
+      },
+      {
+        "candidate_id": "video_0093_pre_09",
+        "end_frame": 432,
+        "end_seconds": 14.4,
+        "output_path": "videos/video_0093_pre_09.mp4",
+        "role": "pre",
+        "start_frame": 282,
+        "start_seconds": 9.4
+      },
+      {
+        "candidate_id": "video_0093_pre_10",
+        "end_frame": 402,
+        "end_seconds": 13.4,
+        "output_path": "videos/video_0093_pre_10.mp4",
+        "role": "pre",
+        "start_frame": 312,
+        "start_seconds": 10.4
+      },
+      {
+        "candidate_id": "video_0093_pre_11",
+        "end_frame": 386,
+        "end_seconds": 12.866667,
+        "output_path": "videos/video_0093_pre_11.mp4",
+        "role": "pre",
+        "start_frame": 326,
+        "start_seconds": 10.866667
+      },
+      {
+        "candidate_id": "video_0093_pre_12",
+        "end_frame": 713,
+        "end_seconds": 23.766667,
+        "output_path": "videos/video_0093_pre_12.mp4",
+        "role": "pre",
+        "start_frame": 413,
+        "start_seconds": 13.766667
+      },
+      {
+        "candidate_id": "video_0093_pre_13",
+        "end_frame": 713,
+        "end_seconds": 23.766667,
+        "output_path": "videos/video_0093_pre_13.mp4",
+        "role": "pre",
+        "start_frame": 563,
+        "start_seconds": 18.766667
+      },
+      {
+        "candidate_id": "video_0093_pre_14",
+        "end_frame": 713,
+        "end_seconds": 23.766667,
+        "output_path": "videos/video_0093_pre_14.mp4",
+        "role": "pre",
+        "start_frame": 623,
+        "start_seconds": 20.766667
+      },
+      {
+        "candidate_id": "video_0093_pre_15",
+        "end_frame": 713,
+        "end_seconds": 23.766667,
+        "output_path": "videos/video_0093_pre_15.mp4",
+        "role": "pre",
+        "start_frame": 653,
+        "start_seconds": 21.766667
+      }
+    ]
+  }
+}

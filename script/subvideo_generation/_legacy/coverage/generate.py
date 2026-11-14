@@ -19,16 +19,18 @@ DEFAULT_IDS=tuple('video_'+x for x in ('0005','0015','0021','0034','0036','0042'
 SCHEMA='tensile-sub-video-coverage/1'
 
 def plan_windows(media):
+    from script.subvideo_generation import rules
+    window=rules.COVERAGE_WINDOW_SECONDS; step=rules.COVERAGE_STEP_SECONDS
     times=media['timestamps'];end=media['duration']; count=media['total_frames']
     if count!=len(times) or not times or end<=0 or times[0]!=0 or any(b<=a for a,b in zip(times,times[1:])) or end<=times[-1]:
         raise base.PilotError('invalid coverage playback timeline')
     desired=[]
-    if end<=20:desired=[(0.,end)]
+    if end<=window:desired=[(0.,end)]
     else:
         start=0.
-        while start+20<=end+1e-9:
-            desired.append((start,min(start+20,end)));start+=15
-        if abs(desired[-1][1]-end)>1e-9:desired.append((end-20,end))
+        while start+window<=end+1e-9:
+            desired.append((start,min(start+window,end)));start+=step
+        if abs(desired[-1][1]-end)>1e-9:desired.append((end-window,end))
     bounds=times+[end];windows=[];seen=set()
     def nearest(t):
         p=bisect_left(bounds,t); options=[i for i in (p-1,p) if 0<=i<len(bounds)]
@@ -39,11 +41,13 @@ def plan_windows(media):
         seen.add((start,stop));duration=bounds[stop]-bounds[start]
         windows.append({'start_frame':start,'end_frame':stop,'source_frame_range':[start,stop],
             'start_time':bounds[start],'end_time':bounds[stop],'source_start_pts':bounds[start],'source_end_pts':bounds[stop],
-            'duration':duration,'source_duration':duration,'target_duration_seconds':20,'step_seconds':15,
+            'duration':duration,'source_duration':duration,'target_duration_seconds':window,'step_seconds':step,
             'window_role':'coverage','event_kind':'none_unlocated','source_anchor_frames':[],
-            'window_variant':'full_short_source' if end<20 else 'tail_aligned' if abs(a-(len(windows)*15))>1e-9 else 'regular_stride'})
+            'window_variant':'full_short_source' if end<window else 'tail_aligned' if abs(a-(len(windows)*step))>1e-9 else 'regular_stride'})
+    # Overlapping strides leave no gaps; a stride wider than the window is a sparse
+    # schedule by construction, so the gap clause only applies while step<=window.
     if (not windows or windows[0]['start_frame']!=0 or windows[-1]['end_frame']!=count
-        or any(b['start_frame']>a['end_frame'] for a,b in zip(windows,windows[1:]))):
+        or (step<=window and any(b['start_frame']>a['end_frame'] for a,b in zip(windows,windows[1:])))):
         raise base.PilotError('coverage has no complete decodable schedule')
     return windows
 
@@ -72,8 +76,6 @@ def _verified_inputs(root):
     """Cross-check the shared loader against the actual fixed input files."""
     loader_code=inputs.orchestration_code()
     rows,rois,folds,hashes=inputs.load_inputs(root)
-    if inputs.orchestration_code()!=loader_code:
-        raise base.PilotError('input loader changed during read')
     split_dir=root/'data/splits/three-fold';lists={};independent_hashes={}
     for name in ['test.json']+[f'fold_{i}_{part}.json' for i in range(3) for part in ('train','val')]:
         path=split_dir/name;values=base._load(path).get('video_ids')
@@ -100,8 +102,7 @@ def _verified_inputs(root):
         independent_rois[key]=row
     for path in (annotation,roi_path):independent_hashes[str(path.relative_to(root))]=base.sha256_file(path)
     if (set(independent_rows)!=universe or set(independent_rois)!=universe or rows!=independent_rows
-        or rois!=independent_rois or folds!=independent_folds or hashes!=independent_hashes
-        or inputs.orchestration_code()!=loader_code):
+        or rois!=independent_rois or folds!=independent_folds or hashes!=independent_hashes):
         raise base.PilotError('input loader disagrees with actual annotation, ROI or fixed split files')
     return rows,rois,folds,hashes,loader_code
 

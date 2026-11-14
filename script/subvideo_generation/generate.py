@@ -10,6 +10,8 @@ import argparse
 from collections import Counter
 from fractions import Fraction
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 
 if __package__ in (None, ""):
@@ -19,6 +21,7 @@ from script.subvideo_generation._legacy.core import anchors, generate as legacy,
 from script.subvideo_generation._legacy.special import generate as special, verification as special_verification
 from script.subvideo_generation._legacy.coverage import generate as coverage, verification as coverage_verification
 from script.subvideo_generation.pilot import aligned, pilot as base
+from script.subvideo_generation import rules as rules_registry
 from script.subvideo_generation import virtual
 
 SCHEMA = "tensile-unified-sub-video/1"
@@ -29,17 +32,21 @@ MUTABLE_CANDIDATE_FIELDS = {"status", "output", "reason", "details"}
 
 
 def strategy_for(video_id):
-    if video_id == "video_0093":
+    if video_id == rules_registry.SPECIAL_VIDEO_ID:
         return "0093"
     return "coverage" if video_id in COVERAGE_IDS else "regular"
 
 
 def code_identity():
-    """Pin orchestration as well as every imported generator/verifier/loader.
+    """Hash the orchestration and every imported generator/verifier/loader.
+
+    Information only: batch equality is decided by the input identity plus the
+    rules fingerprint (rules.py), never by these hashes. The function is kept
+    because reports and older tooling still print it, and because it documents
+    which files a batch of this generation touched.
 
     ``virtual.py`` is deliberately excluded: the videos-dir mode records its own
-    identity (window policy plus its own module hash) in its own manifest, so its
-    changes must not move the 110-source batch code identity.
+    identity in its own manifest, so it must not move this informational digest.
     """
     script = Path(__file__).resolve().parents[1]
     packages = ("subvideo_generation", "subvideo_generation/_legacy",
@@ -56,29 +63,109 @@ def load_inputs(root):
     # ROI records. Its parent-manifest-dependent run/check functions are unused.
     rows, rois, folds, hashes, loader_code = coverage._verified_inputs(root)
     if (len(rows) != SOURCE_COUNT or set(rows) != set(rois) or set(rows) != set(folds)
-        or not set(COVERAGE_IDS) <= set(rows) or "video_0093" not in rows):
+        or not set(COVERAGE_IDS) <= set(rows) or rules_registry.SPECIAL_VIDEO_ID not in rows):
         raise base.PilotError("unified input inventory must contain exactly 110 approved sources")
-    if folds["video_0093"] != {str(i): "test" for i in range(3)}:
-        raise base.PilotError("video_0093 must remain in fixed test")
+    if folds[rules_registry.SPECIAL_VIDEO_ID] != {str(i): "test" for i in range(3)}:
+        raise base.PilotError("the special source must remain in fixed test")
     return rows, rois, folds, hashes, loader_code
 
 
-def identity(root, hashes, loader_code):
-    hashes = dict(hashes)
-    hashes[anchors.DOCUMENT] = base.sha256_file(root / anchors.DOCUMENT)
-    return {"schema": SCHEMA, "inputs": hashes, "code": code_identity(),
-            "loader_code": loader_code, "scope": "all_sources", "source_count": SOURCE_COUNT,
-            "coverage_ids": list(COVERAGE_IDS), "window_seconds": 20, "step_seconds": 15,
-            "guard_seconds": .5, "post_remaining_seconds": 2.0,
-            "policy": "fresh_encoding_only_no_donor_batches"}
+def identity(root, hashes):
+    """The batch identity: what was read (inputs) and how it was cut (rules).
+
+    Only ``inputs`` and ``rules.digest`` decide whether two batches are the same
+    batch; ``info`` records the environment for humans and is never compared.
+    """
+    inputs = dict(hashes)
+    inputs[anchors.DOCUMENT] = base.sha256_file(root / anchors.DOCUMENT)
+    return {"schema": SCHEMA, "input_mode": "official", "inputs": inputs,
+            "rules": rules_registry.stored_rules(), "info": _info(root)}
+
+
+def _info(root):
+    """Informative only: code revision and local toolchain, never a criterion."""
+    return {"code_version": _code_version(root), "toolchain": _toolchain_info()}
+
+
+def _code_version(root):
+    """Short commit of the checkout, when git is available; ``None`` otherwise."""
+    try:
+        result = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=str(root),
+                                capture_output=True, text=True, check=False)
+    except (OSError, ValueError):
+        return None
+    revision = result.stdout.strip()
+    return revision or None if result.returncode == 0 else None
+
+
+def _degraded_toolchain():
+    return {"degraded": True, "equivalent_to_verified_toolchain": False,
+            "ffmpeg": {}, "ffprobe": {}}
+
+
+def _normalized_toolchain(status):
+    """Give an arbitrary toolchain report the four documented keys."""
+    normalized = dict(status) if isinstance(status, dict) else {}
+    if "degraded" not in normalized:
+        normalized["degraded"] = not bool(normalized.get("equivalent_to_verified_toolchain"))
+    normalized.setdefault("equivalent_to_verified_toolchain", not bool(normalized["degraded"]))
+    normalized.setdefault("ffmpeg", {})
+    normalized.setdefault("ffprobe", {})
+    return normalized
+
+
+def _toolchain_status():
+    """The replay toolchain verdict, never raising and never deciding a batch.
+
+    A missing or unprobeable toolchain degrades to "not equivalent" instead of
+    failing the run: the point is to state honestly which environment produced
+    the evidence, not to gate on it.
+    """
+    try:
+        status = core._toolchain()
+    except (core.ReplayUncertain, OSError):
+        return _degraded_toolchain()
+    return _normalized_toolchain(status)
+
+
+def _toolchain_info():
+    """Recorded in the identity's info block: context only, never a criterion."""
+    return _toolchain_status()
+
+
+def _recorded_toolchain(manifest):
+    """The toolchain block as it was written into the batch, not as it is now."""
+    identity = manifest.get("identity") or {}
+    info = identity.get("info") or {}
+    recorded = info.get("toolchain")
+    return _normalized_toolchain(recorded) if isinstance(recorded, dict) else _degraded_toolchain()
+
+
+def _compare_identity(identity):
+    """Projection of an identity onto the only fields that decide batch equality."""
+    rules = identity.get("rules") or {}
+    return {"schema": identity.get("schema"), "input_mode": identity.get("input_mode"),
+            "inputs": identity.get("inputs"), "rules_digest": rules.get("digest")}
+
+
+def _has_rules(manifest):
+    identity = manifest.get("identity") or {}
+    return isinstance(identity.get("rules"), dict) and bool(identity["rules"].get("digest"))
+
+
+def _check_identity(recorded, expected):
+    have, want = _compare_identity(recorded), _compare_identity(expected)
+    if have["rules_digest"] != want["rules_digest"]:
+        raise base.PilotError("rules digest differs: the generation rules changed since this batch was written")
+    if (have["schema"], have["input_mode"], have["inputs"]) != (want["schema"], want["input_mode"], want["inputs"]):
+        raise base.PilotError("input identity differs: the inputs, batch schema or input mode changed")
 
 
 def _unchanged(root, expected):
-    if (code_identity() != expected["code"]
-        or coverage.inputs.orchestration_code() != expected["loader_code"]
+    if (rules_registry.digest() != expected["rules"]["digest"]
         or any(not (root / p).is_file() or base.sha256_file(root / p) != sha
                for p, sha in expected["inputs"].items())):
-        raise base.PilotError("unified metadata or source code changed during run")
+        raise base.PilotError("inputs or generation rules changed during run")
 
 
 def _scope(folds):
@@ -114,7 +201,8 @@ def _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor
                 review={"status": "未审核", "decision": None, "change_notes": ""}, status="planned"))
         return candidates, []
     record = legacy.adapt_annotation(row, raw_media, phenomenon_anchor=anchor_records.get(key))
-    if strategy == "0093" and record.get("anchor_frames") != [727, 728]:
+    if (strategy == "0093"
+            and record.get("anchor_frames") != list(rules_registry.SPECIAL_ANCHOR_FRAMES)):
         raise legacy.PendingSource("0093 requires the approved 727/728 source anchors")
     planner = special.plan_windows if strategy == "0093" else legacy.plan_windows
     windows, excluded = planner(record, raw_media)
@@ -158,15 +246,21 @@ def _plan_source(root, key, row, roi, folds, anchor_records):
     return source, [], []
 
 
-def _sealed(receipt, schema, expected_code, expected_toolchain):
+def _sealed(receipt, schema):
+    """Check a receipt's own seal and schema.
+
+    The recorded ``code`` and ``toolchain`` are history: they explain how a clip
+    was produced, but a different build or a newer FFmpeg must not turn an
+    already written proof into a lie. Only the seal (tamper evidence), the
+    schema and the verified status are gates.
+    """
     if not isinstance(receipt, dict):
         raise base.PilotError("missing replay proof")
     raw = dict(receipt)
     seal = raw.pop("receipt_sha256", None)
     if (receipt.get("schema") != schema or receipt.get("status") != core.VERIFIED
-        or seal != core._digest(raw) or receipt.get("code") != expected_code
-        or receipt.get("toolchain") != expected_toolchain):
-        raise base.PilotError("replay proof seal, schema, code or toolchain mismatch")
+        or seal != core._digest(raw)):
+        raise base.PilotError("replay proof seal or schema mismatch")
 
 
 def _portable_anchor(anchor):
@@ -178,7 +272,7 @@ def _validate_source(root, source, row, roi, anchor_records, *, portable=False):
     raw, cropped = _paths(root, key)
     verifier = special_verification if strategy_for(key) == "0093" else core
     proof = source["frame_preserving_replay"]
-    _sealed(proof, verifier.SOURCE_SCHEMA, verifier._code(), proof.get("toolchain") if portable else verifier._toolchain())
+    _sealed(proof, verifier.SOURCE_SCHEMA)
     source_sha, roi_sha = base.sha256_file(raw), base.sha256_file(cropped)
     if (source.get("source_path") != str(raw.relative_to(root))
         or source.get("roi_path") != str(cropped.relative_to(root))
@@ -231,7 +325,7 @@ def _receipt_window(candidate, proof):
     if candidate["event_kind"] == "none_unlocated":
         return {"source_frame_range": [start, end], "source_start_pts": str(bounds[start]),
             "source_end_pts": str(bounds[end]), "event_kind": "none_unlocated", "source_anchor_frames": [],
-            "target_duration_seconds": 20, "step_seconds": 15}
+            "target_duration_seconds": rules_registry.WINDOW_SECONDS, "step_seconds": rules_registry.STEP_SECONDS}
     unclamped = candidate["event_kind"] == "unclamped"
     return {"annotation_sha256": proof["source_annotation_sha256"], "event_kind": candidate["event_kind"],
         "phenomenon_anchor_sha256": proof.get("phenomenon_anchor_sha256"),
@@ -249,9 +343,7 @@ def _validate_output(root, output, candidate, source, *, portable=False):
     record = candidate["output"]
     clip = record["frame_preserving_replay"]
     schema = coverage_verification.SCHEMA if source["strategy"] == "coverage" else verifier.CLIP_SCHEMA
-    _sealed(clip, schema, proof["code"], proof["toolchain"])
-    if source["strategy"] == "coverage" and clip.get("supplement_code") != coverage_verification.code():
-        raise base.PilotError("coverage clip proof code mismatch")
+    _sealed(clip, schema)
     path = output / candidate["output_path"]
     if not path.is_file() or path.is_symlink():
         raise base.PilotError("recorded clip missing or symlinked: " + candidate["candidate_id"])
@@ -364,23 +456,31 @@ def summarize(manifest):
         "fold_counts": {str(i): {part: sum(c["folds"][str(i)] == part for c in candidates)
             for part in ("train", "val", "test")} for i in range(3)},
         "complete": manifest["complete"], "published": False, "reused_candidates": 0,
+        "toolchain": _recorded_toolchain(manifest),
         "manual_review": "required_for_every_publishable_clip"}
 
 
 def run(project_root, output_dir=None, *, plan_only=False, resume=False):
     root = Path(project_root).resolve()
     output = _safe_output(root, output_dir)
-    rows, rois, folds, hashes, loader_code = load_inputs(root)
-    expected_identity = identity(root, hashes, loader_code)
-    anchor_records = anchors.load_anchors(root / anchors.DOCUMENT)
     with base._run_lock(output):
+        existing = base._load(output / "manifest.json") if (output / "manifest.json").is_file() else None
+        # A batch written before the rule registry cannot prove which rules produced it,
+        # so it cannot be resumed. Decide this before reading the inventory: an old
+        # batch may outlive the inputs it was cut from.
+        if resume and existing is not None and not _has_rules(existing):
+            raise base.PilotError("legacy batch has no rules digest: rebuild it into a new output directory")
+        rows, rois, folds, hashes, _loader_code = load_inputs(root)
+        expected_identity = identity(root, hashes)
+        anchor_records = anchors.load_anchors(root / anchors.DOCUMENT)
         if output.exists() and any(output.iterdir()):
             if not resume:
                 raise base.PilotError("nonempty output exists; choose an empty directory or explicit --resume")
-            manifest = base._load(output / "manifest.json")
-            if manifest.get("identity") != expected_identity:
-                raise base.PilotError("unified resume metadata/code identity differs")
-            _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records)
+            if existing is None:
+                raise base.PilotError("unified resume requires an existing manifest.json")
+            _check_identity(existing.get("identity") or {}, expected_identity)
+            _validate_manifest(root, output, existing, rows, rois, folds, anchor_records)
+            manifest = existing
         else:
             if resume:
                 raise base.PilotError("cannot resume a missing or empty unified output")
@@ -476,21 +576,86 @@ def audit_outputs(project_root, output_dir, *, portable=False):
     output = _safe_output(root, output_dir)
     with base._run_lock(output):
         manifest = base._load(output / "manifest.json")
-        rows, rois, folds, hashes, loader_code = load_inputs(root)
-        expected_identity = identity(root, hashes, loader_code)
-        if manifest.get("identity") != expected_identity:
-            raise base.PilotError("unified audit metadata/code identity differs")
+        rows, rois, folds, hashes, _loader_code = load_inputs(root)
+        expected_identity = identity(root, hashes)
+        _check_identity(manifest.get("identity") or {}, expected_identity)
         anchor_records = anchors.load_anchors(root / anchors.DOCUMENT)
         verified = _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records,
                                       require_complete=True, portable=portable)
         if base._load(output / "summary.json") != summarize(manifest):
             raise base.PilotError("unified summary differs from current manifest")
         _unchanged(root, expected_identity)
+        toolchain = _toolchain_status()
         return {"status": "current_bytes_and_planned_inventory_verified", "source_count": len(rows),
-                "verified_outputs": verified, "published": False,
+                "verified_outputs": verified, "published": False, "toolchain": toolchain,
                 "validation_level": "byte_receipt_and_source_timeline_only" if portable else "full_output_decode_and_current_receipts",
                 "limitations": (["no_current_output_RGB_PTS_decode", "original_toolchain_receipts_preserved"] if portable else [])
-                    + ["not_new_frame_replay", "not_human_label_review", "not_data_publication"]}
+                    + ["not_new_frame_replay", "not_human_label_review", "not_data_publication"]
+                    + ([] if not toolchain["degraded"] else ["not_pinned_toolchain"])}
+
+
+def audit_content(project_root, output_dir=None):
+    """Byte-level audit of one batch: recorded clips versus the files on disk.
+
+    Deliberately independent of code hashes, of the rules digest and of any media
+    decoding: a batch whose *rules* cannot be verified is still checkable at the
+    content level. It says nothing about frames, labels or publication.
+    """
+    root = Path(project_root).resolve()
+    output = _safe_output(root, output_dir)
+    manifest_path = output / "manifest.json"
+    if not manifest_path.is_file():
+        raise base.PilotError("content audit requires an existing manifest.json")
+    manifest = base._load(manifest_path)
+    legacy = not _has_rules(manifest)
+    candidates = manifest.get("candidates") or []
+    cropped = [c for c in candidates if c.get("status") == "cropped"]
+    missing, mismatched, unrecorded = [], [], []
+    recorded = set()
+    for candidate in cropped:
+        relative = candidate["output_path"]
+        recorded.add(relative)
+        path = output / relative
+        if path.is_symlink() or not path.is_file():
+            missing.append(candidate["candidate_id"])
+            continue
+        recorded_sha = (candidate.get("output") or {}).get("sha256") or candidate.get("output_sha256")
+        if not recorded_sha or base.sha256_file(path) != recorded_sha:
+            mismatched.append(candidate["candidate_id"])
+    videos = output / "videos"
+    if videos.is_dir() and not videos.is_symlink():
+        for entry in sorted(videos.iterdir()):
+            relative = str(entry.relative_to(output))
+            if relative not in recorded:
+                unrecorded.append(relative)
+    summary_path = output / "summary.json"
+    recorded_count = base._load(summary_path).get("candidate_count") if summary_path.is_file() else None
+    count_consistent = recorded_count is None or recorded_count == len(candidates)
+    ok = not (missing or mismatched or unrecorded) and count_consistent
+    return {"status": "content_audit", "verdict": "content_only",
+            "batch_schema": manifest.get("schema"),
+            "legacy_batch": legacy, "rules_unverifiable": legacy,
+            "candidates": len(candidates), "checked": len(cropped),
+            "missing": missing, "mismatched": mismatched, "unrecorded": unrecorded,
+            "candidate_count_consistent": count_consistent, "ok": ok,
+            "limitations": ["no_media_decode", "no_frame_replay",
+                            "no_code_or_rules_identity", "not_human_label_review"]}
+
+
+def audit_batch(project_root, output_dir, *, portable=False):
+    """Route an audit by what the batch says it is.
+
+    Virtual batches and batches written before the rule registry get a content
+    audit; a current official batch gets the full replay/content audit.
+    """
+    root = Path(project_root).resolve()
+    output = _safe_output(root, output_dir)
+    manifest_path = output / "manifest.json"
+    if manifest_path.is_file():
+        manifest = base._load(manifest_path)
+        if manifest.get("schema") == virtual.SCHEMA or not _has_rules(manifest):
+            return audit_content(root, output)
+    return audit_outputs(root, output, portable=portable)
 
 
 def main():
@@ -523,9 +688,9 @@ def main():
         parser.error("--audit-only cannot be combined with --plan-only or --resume")
     try:
         if args.audit_only:
-            result = audit_outputs(args.project_root, args.output_dir or args.project_root / "data/sub_video", portable=args.portable_audit)
+            result = audit_batch(args.project_root, args.output_dir or args.project_root / "data/sub_video", portable=args.portable_audit)
             print(base.canonical_bytes(result).decode(), end="")
-            return 0
+            return 0 if result.get("ok", True) else 1
         manifest = run(args.project_root, args.output_dir, plan_only=args.plan_only, resume=args.resume)
     except (base.PilotError, OSError, ValueError, KeyError, TypeError) as exc:
         parser.exit(1, str(exc) + "\n")

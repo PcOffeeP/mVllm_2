@@ -237,17 +237,17 @@ def test_resume_refuses_tampered_inventory_before_encoding(project, attack):
     assert not encoded and path.read_bytes() == before
 
 
-@pytest.mark.parametrize("change", ["annotation", "split", "roi_manifest", "anchor_document", "source", "roi", "code"])
-def test_resume_rejects_changed_live_input_before_writing(project, monkeypatch, change):
+# Code identity is no longer part of the batch identity, so changing code can no
+# longer reject a resume; that positive case lives in test_identity_ignores_code.py.
+@pytest.mark.parametrize("change", ["annotation", "split", "roi_manifest", "anchor_document", "source", "roi"])
+def test_resume_rejects_changed_live_input_before_writing(project, change):
     root, g, _, encoded = project
     g.run(root, plan_only=True)
     path = root / "data/sub_video/manifest.json"; before = path.read_bytes()
     paths = {"annotation": "data/annotation-table-full.csv", "split": "data/splits/three-fold/fold_0_train.json",
         "roi_manifest": "data/roi/manifest.json", "anchor_document": "docs/subvideo-current-logic.md",
         "source": "data/videos/video_0001.mp4", "roi": "data/roi/videos/video_0001.mp4"}
-    if change == "code": monkeypatch.setattr(g, "code_identity", lambda: {"changed": "source code"})
-    else:
-        target = root / paths[change]; target.write_bytes(target.read_bytes() + b"\n")
+    target = root / paths[change]; target.write_bytes(target.read_bytes() + b"\n")
     with pytest.raises(Exception): g.run(root, resume=True)
     assert path.read_bytes() == before and not encoded
 
