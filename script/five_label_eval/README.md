@@ -16,8 +16,11 @@ python -m script.five_label_eval.score \
   --predictions /tmp/five-label-invented/predictions.jsonl \
   --input-reviews /tmp/five-label-invented/input_reviews.jsonl \
   --output /tmp/five-label-invented-result
-python -m unittest discover -s script/five_label_eval/tests -v
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
+  --basetemp=/private/tmp/five-label-tests script/five_label_eval/tests
 ```
+
+测试命令带两个参数是为了不污染仓库：`-p no:cacheprovider` 阻止在仓库内生成 `.pytest_cache`，`--basetemp` 把测试临时目录指向 `/private/tmp` 而非仓库下的 `.pytest_tmp*`，两者配合 `PYTHONDONTWRITEBYTECODE=1` 使跑完测试后工作区保持干净。
 
 正常评分返回 0，输出 `results.json` 与 `report.md`。身份冲突、输入 JSON/JSONL 重键或文件错误返回 2，并说明对象；已有输出目录不会被覆盖。模型原回答中的重键或非法标签属于需要评分的预测问题，会记录在逐字段状态中，而不会中止整批。
 
