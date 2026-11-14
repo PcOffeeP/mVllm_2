@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("pipeline", reason="sparse-checkout 未检出 pipeline/：该模块依赖 pipeline 包")
+
 from pipeline.current_data import (
     LEGACY_REBUILD_LAYOUT,
     current_data_paths,

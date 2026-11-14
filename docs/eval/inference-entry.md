@@ -7,13 +7,15 @@
 | 项 | 现状 |
 | --- | --- |
 | 模块 | `script/five_label_eval/infer.py` |
-| 当前存在分支 | `feat/eval-fake-slice`（本分支 `feat/eval-input-contract` 尚未落地） |
+| 文件所在分支 | `feat/eval-fake-slice`（参考实现）；**本分支 `feat/tensileagent-finetune` 的工作树里没有该文件**（`script/five_label_eval/` 目录下为 `__init__.py`／`README.md`／`build_manifest.py`／`score.py`／`synthetic_example.py`／`tests`，无 `infer.py`），该分支尚未合入本分支 |
 | 实际入口 | `main(argv=None) -> int`（73 行），无名为 `infer` 的函数 |
 | 退出码 | 0 成功；2 输入身份或文件错误（`InputError`／`OSError`／`UnicodeError`／`NotImplementedError` 统一返回 2，115 行） |
 
-**接口契约（拟定签名）**：`infer(manifest_path, candidate_ids, model_id, run_id, prompt_id, prompt_file, input_config, output_path) -> int`。该签名尚未落地，只作实现与验收的对齐基准；已落地的对外形态是下节 CLI。
+上述「行」与 §2 参数行号均指 `feat/eval-fake-slice` 分支的 `infer.py`（未合入本分支），不是本仓库已存在的代码。
 
-## 2. CLI 参数表（`infer.py` 75–83 行已落地）
+**接口契约（拟定签名）**：`infer(manifest_path, candidate_ids, model_id, run_id, prompt_id, prompt_file, input_config, output_path) -> int`。该签名尚未落地（仅见 `feat/eval-fake-slice` 参考实现，未合入本分支），只作实现与验收的对齐基准；参考实现（未合入）的对外形态是下节 CLI。
+
+## 2. CLI 参数表（参考实现见分支 `feat/eval-fake-slice`，未合入本分支；行号指该分支文件）
 
 | 参数 | 必填 | 含义 | 行号 |
 | --- | --- | --- | --- |
@@ -89,8 +91,8 @@
 
 | backend | 状态 | 职责 | 边界 |
 | --- | --- | --- | --- |
-| `fake` | **当前唯一已落地** | 链路自检：按类别轮转生成合法／非法输出，验证清单绑定、身份透传、每候选一行、文件不覆盖 | 不产生任何真实判读结论；不得用于评测结论 |
-| `transformers` | CLI 已声明，本切片抛 `NotImplementedError`（87 行）；本机权重不可用，属训练机侧 | 本地加载权重逐条推理，产出 `raw_output` 原文 | 只在训练机侧执行；本机不得声称已跑通 |
+| `fake` | **唯一已实现**（指 `feat/eval-fake-slice` 的参考实现，未合入本分支） | 链路自检：按类别轮转生成合法／非法输出，验证清单绑定、身份透传、每候选一行、文件不覆盖 | 不产生任何真实判读结论；不得用于评测结论 |
+| `transformers` | CLI 已声明（同上，指 `feat/eval-fake-slice` 的参考实现，未合入本分支），本切片抛 `NotImplementedError`（87 行）；本机权重不可用，属训练机侧 | 本地加载权重逐条推理，产出 `raw_output` 原文 | 只在训练机侧执行；本机不得声称已跑通 |
 | `http` | **拟增，当前未实现** | 远端服务推理，按 HTTP 结果映射三态 | 尚无参数、无代码、无超时实现；不得按已支持三选验收 |
 
 不变项：三个 backend 共用同一份身份字段口径、同一份输出字段与三态语义；切换 backend 不改变 `predictions.jsonl` 的字段与校验。

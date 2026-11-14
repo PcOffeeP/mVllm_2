@@ -62,6 +62,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("pipeline", reason="sparse-checkout 未检出 pipeline/：该模块依赖 pipeline 包")
+
 from pipeline.project_workspace import (
     experiment_workspace_paths,
     project_workspace_paths,

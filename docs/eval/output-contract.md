@@ -1,6 +1,6 @@
 # 输出契约：11 个叶字段 · 5 个顶层键 · 边界样例
 
-**失效条件：** 术语统一分支 `feat/eval-unify-uncertain` 合入本分支后未复核本文末「代码同步状态」；`script/five_label_eval/score.py` 的 `VERSION`／`SINGLES`／`MULTIS`／`FIELDS`／`STATUS` 常量或 `allowed()`／`truth_cell()`／`_extract()`／`prepare()` 的判定行改变；`predictions.jsonl` 必填项改变；`docs/label.md` 的标签定义或 `docs/design-test.md` 的评分口径改变。以上任一发生，本文须重新核对后才能用于新批次。
+**失效条件：** `script/five_label_eval/score.py` 的 `VERSION`／`SINGLES`／`MULTIS`／`FIELDS`／`STATUS` 常量或 `allowed()`／`truth_cell()`／`_extract()`／`prepare()`／`field_metrics()` 的判定行改变（本文末「代码同步状态」已按合并后代码核对，上述常量或判定行一旦改动须重新核对）；`predictions.jsonl` 必填项改变；`docs/label.md` 的标签定义或 `docs/design-test.md` 的评分口径改变。以上任一发生，本文须重新核对后才能用于新批次。
 
 行号一律指 `script/five_label_eval/score.py`（下称 `score.py`，本分支 530 行）。评分口径（分母定义、精确率口径）不在本文，见 `docs/design-test.md`。
 
@@ -74,19 +74,39 @@
 
 | 出现位置 | 判定 | 行号 | 指标后果 |
 | --- | --- | --- | --- |
-| 单值字段（`断裂状态`／`断裂模式`／`断裂位置`） | **合法类别**：术语统一后 `truth_cell` 的 `and field not in SINGLES` 守卫使真值侧记 `valid` | `truth_cell` 121 | 计入 accuracy 分母（377–379 行），并作为 `SINGLES` 的一个标签参与逐类 recall／precision（399–404 行） |
-| 多选叶项（8 项） | **未知标记**：真值侧记 `unknown` | `truth_cell` 121 | 因 377–379 行「真值非 `valid` 即跳过」被排除出 accuracy 分母；预测侧写 `无法判断` 在 384 行计入失败／不确定计数 |
+| 单值字段（`断裂状态`／`断裂模式`／`断裂位置`） | **合法类别**：`truth_cell` 的 `and field not in SINGLES` 守卫**已存在**，真值侧记 `valid` | `truth_cell` 121 | 计入 accuracy 分母（377–378 行），并作为 `SINGLES` 的一个标签参与逐类 recall／precision（399–404 行） |
+| 多选叶项（8 项） | **未知标记**：真值侧记 `unknown` | `truth_cell` 121 | 因 377–378 行「真值非 `valid` 即跳过」被排除出 accuracy 分母；预测侧写 `无法判断` 在 384 行计入失败／不确定计数 |
 
-两侧都不做换算：同一个字面量在两个位置得到两种语义，取决于字段属于 `SINGLES` 还是 `MULTIS`，与书写形式无关。349 与 375 行仍是 `("无法确定", "无法判断")` 双字面量元组（历史兼容字面量，不属于本契约现行取值，`6024d75` 未改动），因此这两行对两种写法都判为显式不确定。
+两侧都不做换算：同一个字面量在两个位置得到两种语义，取决于字段属于 `SINGLES` 还是 `MULTIS`，与书写形式无关。349 行与 375–376 行**性质不同，不要混读**：349 行是输入审核侧守卫 `cell["label"] not in (None, "", "无法确定", "无法判断")`——证据为 `insufficient`／`unknown` 时不允许断言确定标签，否则抛 `InputError`；它**不把 `无法确定` 变成显式不确定**，该 label 通过本行校验后仍由 `truth_cell`（119–120 行）判 `invalid`。375–376 行才是真正的 `explicit_uncertain` 计数（`pstatus == "valid"` 且 `pred["value"] in ("无法确定", "无法判断")` 时 `pred_counts["explicit_uncertain"] += 1`）。两处的旧字面量均为历史兼容残留，不属于本契约现行取值；两行都由本分支提交 `8cf19b4` 引入，术语统一提交 `045536c` 未改动。
 
-## 5. 代码同步状态（本契约生效的前置条件）
+## 5. 代码同步状态（已按合并后代码核对）
 
-本契约按**术语统一后**的口径写：单值字段的不确定值 = `无法判断`。术语统一提交 `6024d75`／`56cde0a`／`b295e88` 位于分支 `feat/eval-unify-uncertain`，**尚未并入**本分支 `feat/eval-input-contract`。在合并前：
+本节按 `feat/tensileagent-finetune` 分支提交 `6377cdb` 的 `score.py`（530 行）逐行核对，逐项列出现行口径与对应判定行。
 
-| 项 | 未合并时的现状 | 影响 |
+| 项 | 现行状态（提交 `6377cdb`） | 对评分的影响 |
 | --- | --- | --- |
-| `SINGLES`（13–17 行）字面量 | 仍为旧值 `无法确定`（**历史字面量，非本契约现行取值**） | 按本契约写的单值 `无法判断` 会被 `allowed()` 判 `invalid` |
-| `truth_cell` 121 行 | `field not in SINGLES` 守卫尚不存在 | 单值 `无法判断` 会被记 `unknown` 而非 `valid` |
-| `field_metrics` 384 行 | `field not in SINGLES` 守卫尚不存在 | 单值 `无法判断` 会被计入失败／不确定计数 |
+| `SINGLES`（13–17 行）字面量 | 单值三类的不确定值 = `无法判断`；`allowed()`（112–113 行）只返回 `SINGLES[field]` 或 `("是","否","无法判断")`，**不接受**旧值 `无法确定` | 单值字段写 `无法确定` 直接判 `invalid`（`truth_cell` 119–120 行的 `value not in allowed(field)` 分支），既不算不确定也不算未标 |
+| `truth_cell`（116 行，守卫在 121 行） | `"unknown" if value == "无法判断" and field not in SINGLES else "valid"` 守卫**已存在** | 单值 `无法判断` 记 `valid`：进 accuracy 分母（377–378 行）并作为 `SINGLES` 的一个标签参与逐类 recall／precision；只有 8 个多选叶项的 `无法判断` 记 `unknown` |
+| `field_metrics`（359 行，守卫在 384 行） | `if pstatus != "valid" or (p == "无法判断" and field not in SINGLES):` 守卫**已存在** | 单值 `无法判断` 不进 `failures` 失败／不确定计数，只进 375–376 行的 `pred_counts["explicit_uncertain"]`；多选叶项的 `无法判断` 仍计失败／不确定 |
+| 349 行（输入审核侧） | `cell["label"] not in (None, "", "无法确定", "无法判断")`：证据为 `insufficient`／`unknown` 时**不允许断言确定标签**，否则抛 `InputError` | 这是断言禁令，**不是显式不确定计数**；`无法确定` 通过本行校验后仍由 `truth_cell`（119–120 行）判 `invalid` |
+| 375–376 行（预测侧） | `if pstatus == "valid" and pred["value"] in ("无法确定", "无法判断"): pred_counts["explicit_uncertain"] += 1` —— 真正的显式不确定计数 | 保留 `无法确定` 字面量，但 `allowed()` 已不含该值，**现行值域下该分支不可达**（写 `无法确定` 会先判 `invalid`）；只有 `无法判断` 能命中 |
+| 377–378 行 | `prediction_status == "unprocessed"` 或真值非 `valid` 即 `continue` | accuracy 分母只取真值 `valid`；单值 `无法判断` 因记 `valid` 留在分母内 |
 
-**因此合并 `feat/eval-unify-uncertain` 是本契约生效的前置条件**；合并前本分支的评分结果只能按旧口径读。行号在两版一致，本文引用不受合并影响。
+**结论：现行不确定取值只有一个字面量 `无法判断`**（单值三类与 8 个多选叶项相同）。两个历史写法在评分器里的处境不同：`无法确定` 在 349 行（输入审核侧断言禁令）与 375–376 行（预测侧 `explicit_uncertain` 计数）作为历史兼容字面量出现；`无法识别` 评分器**完全不识别**（`grep -c 无法识别 script/five_label_eval/score.py` = 0），写进任一字段即 `invalid`。评分器之外的上游兼优点见 §5.1（数据切分、标注页面、归档生成旧路径、审核工作台显示层），本文不穷举。
+
+### 5.1 需要历史兼容时怎么做
+
+评分器本身不做归一化（见 §1 取值纪律 2）：无别名映射、无全半角修正、无空白修正。历史 CSV／旧批次里的 `无法确定`／`无法识别` 必须**在进入评分前由上游归一**，不能指望评分器接受：
+
+| 环节 | 现行做法 |
+| --- | --- |
+| 数据切分 `script/data_split/generate.py:46–49` | `ALIASES` 把 `无法确定`（`断裂状态`／`断裂模式`／`断裂位置` 三列）与 `无法识别`（仅 `断裂模式`）归一为 `无法判断`；单值三类的值域见同文件 `FIELDS`（34–42 行，单值三列为 35–37 行），只列 `无法判断` |
+| 同上 `:50` | `UNCERTAIN = {"无", "无法确定", "无法判断"}`：分层加权（196、200 行）与「确定值」判定（351 行）把旧词与新词同等当作不确定值 |
+| 旧标注页面 `script/annotation/review_annotation.js:94–95` | `legacyUncertainLabels`：三列登记 `无法确定`、`断裂模式` 另加 `无法识别`；`annotationLabel()`（429–431 行）显示时统一为 `无法判断`，原值经 `data-legacy` 选项保留（433–436 行） |
+| 现行标注台 `script/roi/label_fields.py:65–70` | `_LEGACY_DISPLAY`：四组历史写法显示为 `无法判断（原值：…）`，不改写已存记录；规则出处见 `docs/label.md` §8「固定组合」中的「已有标注」条（90 行） |
+| 归档生成旧路径 `script/subvideo_generation/_legacy/core/generate.py:30` | `UNCERTAIN_INPUTS = (UNCERTAIN, "无法确定")`：旧批次输入判定同时接受 `无法判断` 与 `无法确定`，以保持旧批次可复现 |
+| 同文件 `:31`、`:42–44` | `LEGACY_UNCERTAIN = ("无法确定", "无法识别")` + `_unified_uncertain()`：派生输出统一为 `无法判断`，源值原样透传不改写 |
+| 审核工作台显示层 `script/subvideo_review/static/app.js:10–15` | `legacyUncertain` 映射 + `unifiedTerm()`：`无法确定`／`无法识别` 只在显示时统一为 `无法判断`，已存记录与源标注字节不改写 |
+| 既有历史 CSV 直接喂评分器 | 不归一就落到 `truth_cell` 的 `invalid` 分支（119–120 行），该字段不进 accuracy 分母，只记 `invalid` 计数 |
+
+历史批次若需与旧口径可比，做法是在上游产出一份归一后的输入文件单独保存，而不是修改评分器或放宽 `allowed()`；评分器只认现行字面量。
