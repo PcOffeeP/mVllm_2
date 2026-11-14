@@ -102,3 +102,19 @@ video_0107_coverage_01.mp4
 技术验证通过只说明已绑定输入与输出的帧对应；不能替代片段标签审核。输入、标注、ROI、窗口规则或工具链变化后，受影响结果须重新核对。
 
 **待落实细节：** 仅有断裂时间点时的源帧定位办法。对未确定的情况记录待处理原因，不猜测锚点。
+
+## 8. 验证档位与按来源并行
+
+统一入口提供三档验证，由 `--verification {full,basic,none}` 选择；Python 入口 `run(..., verification="basic")` 的默认值同为 `basic`。批次如实记录实际使用的档位：`full` 批次不写 `verification` 键（隐含 `full`，与旧批次一致），`basic`／`none` 批次在 `manifest.json` 顶层、来源记录和 `candidate["output"]` 三层都写 `verification`。
+
+| 档位 | 保留的检查 | 不做的检查 | 记录 |
+| --- | --- | --- | --- |
+| `full` | 第 7 节现状：源到 ROI 与 ROI 到片段的帧级重放、像素比对、时间戳核对、收据封条 | —— | `frame_preserving_replay` 收据、`full_decode: "passed"`；顶层、来源和片段记录都不带 `verification` 键 |
+| `basic`（默认） | 身份绑定（源／ROI SHA-256、标注、折、策略）、候选与排除窗口清单、输出字节 SHA-256、由规划直接推导的 `frame_mapping`、输出 ffprobe（帧数等于 `end_frame - start_frame`、宽高与 ROI 一致） | 源级重放、参考序列重编码、像素比对、时间戳比对、片段收据 | `verification = {"mode": "basic", "frame_replay": "skipped", "reason": "user_requested_fast_generation"}`，六个字段的 `media`，`full_decode` 不写 `"passed"` |
+| `none` | 身份绑定、候选与排除窗口清单、输出字节 SHA-256、规划推导的 `frame_mapping` | `basic` 的全部跳过项，另加输出 ffprobe | 同上但 `mode` 为 `"none"`，且不写 `media` |
+
+**`basic`／`none` 不提供任何帧对应证明。** 记录里 `verification.frame_replay` 为 `"skipped"`，`verification.reason` 说明这是用户要求的快速生成；`frame_mapping` 只说明规划决定的源帧区间与输出帧序号，来自选窗结果而非解码核对。消费方（人工审核工具、训练与评价接入、任何自动判定）不得把 `basic`／`none` 批次当作已验证帧对应，也不得据 `frame_mapping` 反推像素对应；`--audit-only` 对这类批次会报出 `verification_mode` 与 `no_frame_level_replay` 等限制，同样不是帧对应证据。需要帧对应或时间戳证据时必须显式用 `--verification full` 生成。
+
+`--jobs N`（默认 1，即串行）按来源并行裁剪：来源彼此独立，主要耗时是 ffmpeg 子进程。结果仍按来源 ID 顺序回收合并，`manifest.json` 与 `summary.json` 的顺序和内容与串行一致；清单只由主流程（单写者）写入，worker 只返回结果、不写清单。任一来源抛出未预期异常时整批失败，错误消息包含该来源 ID，磁盘上的清单保持可解析（原子写入，不留半截文件）。`--jobs` 可与 `--plan-only` 组合；`--verification`／`--jobs` 与 `--videos-dir`、`--audit-only` 不能组合。同一输出目录续跑（`--resume`）时，验证档位必须与批次记录一致，否则拒绝。
+
+**失效条件：**一旦下游依赖帧对应证明、时间戳证据或 `full_decode` 标记（例如发布前校验改读 `frame_preserving_replay`、训练或评价接入自动判定帧对应），或 ffmpeg／ffprobe 工具链、ROI 生成方式、窗口规划规则变化后需要重新核对证据时，本节关于 `basic`／`none` 的结论不再成立，必须重新评估，或改用 `--verification full` 重新生成该批次。

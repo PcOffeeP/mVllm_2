@@ -171,4 +171,36 @@ def project(tmp_path, monkeypatch):
             "frame_mapping": {"source_start_frame": candidate["start_frame"], "output_start_frame": 0, "anchors": anchors}}
     for module in (g.legacy, g.coverage, g.special):
         monkeypatch.setattr(module, "crop_video", crop)
+
+    # The fast (``basic`` / ``none``) verification path cuts through
+    # ``aligned.crop_video`` and must never reach a frame-level verifier. This stub
+    # therefore only echoes what planning already decided: it stands in for the
+    # encoded clip's bytes, the ``ffprobe`` of those bytes, and the planned frame
+    # mapping -- none of it is derived from a decoded RGB/PTS comparison. It stays
+    # out of the full path, which keeps using the ``legacy``/``coverage``/``special``
+    # stub above unchanged.
+    def crop_without_frame_replay(source, destination, candidate, roi_media, roi_features=None,
+                                  source_proof=None, verification="full"):
+        key = candidate["source_video_id"]
+        assert (key in COVERAGE_IDS) == (candidate.get("role") == "coverage"), (
+            f"fixture expects coverage route for {key} = {key in COVERAGE_IDS}, but the "
+            f"planner produced role={candidate.get('role')!r} for candidate "
+            f"{candidate.get('candidate_id')!r}")
+        description = dict(roi_media, total_frames=candidate["end_frame"] - candidate["start_frame"],
+                           duration=candidate["duration"])
+        write_json(destination, {"candidate_id": candidate["candidate_id"], "media": description})
+        encoded.append(candidate["candidate_id"])
+        anchors = [{"source_frame": i, "roi_frame": i, "output_frame": i - candidate["start_frame"]}
+                   for i in candidate["source_anchor_frames"]
+                   if candidate["start_frame"] <= i < candidate["end_frame"]]
+        result = {"sha256": digest(destination),
+                  "frame_mapping": {"source_start_frame": candidate["start_frame"],
+                                    "output_start_frame": 0, "anchors": anchors}}
+        if verification != "none":  # ``none`` must not probe the output at all.
+            result["media"] = {k: description[k] for k in (
+                "duration", "total_frames", "fps", "width", "height", "time_base")}
+        if verification != "full":
+            result["verification"] = {"mode": verification, "frame_replay": "skipped"}
+        return result
+    monkeypatch.setattr(g.aligned, "crop_video", crop_without_frame_replay)
     return root, g, descriptions, encoded

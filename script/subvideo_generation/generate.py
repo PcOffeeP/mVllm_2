@@ -3,11 +3,18 @@
 
 The three approved media strategies retain their own proof identities. This
 orchestrator never imports media or receipts from an earlier output batch.
+
+``--verification`` decides how much frame evidence a batch records: ``full``
+replays source and clip frames, ``basic`` (the default) only checks the encoded
+output, ``none`` skips even that probe. Only ``full`` proves frame
+correspondence; the fast modes record ``verification.frame_replay = "skipped"``
+and leave frame-level checking to the human clip review.
 """
 from __future__ import annotations
 
 import argparse
 from collections import Counter
+import concurrent.futures
 from fractions import Fraction
 from pathlib import Path
 import shutil
@@ -28,6 +35,35 @@ SCHEMA = "tensile-unified-sub-video/1"
 SOURCE_COUNT = 110
 MEDIA_FIELDS = ("duration", "total_frames", "fps", "width", "height", "time_base")
 MUTABLE_CANDIDATE_FIELDS = {"status", "output", "reason", "details"}
+# ``full`` replays frames in both directions, ``basic`` keeps the output probe,
+# ``none`` keeps the encoded bytes only. A batch records which one produced it.
+VERIFICATION_MODES = ("full", "basic", "none")
+DEFAULT_VERIFICATION = "basic"
+VERIFICATION_REASON = aligned.FAST_VERIFICATION_REASON
+
+
+def _verification_note(mode):
+    """The honest record every fast-mode layer carries: what was skipped and why."""
+    return {"mode": mode, "frame_replay": "skipped", "reason": VERIFICATION_REASON}
+
+
+def _manifest_mode(manifest):
+    """The mode a batch was written under; a manifest without the block is ``full``."""
+    if "verification" not in manifest:
+        return "full"
+    record = manifest["verification"]
+    mode = record.get("mode") if isinstance(record, dict) else None
+    if mode not in VERIFICATION_MODES:
+        raise base.PilotError("batch verification record is not a known mode")
+    return mode
+
+
+def _planned_frame_mapping(candidate):
+    """The frame correspondence planning already decided; no decode is involved."""
+    start, end = candidate["start_frame"], candidate["end_frame"]
+    return {"source_start_frame": start, "output_start_frame": 0,
+            "anchors": [{"source_frame": i, "roi_frame": i, "output_frame": i - start}
+                        for i in candidate["source_anchor_frames"] if start <= i < end]}
 
 
 def strategy_for(video_id, row):
@@ -186,7 +222,8 @@ def _backend(strategy):
     raise base.PilotError("unknown unified source strategy")
 
 
-def _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor_records):
+def _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor_records, *,
+                         verification=DEFAULT_VERIFICATION):
     """Replan entirely from current inputs; never trust a stored candidate list."""
     strategy = strategy_for(key, row)
     if strategy == "coverage":
@@ -208,6 +245,9 @@ def _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor
                 candidate_labels=rules_registry.coverage_candidate_labels(legacy._source_labels(row), row),
                 final_labels=None, labels_status="unreviewed", manual_review="required",
                 review={"status": "未审核", "decision": None, "change_notes": ""}, status="planned"))
+        if verification != "full":
+            for candidate in candidates:
+                candidate["verification"] = _verification_note(verification)
         return candidates, []
     record = legacy.adapt_annotation(row, raw_media, phenomenon_anchor=anchor_records.get(key))
     if (strategy == "0093"
@@ -218,14 +258,18 @@ def _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor
     candidates = legacy._name_candidates(windows, row, folds, source_sha, roi_sha)
     for candidate in candidates:
         candidate.update(source_anchor_frames=record["anchor_frames"], scope=_scope(folds))
+        if verification != "full":
+            candidate["verification"] = _verification_note(verification)
     return candidates, [dict(w, source_video_id=key) for w in excluded]
 
 
-def _plan_source(root, key, row, roi, folds, anchor_records):
-    """Admit one source only after its complete source-to-ROI replay passes."""
+def _plan_source(root, key, row, roi, folds, anchor_records, verification=DEFAULT_VERIFICATION):
+    """Admit one source; ``full`` replays it, a fast mode binds identities only."""
     strategy = strategy_for(key, row)
     source = {"video_id": key, "strategy": strategy, "source_annotation": row,
               "folds": folds, "scope": _scope(folds)}
+    if verification != "full":
+        source["verification"] = _verification_note(verification)
     raw, cropped = _paths(root, key)
     try:
         if roi.get("status") != "success":
@@ -236,17 +280,22 @@ def _plan_source(root, key, row, roi, folds, anchor_records):
             or source_sha != roi.get("decision", {}).get("source_sha256")):
             raise legacy.PendingSource("源视频、ROI或裁剪决定身份不一致")
         raw_media, roi_media = aligned.probe_video(raw), aligned.probe_video(cropped)
-        candidates, excluded = _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor_records)
-        source_verifier = special_verification if strategy == "0093" else core
-        proof = source_verifier.verify_source_replay(raw, cropped, roi, source_annotation=row,
-                                                     phenomenon_anchor=anchor_records.get(key))
+        candidates, excluded = _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor_records,
+                                                    verification=verification)
+        proof = None
+        if verification == "full":
+            source_verifier = special_verification if strategy == "0093" else core
+            proof = source_verifier.verify_source_replay(raw, cropped, roi, source_annotation=row,
+                                                        phenomenon_anchor=anchor_records.get(key))
         if raw_media["total_frames"] != roi_media["total_frames"]:
             raise legacy.PendingSource("源视频与ROI帧数不一致")
         if not candidates:
             raise legacy.PendingSource("没有满足时间边界和素材要求的窗口")
         source.update(status="planned", source_path=str(raw.relative_to(root)),
             roi_path=str(cropped.relative_to(root)), source_sha256=source_sha, roi_sha256=roi_sha,
-            roi_media=roi_media, frame_preserving_replay=proof)
+            roi_media=roi_media)
+        if verification == "full":
+            source["frame_preserving_replay"] = proof
         return source, candidates, excluded
     except (base.SkipSource, aligned.AlignmentUncertain, FileNotFoundError) as exc:
         source.update(status="pending", reason=str(exc), details=getattr(exc, "details", {}))
@@ -276,7 +325,28 @@ def _portable_anchor(anchor):
     return {k: v for k, v in anchor.items() if k != "document_path"} if isinstance(anchor, dict) else anchor
 
 
-def _validate_source(root, source, row, roi, anchor_records, *, portable=False):
+def _validate_fast_source(root, source, verification):
+    """A fast batch bound identities; it promised no source frame replay."""
+    key = source["video_id"]
+    raw, cropped = _paths(root, key)
+    note = source.get("verification") or {}
+    if (note.get("mode") != verification or note.get("frame_replay") != "skipped"
+        or "frame_preserving_replay" in source):
+        raise base.PilotError("source verification record mismatch: " + key)
+    if (source.get("source_path") != str(raw.relative_to(root))
+        or source.get("roi_path") != str(cropped.relative_to(root))
+        or source.get("source_sha256") != base.sha256_file(raw)
+        or source.get("roi_sha256") != base.sha256_file(cropped)):
+        raise base.PilotError("source media identity mismatch: " + key)
+    raw_media, roi_media = aligned.probe_video(raw), aligned.probe_video(cropped)
+    if source.get("roi_media") != roi_media:
+        raise base.PilotError("recorded ROI media differs from current media: " + key)
+    return raw_media
+
+
+def _validate_source(root, source, row, roi, anchor_records, *, portable=False, verification=DEFAULT_VERIFICATION):
+    if verification != "full":
+        return _validate_fast_source(root, source, verification)
     key = source["video_id"]
     raw, cropped = _paths(root, key)
     verifier = special_verification if strategy_for(key, row) == "0093" else core
@@ -343,8 +413,40 @@ def _receipt_window(candidate, proof):
         "source_start_pts": str(bounds[start]), "source_end_pts": str(bounds[end])}
 
 
-def _validate_output(root, output, candidate, source, *, portable=False):
+def _validate_fast_output(output, candidate, source, verification):
+    """Check exactly what a fast batch promised: bytes, plan mapping, and (basic) media."""
+    path = output / candidate["output_path"]
+    if not path.is_file() or path.is_symlink():
+        raise base.PilotError("recorded clip missing or symlinked: " + candidate["candidate_id"])
+    record = candidate["output"]
+    note = record.get("verification") or {}
+    if (note.get("mode") != verification or note.get("frame_replay") != "skipped"
+        or "frame_preserving_replay" in record or "reuse_provenance" in record
+        or record.get("full_decode") == "passed"):
+        raise base.PilotError("clip verification record mismatch: " + candidate["candidate_id"])
+    if record.get("sha256") != base.sha256_file(path):
+        raise base.PilotError("recorded clip bytes differ: " + candidate["candidate_id"])
+    if record.get("frame_mapping") != _planned_frame_mapping(candidate):
+        raise base.PilotError("clip frame mapping differs from the plan: " + candidate["candidate_id"])
+    if verification == "none":
+        # ``none`` never probes the encoded output, so it may not record media either.
+        if "media" in record:
+            raise base.PilotError("none verification must not record output media: " + candidate["candidate_id"])
+        return
+    media = aligned.probe_video(path)
+    roi_media = source.get("roi_media") or {}
+    if (set(record.get("media") or {}) != set(MEDIA_FIELDS)
+        or record["media"] != {k: media[k] for k in MEDIA_FIELDS}
+        or media["total_frames"] != candidate["end_frame"] - candidate["start_frame"]
+        or (media["width"], media["height"]) != (roi_media.get("width"), roi_media.get("height"))):
+        raise base.PilotError("clip media differs from the probe or from the plan: " + candidate["candidate_id"])
+
+
+def _validate_output(root, output, candidate, source, *, portable=False, verification=DEFAULT_VERIFICATION):
     """Check the sealed independent select proof and fully decode current bytes."""
+    if verification != "full":
+        _validate_fast_output(output, candidate, source, verification)
+        return
     _, verifier = _backend(source["strategy"])
     proof = source["frame_preserving_replay"]
     roi_path = root / source["roi_path"]
@@ -383,9 +485,14 @@ def _validate_output(root, output, candidate, source, *, portable=False):
         raise base.PilotError("clip proof, decoded bytes or frame mapping mismatch: " + candidate["candidate_id"])
 
 
-def _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records, *, require_complete=False, portable=False):
+def _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records, *, require_complete=False,
+                       portable=False, verification=DEFAULT_VERIFICATION):
     if manifest.get("schema") != SCHEMA or manifest.get("published") is not False:
         raise base.PilotError("unified manifest schema/publication status mismatch")
+    if _manifest_mode(manifest) != verification:
+        raise base.PilotError("manifest verification mode differs from the mode requested for this check")
+    if verification != "full" and (manifest.get("verification") or {}).get("frame_replay") != "skipped":
+        raise base.PilotError("a fast batch must record that frame replay was skipped")
     sources = {s["video_id"]: s for s in manifest["sources"]}
     if len(sources) != len(manifest["sources"]) or not set(sources) <= set(rows):
         raise base.PilotError("duplicate or unexpected unified source")
@@ -396,15 +503,22 @@ def _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records
         if (source.get("strategy") != strategy_for(key, rows[key]) or source.get("scope") != _scope(folds[key])
             or source.get("folds") != folds[key] or source.get("source_annotation") != rows[key]):
             raise base.PilotError("source strategy, fixed split or annotation mismatch: " + key)
+        if verification != "full":
+            note = source.get("verification") or {}
+            if (not isinstance(note, dict) or note.get("mode") != verification
+                or note.get("frame_replay") != "skipped" or not note.get("reason")
+                or "frame_preserving_replay" in source):
+                raise base.PilotError("source verification record mismatch: " + key)
         if source.get("status") != "planned":
             if source.get("status") not in {"pending", "failed"} or not source.get("reason"):
                 raise base.PilotError("invalid source status/reason: " + key)
             if require_complete:
                 raise base.PilotError("source has no admitted frame proof: " + key + ": " + source["reason"])
             continue
-        media = _validate_source(root, source, rows[key], rois[key], anchor_records, portable=portable)
+        media = _validate_source(root, source, rows[key], rois[key], anchor_records, portable=portable,
+                                 verification=verification)
         cs, es = _expected_candidates(key, rows[key], folds[key], media,
-            source["source_sha256"], source["roi_sha256"], anchor_records)
+            source["source_sha256"], source["roi_sha256"], anchor_records, verification=verification)
         if not cs:
             raise base.PilotError("admitted source has no approved windows: " + key)
         expected.extend(cs)
@@ -416,15 +530,20 @@ def _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records
         raise base.PilotError("unified candidate/excluded-window inventory mismatch")
     for planned in expected:
         candidate = by_id[planned["candidate_id"]]
+        if (verification == "full" and "verification" in candidate
+            or verification != "full" and candidate.get("verification") != _verification_note(verification)):
+            raise base.PilotError("candidate verification record mismatch: " + planned["candidate_id"])
         if _logical(candidate, portable=portable) != _logical(planned, portable=portable):
             raise base.PilotError("candidate window, labels, review or split fields changed: " + planned["candidate_id"])
         if candidate.get("status") == "cropped":
-            _validate_output(root, output, candidate, sources[candidate["source_video_id"]], portable=portable)
+            _validate_output(root, output, candidate, sources[candidate["source_video_id"]],
+                             portable=portable, verification=verification)
         elif (candidate.get("status") not in {"planned", "pending", "failed"}
               or "output" in candidate or (candidate["status"] != "planned" and not candidate.get("reason"))):
             raise base.PilotError("invalid candidate status or failure reason")
         elif require_complete:
-            raise base.PilotError("expected clip has not passed independent replay: " + candidate["candidate_id"])
+            raise base.PilotError(("expected clip has not passed independent replay: " if verification == "full"
+                                   else "expected clip has not been generated: ") + candidate["candidate_id"])
     videos = output / "videos"
     if videos.is_symlink() or (videos.exists() and not videos.is_dir()):
         raise base.PilotError("unsafe output videos directory")
@@ -454,7 +573,7 @@ def _safe_output(root, requested):
 
 def summarize(manifest):
     candidates, sources = manifest["candidates"], manifest["sources"]
-    return {"scope": "all_sources", "source_count": len(sources),
+    summary = {"scope": "all_sources", "source_count": len(sources),
         "source_status": dict(Counter(s["status"] for s in sources)),
         "source_reasons": dict(Counter(s["reason"] for s in sources if s.get("reason"))),
         "strategies": dict(Counter(s["strategy"] for s in sources)),
@@ -467,9 +586,98 @@ def summarize(manifest):
         "complete": manifest["complete"], "published": False, "reused_candidates": 0,
         "toolchain": _recorded_toolchain(manifest),
         "manual_review": "required_for_every_publishable_clip"}
+    if "verification" in manifest:
+        summary["verification"] = dict(manifest["verification"])
+    return summary
 
 
-def run(project_root, output_dir=None, *, plan_only=False, resume=False):
+def _named(key, stage, action):
+    try:
+        return action()
+    except base.PilotError as exc:
+        raise base.PilotError(f"{stage} {key} failed: {exc}") from exc
+    except Exception as exc:
+        raise base.PilotError(f"{stage} {key} failed: {type(exc).__name__}: {exc}") from exc
+
+
+def _map_sources(worker, keys, jobs):
+    """Yield ``(key, worker(key))`` in ``keys`` order, in threads when ``jobs`` > 1.
+
+    Threads are enough on purpose: the expensive work is an ffmpeg subprocess,
+    which releases the GIL, so threads suffice and they share this process (and
+    therefore any injected test double). Results are handed over in ``keys`` order
+    rather than completion order, which is what keeps a parallel batch identical
+    to a serial one.
+    """
+    if jobs < 2 or len(keys) < 2:
+        for key in keys:
+            yield key, worker(key)
+        return
+    futures, executor = [], concurrent.futures.ThreadPoolExecutor(max_workers=jobs)
+    try:
+        futures = [(key, executor.submit(worker, key)) for key in keys]
+        for key, future in futures:
+            yield key, future.result()
+    finally:
+        for _, future in futures:
+            future.cancel()  # Never start sources whose result nobody will merge.
+        executor.shutdown(wait=True)
+
+
+def _apply_outcome(candidate, outcome):
+    """Write one encoding result back into its candidate, as the serial run did."""
+    candidate.update(outcome)
+    if outcome.get("status") == "cropped":
+        candidate.pop("reason", None)
+        candidate.pop("details", None)
+
+
+def _cut_candidate(root, output, source, candidate, verification, expected_identity):
+    """Encode one planned window in the mode the batch was started with."""
+    destination = output / candidate["output_path"]
+    if destination.exists() or destination.is_symlink():
+        raise base.PilotError("unrecorded output exists; refusing overwrite")
+    try:
+        _unchanged(root, expected_identity)
+        if verification == "full":
+            generator, _ = _backend(source["strategy"])
+            result = generator.crop_video(root / source["roi_path"], destination, candidate,
+                source["roi_media"], source["frame_preserving_replay"])
+        else:
+            result = aligned.crop_video(root / source["roi_path"], destination, candidate,
+                source["roi_media"], verification=verification)
+            result["verification"] = _verification_note(verification)
+        try:
+            _unchanged(root, expected_identity)
+            raw, roi_path = _paths(root, source["video_id"])
+            if (base.sha256_file(raw) != source["source_sha256"]
+                or base.sha256_file(roi_path) != source["roi_sha256"]):
+                raise base.PilotError("source or ROI changed during clip encoding")
+        except BaseException:
+            if destination.is_file() and not destination.is_symlink() and base.sha256_file(destination) == result["sha256"]:
+                destination.unlink()
+            raise
+        return {"status": "cropped", "output": result}
+    except (base.SkipSource, aligned.AlignmentUncertain) as exc:
+        return {"status": "pending", "reason": str(exc), "details": getattr(exc, "details", {})}
+    except (base.PilotError, OSError, ValueError) as exc:
+        return {"status": "failed", "reason": f"{type(exc).__name__}: {exc}", "details": getattr(exc, "details", {})}
+
+
+def run(project_root, output_dir=None, *, plan_only=False, resume=False,
+        verification=DEFAULT_VERIFICATION, jobs=1):
+    """Cut or plan the whole 110-source batch.
+
+    ``verification`` decides how much frame evidence the batch records (see the
+    module docstring). ``jobs`` > 1 cuts independent sources in parallel; the
+    manifest is written only from this function, so a parallel run produces the
+    same batch as a serial one.
+    """
+    if verification not in VERIFICATION_MODES:
+        raise base.PilotError("unknown verification mode: " + repr(verification)
+                              + "; expected one of " + ", ".join(VERIFICATION_MODES))
+    if type(jobs) is not int or jobs < 1:
+        raise base.PilotError("jobs must be a positive integer, got " + repr(jobs))
     root = Path(project_root).resolve()
     output = _safe_output(root, output_dir)
     with base._run_lock(output):
@@ -487,8 +695,12 @@ def run(project_root, output_dir=None, *, plan_only=False, resume=False):
                 raise base.PilotError("nonempty output exists; choose an empty directory or explicit --resume")
             if existing is None:
                 raise base.PilotError("unified resume requires an existing manifest.json")
+            if _manifest_mode(existing) != verification:
+                raise base.PilotError("verification mode differs: the batch was written in "
+                                      + _manifest_mode(existing) + " mode, this run asks for " + verification)
             _check_identity(existing.get("identity") or {}, expected_identity)
-            _validate_manifest(root, output, existing, rows, rois, folds, anchor_records)
+            _validate_manifest(root, output, existing, rows, rois, folds, anchor_records,
+                               verification=verification)
             manifest = existing
         else:
             if resume:
@@ -496,6 +708,8 @@ def run(project_root, output_dir=None, *, plan_only=False, resume=False):
             output.mkdir(parents=True, exist_ok=True)
             manifest = {"schema": SCHEMA, "identity": expected_identity, "sources": [], "candidates": [],
                         "excluded_windows": [], "complete": False, "published": False, "plan_only": bool(plan_only)}
+            if verification != "full":
+                manifest["verification"] = _verification_note(verification)
         (output / "videos").mkdir(exist_ok=True)
 
         def save():
@@ -504,23 +718,39 @@ def run(project_root, output_dir=None, *, plan_only=False, resume=False):
 
         save()
         source_indexes = {s["video_id"]: i for i, s in enumerate(manifest["sources"])}
-        for key in sorted(rows):
+        planned_candidates = {c["source_video_id"] for c in manifest["candidates"]}
+
+        def plan_source(key):
             index = source_indexes.get(key)
             previous = manifest["sources"][index] if index is not None else None
             if previous is not None:
                 if previous["status"] not in {"pending", "failed"}:
-                    continue
+                    return None
                 # A failed admission can be retried; an admitted source or any
                 # source with planned/generated clips must never be regenerated.
-                if any(c["source_video_id"] == key for c in manifest["candidates"]):
+                if key in planned_candidates:
                     raise base.PilotError("cannot retry a source with existing candidates: " + key)
             _unchanged(root, expected_identity)
-            source, candidates, excluded = _plan_source(root, key, rows[key], rois[key], folds[key], anchor_records)
+            planned = _plan_source(root, key, rows[key], rois[key], folds[key], anchor_records, verification)
             _unchanged(root, expected_identity)
-            if previous is None:
+            return planned
+
+        def plan_one(key):
+            try:
+                return plan_source(key)
+            except Exception as exc:
+                raise base.PilotError(f"planning {key} failed: {type(exc).__name__}: {exc}") from exc
+
+        for key, planned in _map_sources(plan_one, sorted(rows), jobs):
+            if planned is None:
+                continue
+            source, candidates, excluded = planned
+            index = source_indexes.get(key)
+            if index is None:
                 source_indexes[key] = len(manifest["sources"])
                 manifest["sources"].append(source)
             else:
+                previous = manifest["sources"][index]
                 source["previous_failures"] = list(previous.get("previous_failures", [])) + [
                     {k: previous[k] for k in ("status", "reason", "details") if k in previous}]
                 manifest["sources"][index] = source
@@ -532,41 +762,35 @@ def run(project_root, output_dir=None, *, plan_only=False, resume=False):
             manifest["excluded_windows"].sort(key=lambda w: source_indexes[w["source_video_id"]])
             save()
         # Reconstruct the entire approved schedule before any clip is encoded.
-        _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records)
+        _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records, verification=verification)
         sources = {s["video_id"]: s for s in manifest["sources"]}
         if not plan_only:
+            groups = {}
             for candidate in manifest["candidates"]:
                 if candidate["status"] == "cropped":
                     continue  # Already audited above; this is this run's own output.
-                destination = output / candidate["output_path"]
-                if destination.exists() or destination.is_symlink():
-                    raise base.PilotError("unrecorded output exists; refusing overwrite")
-                source = sources[candidate["source_video_id"]]
-                generator, _ = _backend(source["strategy"])
-                try:
-                    _unchanged(root, expected_identity)
-                    result = generator.crop_video(root / source["roi_path"], destination, candidate,
-                        source["roi_media"], source["frame_preserving_replay"])
-                    try:
-                        _unchanged(root, expected_identity)
-                        raw, roi_path = _paths(root, source["video_id"])
-                        if (base.sha256_file(raw) != source["source_sha256"]
-                            or base.sha256_file(roi_path) != source["roi_sha256"]):
-                            raise base.PilotError("source or ROI changed during clip encoding")
-                    except BaseException:
-                        if destination.is_file() and not destination.is_symlink() and base.sha256_file(destination) == result["sha256"]:
-                            destination.unlink()
-                        raise
-                    candidate.update(status="cropped", output=result)
-                    candidate.pop("reason", None)
-                    candidate.pop("details", None)
-                except (base.SkipSource, aligned.AlignmentUncertain) as exc:
-                    candidate.update(status="pending", reason=str(exc), details=getattr(exc, "details", {}))
-                except (base.PilotError, OSError, ValueError) as exc:
-                    candidate.update(status="failed", reason=f"{type(exc).__name__}: {exc}", details=getattr(exc, "details", {}))
-                save()
+                groups.setdefault(candidate["source_video_id"], []).append(candidate)
+            if jobs < 2 or len(groups) < 2:
+                # Serial: record every clip as soon as it is cut, so an interrupted
+                # run keeps exactly the clips that are already on disk.
+                for key in sorted(groups):
+                    for candidate in groups[key]:
+                        outcome = _named(key, "cutting", lambda: _cut_candidate(
+                            root, output, sources[key], candidate, verification, expected_identity))
+                        _apply_outcome(candidate, outcome)
+                        save()
+            else:
+                def cut_one(key):
+                    return _named(key, "cutting", lambda: [
+                        _cut_candidate(root, output, sources[key], candidate, verification, expected_identity)
+                        for candidate in groups[key]])
+
+                for key, outcomes in _map_sources(cut_one, sorted(groups), jobs):
+                    for candidate, outcome in zip(groups[key], outcomes):
+                        _apply_outcome(candidate, outcome)
+                        save()
         _unchanged(root, expected_identity)
-        _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records)
+        _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records, verification=verification)
         manifest["plan_only"] = bool(plan_only)
         manifest["complete"] = (not plan_only and set(sources) == set(rows)
             and all(s["status"] == "planned" for s in sources.values())
@@ -579,22 +803,35 @@ def audit_outputs(project_root, output_dir, *, portable=False):
     """Independently replan all sources and verify all current outputs and proofs.
 
     This checks existing technical evidence against current bytes. It does not
-    convert technical proof into human review or publication approval.
+    convert technical proof into human review or publication approval, and it
+    checks a fast batch only for what that mode promised.
     """
     root = Path(project_root).resolve()
     output = _safe_output(root, output_dir)
     with base._run_lock(output):
         manifest = base._load(output / "manifest.json")
+        mode = _manifest_mode(manifest)
         rows, rois, folds, hashes, _loader_code = load_inputs(root)
         expected_identity = identity(root, hashes)
         _check_identity(manifest.get("identity") or {}, expected_identity)
         anchor_records = anchors.load_anchors(root / anchors.DOCUMENT)
         verified = _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records,
-                                      require_complete=True, portable=portable)
+                                      require_complete=True, portable=portable, verification=mode)
         if base._load(output / "summary.json") != summarize(manifest):
             raise base.PilotError("unified summary differs from current manifest")
         _unchanged(root, expected_identity)
         toolchain = _toolchain_status()
+        if mode != "full":
+            return {"status": "current_bytes_and_planned_inventory_verified",
+                    "verification_mode": mode, "verification": _verification_note(mode),
+                    "source_count": len(rows), "verified_outputs": verified, "published": False,
+                    "toolchain": toolchain,
+                    "validation_level": ("output_bytes_and_metadata_only" if mode == "basic"
+                                         else "output_bytes_only"),
+                    "limitations": ["no_frame_level_replay", "no_source_timeline_replay",
+                                    "no_clip_frame_correspondence", "not_new_frame_replay",
+                                    "not_human_label_review", "not_data_publication"]
+                        + ([] if not toolchain["degraded"] else ["not_pinned_toolchain"])}
         return {"status": "current_bytes_and_planned_inventory_verified", "source_count": len(rows),
                 "verified_outputs": verified, "published": False, "toolchain": toolchain,
                 "validation_level": "byte_receipt_and_source_timeline_only" if portable else "full_output_decode_and_current_receipts",
@@ -655,7 +892,8 @@ def audit_batch(project_root, output_dir, *, portable=False):
     """Route an audit by what the batch says it is.
 
     Virtual batches and batches written before the rule registry get a content
-    audit; a current official batch gets the full replay/content audit.
+    audit; a current official batch gets the mode-appropriate output audit (a
+    fast batch is audited for exactly what its mode promised).
     """
     root = Path(project_root).resolve()
     output = _safe_output(root, output_dir)
@@ -676,12 +914,21 @@ def main():
     parser.add_argument("--audit-only", action="store_true")
     parser.add_argument("--portable-audit", action="store_true", help="read-only audit after copying outputs; no claim of current RGB replay")
     parser.add_argument("--videos-dir", type=Path, help="cut one window batch from this directory's top-level mp4 files; replaces the 110-source project mode and requires --output-dir")
+    parser.add_argument("--verification", choices=VERIFICATION_MODES, default=None,
+                        help="how much frame evidence the batch records: full replays the source and the clip frames, "
+                             "basic (default) only probes the encoded output, none skips even that probe")
+    parser.add_argument("--jobs", type=int, default=None,
+                        help="cut independent sources in parallel with this many workers; default: 1 (serial, same batch)")
     args = parser.parse_args()
     if args.videos_dir is not None:
         if args.portable_audit:
             parser.error("--portable-audit cannot be combined with --videos-dir")
         if args.audit_only:
             parser.error("--audit-only cannot be combined with --videos-dir")
+        if args.verification is not None:
+            parser.error("--verification cannot be combined with --videos-dir")
+        if args.jobs is not None:
+            parser.error("--jobs cannot be combined with --videos-dir")
         if args.output_dir is None:
             parser.error("--videos-dir requires an explicit --output-dir")
         try:
@@ -693,14 +940,21 @@ def main():
         return 0 if args.plan_only or manifest["complete"] else 2
     if args.portable_audit and not args.audit_only:
         parser.error("--portable-audit requires --audit-only")
-    if args.audit_only and (args.plan_only or args.resume):
-        parser.error("--audit-only cannot be combined with --plan-only or --resume")
+    if args.audit_only:
+        if args.plan_only or args.resume:
+            parser.error("--audit-only cannot be combined with --plan-only or --resume")
+        if args.verification is not None:
+            parser.error("--verification cannot be combined with --audit-only")
+        if args.jobs is not None:
+            parser.error("--jobs cannot be combined with --audit-only")
     try:
         if args.audit_only:
             result = audit_batch(args.project_root, args.output_dir or args.project_root / "data/sub_video", portable=args.portable_audit)
             print(base.canonical_bytes(result).decode(), end="")
             return 0 if result.get("ok", True) else 1
-        manifest = run(args.project_root, args.output_dir, plan_only=args.plan_only, resume=args.resume)
+        manifest = run(args.project_root, args.output_dir, plan_only=args.plan_only, resume=args.resume,
+                       verification=args.verification or DEFAULT_VERIFICATION,
+                       jobs=1 if args.jobs is None else args.jobs)
     except (base.PilotError, OSError, ValueError, KeyError, TypeError) as exc:
         parser.exit(1, str(exc) + "\n")
     print(base.canonical_bytes(summarize(manifest)).decode(), end="")

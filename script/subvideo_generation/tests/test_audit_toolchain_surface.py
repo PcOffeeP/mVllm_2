@@ -35,7 +35,7 @@ def _report_degraded_toolchain(monkeypatch):
 def test_audit_outputs_surfaces_the_degraded_toolchain(project, monkeypatch):
     root, g, descriptions, encoded = project
     g = _report_degraded_toolchain(monkeypatch)
-    manifest = g.run(root)  # built while the degraded toolchain is the reported one
+    manifest = g.run(root, verification="full")  # built while the degraded toolchain is the reported one
     assert manifest["complete"] is True
 
     audit = g.audit_outputs(root, root / "data/sub_video")
@@ -55,7 +55,7 @@ def test_audit_outputs_surfaces_the_degraded_toolchain(project, monkeypatch):
 def test_official_summary_reports_the_toolchain(project, monkeypatch):
     root, g, descriptions, encoded = project
     g = _report_degraded_toolchain(monkeypatch)
-    manifest = g.run(root, plan_only=True)
+    manifest = g.run(root, plan_only=True, verification="full")
 
     summary = g.summarize(manifest)
 

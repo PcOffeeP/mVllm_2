@@ -529,9 +529,11 @@ def test_legacy_mode_without_output_dir_does_not_require_one(tmp_path, monkeypat
     generate = importlib.import_module(GENERATE_MODULE)
     calls = []
 
-    def recording_run(project_root, output_dir=None, *, plan_only=False, resume=False):
+    def recording_run(project_root, output_dir=None, *, plan_only=False, resume=False,
+                      verification="basic", jobs=1):
         calls.append({"project_root": project_root, "output_dir": output_dir,
-                      "plan_only": plan_only, "resume": resume})
+                      "plan_only": plan_only, "resume": resume,
+                      "verification": verification, "jobs": jobs})
         return {"schema": "stub", "sources": [], "candidates": [],
                 "complete": True, "published": False}
 

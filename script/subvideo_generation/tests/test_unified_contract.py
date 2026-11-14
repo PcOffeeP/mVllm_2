@@ -21,7 +21,7 @@ def test_empty_output_rebuilds_all_sources_once_and_preserves_each_fold(project)
     input_paths = list((root / "data").rglob("*.json")) + [root / "data/annotation-table-full.csv",
                                                           root / "docs/subvideo-current-logic.md"]
     inputs = {str(p): p.read_bytes() for p in input_paths}
-    m = g.run(root)
+    m = g.run(root, verification="full")
     assert m["complete"] is True and m["published"] is False
     assert len(m["sources"]) == len({s["video_id"] for s in m["sources"]}) == 110
     assert {c["source_video_id"] for c in m["candidates"]} == set(descriptions)
@@ -48,7 +48,7 @@ def test_empty_output_rebuilds_all_sources_once_and_preserves_each_fold(project)
 
 def test_coverage_routes_keep_unknown_source_labels_and_start_from_them(project):
     root, g, _, _ = project
-    m = g.run(root, plan_only=True)
+    m = g.run(root, plan_only=True, verification="full")
     actual = {s["video_id"] for s in m["sources"] if s["strategy"] == "coverage"}
     # The fixture's coverage rows are the ones with no fracture anchor and an
     # undecidable 断裂状态; the route must follow those features, not the ids.
@@ -192,7 +192,7 @@ def test_one_source_failure_is_persisted_and_cannot_masquerade_as_complete(proje
         if raw.stem == "video_0001": raise g.core.ReplayUncertain("injected missing frame evidence")
         return original(raw, *args, **kwargs)
     monkeypatch.setattr(g.core, "verify_source_replay", reject)
-    m = g.run(root)
+    m = g.run(root, verification="full")
     assert len(m["sources"]) == 110 and m["complete"] is False
     assert not any(c["source_video_id"] == "video_0001" for c in m["candidates"])
     assert next(s for s in m["sources"] if s["video_id"] == "video_0001")["status"] != "planned"
@@ -214,7 +214,7 @@ def test_resume_retries_only_transient_failed_source_and_preserves_completed_out
             raise OSError("temporary source read unavailable")
         return original(raw, *args, **kwargs)
     monkeypatch.setattr(g.core, "verify_source_replay", temporary_failure)
-    first = g.run(root)
+    first = g.run(root, verification="full")
     failed = next(s for s in first["sources"] if s["video_id"] == failed_id)
     assert failed["status"] == failure_status and "temporary source" in failed["reason"]
     assert first["complete"] is False
@@ -224,7 +224,7 @@ def test_resume_retries_only_transient_failed_source_and_preserves_completed_out
     before_encoded = list(encoded)
     replay_calls.clear()
     unavailable = False
-    result = g.run(root, resume=True)
+    result = g.run(root, resume=True, verification="full")
     assert result["complete"] is True
     assert replay_calls == [failed_id], "admitted sources must keep their existing replay proof"
     recovered = next(s for s in result["sources"] if s["video_id"] == failed_id)
@@ -255,10 +255,10 @@ def test_resume_retries_persisting_source_failure_once_per_run_with_explicit_rea
             raise g.core.ReplayUncertain("temporary source replay still unavailable")
         return original(raw, *args, **kwargs)
     monkeypatch.setattr(g.core, "verify_source_replay", still_unavailable)
-    g.run(root)
+    g.run(root, verification="full")
     before = list(encoded)
     for expected_attempts in (2, 3):
-        result = g.run(root, resume=True)
+        result = g.run(root, resume=True, verification="full")
         source = next(s for s in result["sources"] if s["video_id"] == "video_0001")
         assert source["status"] == "pending" and source["reason"] == "temporary source replay still unavailable"
         assert len(attempts) == expected_attempts
@@ -273,14 +273,14 @@ def test_resume_checks_input_identity_before_retrying_failed_source(project, mon
         if raw.stem == "video_0001": raise g.core.ReplayUncertain("temporary source failure")
         return original(raw, *args, **kwargs)
     monkeypatch.setattr(g.core, "verify_source_replay", unavailable)
-    g.run(root)
+    g.run(root, verification="full")
     manifest_path = root / "data/sub_video/manifest.json"
     before_manifest, before_encoded = manifest_path.read_bytes(), list(encoded)
     annotation_path = root / "data/annotation-table-full.csv"
     annotation_path.write_bytes(annotation_path.read_bytes() + b"\n")
     def forbidden_replay(*args, **kwargs): pytest.fail("input identity must be checked before source retry")
     monkeypatch.setattr(g.core, "verify_source_replay", forbidden_replay)
-    with pytest.raises(Exception): g.run(root, resume=True)
+    with pytest.raises(Exception): g.run(root, resume=True, verification="full")
     assert manifest_path.read_bytes() == before_manifest and encoded == before_encoded
 
 
@@ -289,7 +289,7 @@ def test_resume_checks_input_identity_before_retrying_failed_source(project, mon
     "range", "labels", "proof", "schema", "published"])
 def test_resume_refuses_tampered_inventory_before_encoding(project, attack):
     root, g, _, encoded = project
-    m = g.run(root, plan_only=True)
+    m = g.run(root, plan_only=True, verification="full")
     test_source = next(s for s in m["sources"] if s["video_id"] == "video_0005")
     test_clip = next(c for c in m["candidates"] if c["source_video_id"] == "video_0005")
     if attack == "drop_source": m["sources"].pop()
@@ -313,7 +313,7 @@ def test_resume_refuses_tampered_inventory_before_encoding(project, attack):
     elif attack == "schema": m["schema"] = "legacy-batch"
     elif attack == "published": m["published"] = True
     path = root / "data/sub_video/manifest.json"; write_json(path, m); before = path.read_bytes()
-    with pytest.raises(Exception) as caught: g.run(root, resume=True)
+    with pytest.raises(Exception) as caught: g.run(root, resume=True, verification="full")
     if attack == "source_strategy":
         assert isinstance(caught.value, g.base.PilotError) and "strategy" in str(caught.value), (
             "a tampered source route must be rejected by the replanned strategy check, "
@@ -326,13 +326,13 @@ def test_resume_refuses_tampered_inventory_before_encoding(project, attack):
 @pytest.mark.parametrize("change", ["annotation", "split", "roi_manifest", "anchor_document", "source", "roi"])
 def test_resume_rejects_changed_live_input_before_writing(project, change):
     root, g, _, encoded = project
-    g.run(root, plan_only=True)
+    g.run(root, plan_only=True, verification="full")
     path = root / "data/sub_video/manifest.json"; before = path.read_bytes()
     paths = {"annotation": "data/annotation-table-full.csv", "split": "data/splits/three-fold/fold_0_train.json",
         "roi_manifest": "data/roi/manifest.json", "anchor_document": "docs/subvideo-current-logic.md",
         "source": "data/videos/video_0001.mp4", "roi": "data/roi/videos/video_0001.mp4"}
     target = root / paths[change]; target.write_bytes(target.read_bytes() + b"\n")
-    with pytest.raises(Exception): g.run(root, resume=True)
+    with pytest.raises(Exception): g.run(root, resume=True, verification="full")
     assert path.read_bytes() == before and not encoded
 
 
@@ -342,7 +342,7 @@ def test_existing_outputs_and_old_batch_are_never_adopted(project):
     write_json(target / "manifest.json", {"schema": "old-batch", "candidates": []})
     marker = target / "videos/previous.mp4"; marker.parent.mkdir(); marker.write_bytes(b"keep previous bytes")
     for resume in (False, True):
-        with pytest.raises(Exception): g.run(root, resume=resume)
+        with pytest.raises(Exception): g.run(root, resume=resume, verification="full")
     assert marker.read_bytes() == b"keep previous bytes" and not encoded
 
 
@@ -357,18 +357,18 @@ def test_duplicate_input_ids_are_rejected_without_output(project, inventory):
         path = root / ("data/roi/manifest.json" if inventory == "ROI" else "data/splits/three-fold/test.json")
         value = json.loads(path.read_text()); key = "videos" if inventory == "ROI" else "video_ids"
         value[key].append(copy.deepcopy(value[key][0])); write_json(path, value)
-    with pytest.raises(Exception): g.run(root)
+    with pytest.raises(Exception): g.run(root, verification="full")
     assert not encoded
 
 
 def test_plan_then_resume_encodes_each_output_once_and_complete_resume_is_idempotent(project):
     root, g, _, encoded = project
-    planned = g.run(root, plan_only=True)
+    planned = g.run(root, plan_only=True, verification="full")
     assert planned["complete"] is False and not encoded
-    final = g.run(root, resume=True)
+    final = g.run(root, resume=True, verification="full")
     assert final["complete"] is True
     before = list(encoded)
-    assert g.run(root, resume=True) == final
+    assert g.run(root, resume=True, verification="full") == final
     assert encoded == before
 
 
@@ -383,29 +383,29 @@ def test_interruption_resumes_only_the_unfinished_candidates(project, monkeypatc
             raise KeyboardInterrupt("synthetic cancellation before next encoding")
         return original(*args, **kwargs)
     monkeypatch.setattr(g.legacy, "crop_video", stop_after_one)
-    with pytest.raises(KeyboardInterrupt): g.run(root)
+    with pytest.raises(KeyboardInterrupt): g.run(root, verification="full")
     persisted = read_manifest(root)
     completed = [c["candidate_id"] for c in persisted["candidates"] if c["status"] == "cropped"]
     assert completed == encoded and completed
     monkeypatch.setattr(g.legacy, "crop_video", original)
-    result = g.run(root, resume=True)
+    result = g.run(root, resume=True, verification="full")
     assert result["complete"] is True
     assert len(encoded) == len(set(encoded)) == len(result["candidates"])
 
 
 def test_unknown_output_after_interruption_is_never_overwritten_or_adopted(project):
     root, g, _, encoded = project
-    planned = g.run(root, plan_only=True)
+    planned = g.run(root, plan_only=True, verification="full")
     path = root / "data/sub_video" / planned["candidates"][0]["output_path"]
     path.write_bytes(b"unrecorded output from interrupted external process")
     before = path.read_bytes()
-    with pytest.raises(Exception): g.run(root, resume=True)
+    with pytest.raises(Exception): g.run(root, resume=True, verification="full")
     assert path.read_bytes() == before and not encoded
 
 
 def test_readonly_audit_supports_copy_to_another_machine_without_rewriting_proofs(project, monkeypatch, tmp_path):
     root, g, _, _ = project
-    original = g.run(root)
+    original = g.run(root, verification="full")
     relocated = tmp_path / "copied-project"
     shutil.copytree(root, relocated)
     root.rename(tmp_path / "unavailable-origin")  # Historical absolute paths cannot resolve on this host.
@@ -424,7 +424,7 @@ def test_readonly_audit_supports_copy_to_another_machine_without_rewriting_proof
     assert "not_new_frame_replay" in audit["limitations"]
     assert "not_human_label_review" in audit["limitations"]
     assert before == {str(p.relative_to(relocated)): p.read_bytes() for p in relocated.rglob("*") if p.is_file()}
-    with pytest.raises(Exception): g.run(relocated, resume=True)
+    with pytest.raises(Exception): g.run(relocated, resume=True, verification="full")
     for relative in ("data/videos/video_0001.mp4", "data/roi/videos/video_0001.mp4",
                      "data/annotation-table-full.csv", "data/splits/three-fold/fold_0_train.json",
                      "docs/subvideo-current-logic.md", "data/sub_video/" + original["candidates"][0]["output_path"]):
@@ -438,7 +438,7 @@ def test_readonly_audit_supports_copy_to_another_machine_without_rewriting_proof
 @pytest.mark.parametrize("damage", ["bytes", "clip_proof", "missing_proof", "mapping", "unreviewed"])
 def test_audit_refuses_corrupt_completed_evidence(project, damage):
     root, g, _, _ = project
-    m = g.run(root); c = m["candidates"][0]
+    m = g.run(root, verification="full"); c = m["candidates"][0]
     if damage == "bytes": (root / "data/sub_video" / c["output_path"]).write_bytes(b"corrupt output")
     elif damage == "clip_proof": c["output"]["frame_preserving_replay"]["decoded_frame_count"] += 1
     elif damage == "missing_proof": del c["output"]["frame_preserving_replay"]
@@ -450,7 +450,7 @@ def test_audit_refuses_corrupt_completed_evidence(project, damage):
 
 def test_portable_audit_rejects_invented_output_media_without_altering_sealed_proof(project):
     root, g, _, _ = project
-    original = g.run(root)
+    original = g.run(root, verification="full")
     manifest_path = root / "data/sub_video/manifest.json"
     candidate = original["candidates"][0]
     output_path = root / "data/sub_video" / candidate["output_path"]

@@ -29,6 +29,8 @@ HELD_IDS = frozenset({"video_0002", "video_0015", "video_0050"})
 GUARD_SECONDS = 0.5
 POST_REMAINING_SECONDS = 2.0
 FEATURE_SIZE = 64
+MEDIA_FIELDS = ("duration", "total_frames", "fps", "width", "height", "time_base")
+FAST_VERIFICATION_REASON = "user_requested_fast_generation"
 # Conservative compression tolerances. Passing these checks is machine evidence,
 # not a substitute for final human clip review; ambiguous anchors remain pending.
 MAX_MEAN_PIXEL_ERROR = 5.0
@@ -335,8 +337,62 @@ def build_crop_command(source: Path, output: Path, candidate: dict) -> list[str]
             "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", str(output)]
 
 
-def crop_video(source: Path, output: Path, candidate: dict, roi_media: dict, roi_features,
-               source_proof: dict | None = None) -> dict:
+def _crop_without_frame_replay(source: Path, output: Path, candidate: dict, roi_media: dict,
+                               verification: str) -> dict:
+    """Encode the planned window and record only what ``basic``/``none`` promises.
+
+    No reference sequence is decoded, no output PTS are compared and no clip
+    proof is written: this mode proves *no* frame correspondence.
+    """
+    fd, name = tempfile.mkstemp(prefix=".aligned-cut-", suffix=".mp4", dir=output.parent)
+    os.close(fd); Path(name).unlink()
+    try:
+        base._checked(build_crop_command(source, Path(name), candidate))
+        start, end = candidate["start_frame"], candidate["end_frame"]
+        media = None
+        if verification == "basic":
+            media = probe_video(Path(name))
+            if (media["total_frames"] != end - start
+                    or (media["width"], media["height"]) != (roi_media["width"], roi_media["height"])):
+                raise AlignmentUncertain("output_frame_count_or_resolution_mismatch")
+            if media["duration"] < geometry.MIN_CANDIDATE_SECONDS - 1e-6:
+                raise AlignmentUncertain("output_shorter_than_existing_one_second_minimum")
+        if base.sha256_file(source) != candidate["roi_sha256"]:
+            raise base.PilotError("ROI_changed_during_crop")
+        digest = base.sha256_file(Path(name))
+        result = {"sha256": digest,
+                  "frame_mapping": {"source_start_frame": start, "output_start_frame": 0,
+                                    "anchors": [{"source_frame": i, "roi_frame": i, "output_frame": i - start}
+                                                for i in candidate["source_anchor_frames"] if start <= i < end]}}
+        if media is not None:
+            result["media"] = {k: media[k] for k in MEDIA_FIELDS}
+        result["verification"] = {"mode": verification, "frame_replay": "skipped",
+                                  "reason": FAST_VERIFICATION_REASON}
+        os.link(name, output)
+        return result
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+
+def crop_video(source: Path, output: Path, candidate: dict, roi_media: dict, roi_features=None,
+               source_proof: dict | None = None, verification: str = "full") -> dict:
+    """Cut one planned window into ``output`` and record the evidence it claims.
+
+    ``full`` replays the source and the new clip frame by frame. ``basic`` keeps
+    the output probe, the ROI identity recheck and the planned frame mapping, but
+    decodes no reference sequence and compares no timestamps. ``none`` keeps only
+    the encode, the digest and the identity recheck. The fast modes are a request
+    to check the output less, never a claim that frames correspond.
+    """
+    if verification == "full":
+        return _crop_with_frame_replay(source, output, candidate, roi_media, roi_features, source_proof)
+    if verification not in ("basic", "none"):
+        raise base.PilotError("unknown verification mode: " + repr(verification))
+    return _crop_without_frame_replay(source, output, candidate, roi_media, verification)
+
+
+def _crop_with_frame_replay(source: Path, output: Path, candidate: dict, roi_media: dict, roi_features,
+                            source_proof: dict | None) -> dict:
     if source_proof is None:
         raise AlignmentUncertain("source_frame_preserving_replay_required")
     try:

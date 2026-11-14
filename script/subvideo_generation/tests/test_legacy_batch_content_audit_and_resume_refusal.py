@@ -71,7 +71,7 @@ def test_resume_refuses_a_legacy_batch(tmp_path):
     before = (output / "manifest.json").read_bytes()
 
     with pytest.raises(pilot_module().PilotError) as caught:
-        generate.run(root, resume=True)
+        generate.run(root, resume=True, verification="full")
 
     assert "legacy batch has no rules digest" in str(caught.value), (
         f"a legacy batch must be refused with an actionable reason, got: {caught.value}")

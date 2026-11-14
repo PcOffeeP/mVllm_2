@@ -17,7 +17,7 @@ def _drift(rules, monkeypatch, **changes):
 
 def test_resume_refuses_a_changed_window_policy(project, monkeypatch):
     root, g, descriptions, encoded = project
-    manifest = g.run(root, plan_only=True)
+    manifest = g.run(root, plan_only=True, verification="full")
     assert "rules" in manifest["identity"], (
         "identity must record the rules registry as {digest, fields}")
     recorded = manifest["identity"]["rules"]["digest"]
@@ -32,7 +32,7 @@ def test_resume_refuses_a_changed_window_policy(project, monkeypatch):
     before = manifest_path.read_bytes()
 
     with pytest.raises(g.base.PilotError) as caught:
-        g.run(root, resume=True)
+        g.run(root, resume=True, verification="full")
 
     assert "rules digest differs" in str(caught.value), (
         f"a changed rule set must be named explicitly, got: {caught.value}")
@@ -43,7 +43,7 @@ def test_resume_refuses_a_changed_window_policy(project, monkeypatch):
 def test_resume_refuses_a_changed_coverage_criterion(project, monkeypatch):
     """The criterion string alone decides which sources get which windows."""
     root, g, descriptions, encoded = project
-    manifest = g.run(root, plan_only=True)
+    manifest = g.run(root, plan_only=True, verification="full")
     recorded = manifest["identity"]["rules"]["digest"]
     rules = rules_module()
     patched = "video_id in coverage_ids"
@@ -57,7 +57,7 @@ def test_resume_refuses_a_changed_coverage_criterion(project, monkeypatch):
     before = manifest_path.read_bytes()
 
     with pytest.raises(g.base.PilotError) as caught:
-        g.run(root, resume=True)
+        g.run(root, resume=True, verification="full")
 
     assert "rules digest differs" in str(caught.value), (
         f"a changed coverage criterion must be named explicitly, got: {caught.value}")
@@ -67,7 +67,7 @@ def test_resume_refuses_a_changed_coverage_criterion(project, monkeypatch):
 
 def test_resume_refuses_a_changed_special_rule(project, monkeypatch):
     root, g, descriptions, encoded = project
-    manifest = g.run(root, plan_only=True)
+    manifest = g.run(root, plan_only=True, verification="full")
     assert "rules" in manifest["identity"], (
         "identity must record the rules registry as {digest, fields}")
     recorded = manifest["identity"]["rules"]["digest"]
@@ -77,7 +77,7 @@ def test_resume_refuses_a_changed_special_rule(project, monkeypatch):
     assert rules.digest() != recorded
 
     with pytest.raises(g.base.PilotError) as caught:
-        g.run(root, resume=True)
+        g.run(root, resume=True, verification="full")
 
     assert "rules digest differs" in str(caught.value)
     assert not encoded
