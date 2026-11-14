@@ -326,6 +326,7 @@
       state.selected.review_status = row.review_status;
       state.selected.review_id = row.review_id;
       state.dirty = false;
+      byId("prefill-notice").hidden = true;
       byId("review-status").textContent = statusNames[row.review_status];
       renderHistory(await request(`/api/reviews?candidate_id=${encodeURIComponent(state.selected.candidate_id)}`));
       renderList();

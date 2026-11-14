@@ -41,10 +41,13 @@ class Element {
 }
 
 async function createHarness(overrides = {}) {
-  const ids = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history", "export-reviews", "export-all-revisions"];
+  const ids = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "prefill-notice", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history", "export-reviews", "export-all-revisions"];
   const tags = {"pending-sources": "details", "export-reviews": "button", "export-all-revisions": "button"};
   const elements = new Map(ids.map((id) => [id, new Element(tags[id] || "div")]));
   elements.get("scope-filter").value = overrides.scope || "development";
+  /* 合成 DOM 不解析 index.html 的 hidden 属性，这里取「可见」作初值：浏览器里 hidden 会保留上一个候选
+     留下的状态，所以 app.js 必须在每次选候选时显式设置提示的显隐，不能依赖 HTML 默认值。 */
+  elements.get("prefill-notice").hidden = false;
   elements.get("fold-filter").value = "all";
   const videoFrame = new Element("div");
   elements.get("video-player").frame = videoFrame;
@@ -57,6 +60,7 @@ async function createHarness(overrides = {}) {
   const selects = names.map((name) => Object.assign(new Element("select"), {name}));
   let ready;
   let allowDiscard = false;
+  const confirmTexts = [];
   const requests = [];
   const created = [];
   const requestedIds = new Set();
@@ -76,7 +80,7 @@ async function createHarness(overrides = {}) {
       addEventListener: (event, callback) => { if (event === "DOMContentLoaded") ready = callback; },
       body,
     },
-    window: {addEventListener() {}, confirm: () => allowDiscard, location: {href: ""}},
+    window: {addEventListener() {}, confirm: (text) => { confirmTexts.push(String(text)); return allowDiscard; }, location: {href: ""}},
     /* Timers run inline: revoke timing (sync vs setTimeout) must not decide pass/fail, and a vm context has no timers of its own. */
     setTimeout: (callback, ...args) => { callback(...args); return 0; },
     clearTimeout: () => {},
@@ -110,7 +114,7 @@ async function createHarness(overrides = {}) {
   vm.runInNewContext(code, context);
   await ready();
   return {elements, selects, requests, videoFrame, summary, details, pendingList,
-    created, requestedIds, objectUrls, body,
+    created, requestedIds, objectUrls, body, confirmTexts,
     allowDiscard: (value) => { allowDiscard = value; }};
 }
 
@@ -118,7 +122,11 @@ test("pending title survives, playback end keeps current candidate, explicit nex
   const harness = await createHarness();
   const {elements, selects, requests, videoFrame, summary, details, pendingList} = harness;
   assert.equal(elements.get("clip-title").textContent, "candidate_one");
-  assert.ok(selects.every((select) => select.value === ""));
+  /* 默认候选的候选标签初值只有 {"断裂状态": "已断裂"}：该字段预填，其余 10 项仍留空。 */
+  assert.equal(selects[0].value, "已断裂",
+    `候选标签初值应预填断裂状态为「已断裂」，实际为「${selects[0].value}」`);
+  assert.ok(selects.slice(1).every((select) => select.value === ""),
+    `预填源只给断裂状态，其余字段应保持空白，实际为 ${JSON.stringify(selects.map((node) => node.value))}`);
   selects[0].value = "无法判断";
   selects[0].listeners.change();
   elements.get("scope-filter").value = "test";
@@ -145,7 +153,10 @@ test("pending title survives, playback end keeps current candidate, explicit nex
   assert.equal(elements.get("clip-title").textContent, "candidate_test");
   assert.match(elements.get("clip-meta").textContent, /测试集/);
   assert.equal(elements.get("candidate-list").children.length, 1);
-  assert.ok(selects.every((select) => select.value === ""));
+  assert.equal(selects[0].value, "已断裂",
+    `切换候选后表单按新候选的候选标签预填断裂状态，实际为「${selects[0].value}」`);
+  assert.ok(selects.slice(1).every((select) => select.value === ""),
+    `新候选同样只预填断裂状态，实际为 ${JSON.stringify(selects.map((node) => node.value))}`);
   assert.equal(details.children[0], summary);
   assert.equal(details.children[1], pendingList);
   assert.equal(summary.textContent, "待处理来源及原因");
@@ -185,6 +196,168 @@ function visibleIds(elements) {
 function textOf(node) {
   return typeof node === "string" ? node : [node.textContent, ...node.children.map(textOf)].join(" ");
 }
+/* 表单 11 项的固定顺序，与 app.js 的 names 常量、index.html 的 select 顺序一致。 */
+const LABEL_NAMES = ["断裂状态", "断裂模式", "断裂位置", "异常情况.未夹紧", "异常情况.视频异常", "异常情况.爆炸性断裂", "断裂现象.伸长", "断裂现象.颈缩", "断裂现象.开裂", "断裂现象.界面分离", "断裂现象.断后脱夹"];
+function fullCandidateLabels() {
+  return {
+    "断裂状态": "已断裂", "断裂模式": "脆性断裂", "断裂位置": "标距内",
+    "异常情况": {"未夹紧": "是", "视频异常": "否", "爆炸性断裂": "否"},
+    "断裂现象": {"伸长": "是", "颈缩": "否", "开裂": "否", "界面分离": "否", "断后脱夹": "否"},
+  };
+}
+function controlValues(selects) {
+  return selects.map((node) => node.value);
+}
+/* 按字段名而不仅仅是「全部为空」比对：预填、残留、补「否」三类偏差都能定位到具体字段。 */
+function assertLabels(selects, expected, label) {
+  const actual = {};
+  selects.forEach((node, index) => { actual[LABEL_NAMES[index]] = node.value; });
+  assert.deepEqual(actual, expected, `${label}；实际值 ${JSON.stringify(controlValues(selects))}`);
+}
+function blankLabels() {
+  return Object.fromEntries(LABEL_NAMES.map((name) => [name, ""]));
+}
+
+test("prefills the eleven label controls from the candidate labels and shows a draft prefill notice", async () => {
+  /* 预填只是草稿初值：11 个字段都用候选标签初值起步，用户核对/修改后再确认。 */
+  const {elements, selects} = await createHarness({candidates: [candidate("prefilled", {
+    candidate_reference: fullCandidateLabels(),
+  })]});
+
+  assertLabels(selects, {
+    "断裂状态": "已断裂", "断裂模式": "脆性断裂", "断裂位置": "标距内",
+    "异常情况.未夹紧": "是", "异常情况.视频异常": "否", "异常情况.爆炸性断裂": "否",
+    "断裂现象.伸长": "是", "断裂现象.颈缩": "否", "断裂现象.开裂": "否",
+    "断裂现象.界面分离": "否", "断裂现象.断后脱夹": "否",
+  }, "候选标签初值应逐项预填 11 个审核字段，不得留空");
+
+  const notice = elements.get("prefill-notice");
+  assert.equal(notice.hidden, false,
+    "预填产生了非空值，#prefill-notice 必须可见");
+  assert.match(notice.textContent, /预填/,
+    `预填提示应说明这些是预填值，实际文案为「${notice.textContent}」`);
+  assert.match(notice.textContent, /草稿/,
+    `预填提示应说明这是草稿初值而非审核结果，实际文案为「${notice.textContent}」`);
+});
+
+test("keeps all eleven controls blank and hides the prefill notice when the candidate has no labels", async () => {
+  const {elements, selects} = await createHarness({candidates: [candidate("no_labels", {
+    candidate_reference: null,
+  })]});
+
+  assertLabels(selects, blankLabels(), "没有候选标签时 11 个字段必须留空");
+  assert.equal(elements.get("prefill-notice").hidden, true,
+    "预填源为空、没有任何有效值时 #prefill-notice 必须隐藏");
+});
+
+test("keeps missing multi-select leaves blank instead of 否 and preserves the confirm semantics", async () => {
+  const {elements, selects, requests} = await createHarness({candidates: [candidate("partial", {
+    candidate_reference: {"断裂状态": "已断裂", "异常情况": {"未夹紧": "是"}},
+  })]});
+
+  assertLabels(selects, {
+    "断裂状态": "已断裂", "断裂模式": "", "断裂位置": "",
+    "异常情况.未夹紧": "是", "异常情况.视频异常": "", "异常情况.爆炸性断裂": "",
+    "断裂现象.伸长": "", "断裂现象.颈缩": "", "断裂现象.开裂": "", "断裂现象.界面分离": "", "断裂现象.断后脱夹": "",
+  }, "预填源里缺失的字段必须保持空白");
+  /* 空值与「否」在标注语义上不同：多选叶项缺失/为空时不得补「否」。 */
+  selects.slice(4).forEach((node, offset) => assert.notEqual(node.value, "否",
+    `${LABEL_NAMES[offset + 4]} 在预填源缺失时不得补「否」`));
+
+  assert.equal(elements.get("review-status").textContent, "未审核",
+    "预填不得把候选标成已审核");
+  assert.ok(!requests.some(({options}) => options.method === "POST"),
+    "预填本身不得发起任何 POST");
+
+  await elements.get("confirm-review").listeners.click();
+
+  assert.ok(!requests.some(({options}) => options.method === "POST"),
+    "字段未填满时点击确认不得发出任何 POST");
+  assert.match(elements.get("app-message").textContent, /11/,
+    `确认提示应说明须完成 11 项，实际为「${elements.get("app-message").textContent}」`);
+});
+
+test("saved human revision overrides the candidate prefill and hides the notice", async () => {
+  const latest = {review_id: "current-human", review_status: "draft", labels: {"断裂状态": "无法判断"}, note: "human note"};
+  const {elements, selects} = await createHarness({candidates: [candidate("clip", {
+    candidate_reference: fullCandidateLabels(),
+  })], reviews: {clip: {latest, history: [latest], isolated_history: []}}});
+
+  assertLabels(selects, {
+    "断裂状态": "无法判断", "断裂模式": "", "断裂位置": "",
+    "异常情况.未夹紧": "", "异常情况.视频异常": "", "异常情况.爆炸性断裂": "",
+    "断裂现象.伸长": "", "断裂现象.颈缩": "", "断裂现象.开裂": "", "断裂现象.界面分离": "", "断裂现象.断后脱夹": "",
+  }, "已保存修订优先：控件以 latest.labels 为准，latest 里没有的字段不得残留预填值");
+  assert.equal(elements.get("prefill-notice").hidden, true,
+    "已拉取到人工修订后 #prefill-notice 必须隐藏");
+});
+
+test("prefill is a draft initial value and does not count as an unsaved edit when switching candidates", async () => {
+  const harness = await createHarness({candidates: [
+    candidate("first", {candidate_reference: fullCandidateLabels()}), candidate("second"),
+  ]});
+
+  assert.equal(harness.elements.get("clip-title").textContent, "first");
+  assert.equal(harness.selects[0].value, "已断裂",
+    `首个候选应按候选标签预填，实际断裂状态为「${harness.selects[0].value}」`);
+
+  await harness.elements.get("next-candidate").listeners.click();
+
+  assert.deepEqual(harness.confirmTexts, [],
+    `预填不算未保存输入，切换候选不应弹出未保存确认，实际弹出 ${JSON.stringify(harness.confirmTexts)}`);
+  assert.equal(harness.elements.get("clip-title").textContent, "second",
+    `预填后应能直接切到下一候选，实际停留在「${harness.elements.get("clip-title").textContent}」`);
+});
+
+test("saving a confirmed revision hides the draft prefill notice", async () => {
+  /* 预填提示的含义是「这些值还是草稿」：人工保存已确认修订后，提示必须消失，否则用户会以为页面上的仍是生成标签。 */
+  const {elements, requests} = await createHarness({candidates: [candidate("confirmed_after_prefill", {
+    candidate_reference: fullCandidateLabels(),
+  })]});
+  const notice = elements.get("prefill-notice");
+
+  assert.equal(notice.hidden, false,
+    "完整候选标签预填后 #prefill-notice 应可见");
+
+  await elements.get("confirm-review").listeners.click();
+
+  const saved = requests
+    .filter(({options}) => options.method === "POST")
+    .map(({options}) => JSON.parse(options.body));
+  assert.equal(saved.length, 1,
+    `点击确认应恰好发出一次 /api/reviews POST，实际 ${saved.length} 次`);
+  assert.equal(saved[0].review_status, "confirmed",
+    `确认保存的 review_status 应为 confirmed，实际为「${saved[0].review_status}」`);
+  assert.equal(notice.hidden, true,
+    "已确认修订保存成功后 #prefill-notice 必须隐藏：预填只是草稿初值，不能继续留在已保存的人工修订旁");
+  assert.equal(elements.get("review-status").textContent, "已确认",
+    `保存已确认修订后审核状态应显示「已确认」，实际为「${elements.get("review-status").textContent}」`);
+});
+
+test("saving a draft revision after prefill also hides the draft prefill notice", async () => {
+  /* 对称断言：草稿保存后控件里已是人工保存的值，预填提示同样不应再出现。 */
+  const {elements, requests} = await createHarness({candidates: [candidate("draft_after_prefill", {
+    candidate_reference: fullCandidateLabels(),
+  })]});
+  const notice = elements.get("prefill-notice");
+
+  assert.equal(notice.hidden, false,
+    "完整候选标签预填后 #prefill-notice 应可见");
+
+  await elements.get("save-draft").listeners.click();
+
+  const saved = requests
+    .filter(({options}) => options.method === "POST")
+    .map(({options}) => JSON.parse(options.body));
+  assert.equal(saved.length, 1,
+    `点击保存草稿应恰好发出一次 /api/reviews POST，实际 ${saved.length} 次`);
+  assert.equal(saved[0].review_status, "draft",
+    `保存草稿的 review_status 应为 draft，实际为「${saved[0].review_status}」`);
+  assert.equal(notice.hidden, true,
+    "草稿修订保存成功后 #prefill-notice 必须隐藏：控件里已是人工保存的值，不再是生成标签的草稿初值");
+  assert.equal(elements.get("review-status").textContent, "草稿",
+    `保存草稿后审核状态应显示「草稿」，实际为「${elements.get("review-status").textContent}」`);
+});
 
 test("coverage null references and focus keep all eleven human answers blank through draft save", async () => {
   const {elements, selects, requests} = await createHarness({candidates: [candidate("coverage", {
@@ -213,7 +386,7 @@ test("coverage null references and focus keep all eleven human answers blank thr
   assert.ok(selects.every((node) => node.value === ""));
 });
 
-test("source and automatic labels are visible references while only current human revision fills controls", async () => {
+test("source and automatic labels stay visible references while candidate labels prefill drafts and the saved revision wins", async () => {
   const latest = {review_id: "current-human", review_status: "draft", labels: {"断裂状态": "无法确定"}, note: "human note"};
   const old = {review_id: "isolated-human", review_status: "confirmed", labels: {"断裂状态": "未断裂"}};
   const {elements, selects} = await createHarness({candidates: [candidate("clip")], reviews: {
@@ -222,7 +395,10 @@ test("source and automatic labels are visible references while only current huma
   /* latest.labels 是历史修订里的旧词「无法确定」：表单上必须映射为统一术语「无法判断」。 */
   assert.equal(selects[0].value, "无法判断",
     `历史修订的旧值「无法确定」应映射为表单值「无法判断」，实际为「${selects[0].value}」`);
-  assert.ok(selects.slice(1).every((node) => node.value === ""));
+  assert.ok(selects.slice(1).every((node) => node.value === ""),
+    `latest.labels 只给断裂状态，其余字段应保持空白，实际为 ${JSON.stringify(controlValues(selects))}`);
+  assert.equal(elements.get("prefill-notice").hidden, true,
+    "已有已保存修订时控件以 latest.labels 为准，预填提示必须隐藏");
   assert.equal(elements.get("review-note").value, "human note");
   const reference = textOf(elements.get("source-reference"));
   assert.match(reference, /源视频标注.*发生断裂/);
@@ -232,7 +408,11 @@ test("source and automatic labels are visible references while only current huma
   const isolated = await createHarness({candidates: [candidate("clip")], reviews: {
     clip: {latest: null, history: [], isolated_history: [old]},
   }});
-  assert.ok(isolated.selects.every((node) => node.value === ""));
+  /* 隔离的旧修订不继承，但候选标签预填仍照常生效：表单里只有候选的「已断裂」，不出现旧修订的「未断裂」。 */
+  assert.equal(isolated.selects[0].value, "已断裂",
+    `隔离旧修订不应进入表单；断裂状态应来自候选预填「已断裂」，实际为「${isolated.selects[0].value}」`);
+  assert.equal(isolated.selects.slice(1).every((node) => node.value === ""), true,
+    `除候选预填的断裂状态外不应有其他旧修订残留，实际为 ${JSON.stringify(controlValues(isolated.selects))}`);
   /* 旧标注/旧清单里的参考值只作显示：统一为「无法判断（原值：旧词）」，不预填表单也不改存储值。 */
   const legacy = await createHarness({candidates: [candidate("legacy", {
     source_reference: {"断裂状态": "无法确定"}, candidate_reference: {"断裂模式": "无法识别"},
@@ -242,8 +422,13 @@ test("source and automatic labels are visible references while only current huma
     `源标注里的旧值应显示为「无法判断（原值：无法确定）」，实际为「${legacyReference}」`);
   assert.match(legacyReference, /候选标签初值.*无法判断（原值：无法识别）/,
     `候选初值里的旧值应显示为「无法判断（原值：无法识别）」，实际为「${legacyReference}」`);
-  assert.ok(legacy.selects.every((node) => node.value === ""),
-    "参考值只读：源标注/候选初值不得预填为人的表单答案");
+  /* 源标注仍只作参考、不预填；候选标签初值则作为草稿初值进入表单，旧词先映射为统一术语。 */
+  assert.equal(legacy.selects[0].value, "",
+    `源视频标注不得预填审核值，实际断裂状态为「${legacy.selects[0].value}」`);
+  assert.equal(legacy.selects[1].value, "无法判断",
+    `候选标签初值里的旧词「无法识别」应映射为「无法判断」后预填，实际为「${legacy.selects[1].value}」`);
+  assert.ok(legacy.selects.filter((node, index) => index !== 1).every((node) => node.value === ""),
+    `除预填的断裂模式外其余字段应保持空白，实际为 ${JSON.stringify(controlValues(legacy.selects))}`);
 });
 
 test("three fold filters inherit membership and compose with scope, source, status, attention and search", async () => {
