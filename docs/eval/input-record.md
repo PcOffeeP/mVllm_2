@@ -169,7 +169,7 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 | `source_to_media` | **L2 → L1** | 记片段帧号到 ROI 帧号的加性偏移：`offset = source_start_frame`，`roi_frame_index = clip_frame_index + offset`。名字里的 source 指**片段自身的来源媒体（L1 ROI 视频）**，不是原始源视频 |
 | `roi_to_source` | L1 → L0 | ROI 帧号 → 原始源视频帧号；`kind` 与 `method` 由 §6 的三级证据给出，成立时 `offset = 0` |
 
-**`source_to_media` 这个名字是历史遗留、方向易误读，读取时以本表为准。** 代码同一处也留了命名陷阱注释（`frames.py:134-137`、`155-157`），并明确 `source_to_media` 记 L2→L1、`roi_to_source` 才是 L1→L0。该重命名是已确认的待办方向，需在 `docs/TODO.md` 登记（当前尚无对应条目，本次未改该文件）：登记前不得据名字反推方向。
+**`source_to_media` 这个名字是历史遗留、方向易误读，读取时以本表为准。** 代码同一处也留了命名陷阱注释（`frames.py:134-137`、`155-157`），并明确 `source_to_media` 记 L2→L1、`roi_to_source` 才是 L1→L0。该重命名是已确认的待办方向，已在 `docs/TODO.md` 登记为「7. MAPPING-NODE-RENAME — 重命名映射节点，消除 source_to_media 的方向误读」：登记前不得据名字反推方向。
 
 补充：节点自证只覆盖后两项——`verify_lineage` 校 `source_to_media.offset` 与 `roi_to_source` 的形态，`media_to_clip` 是常量，不逐帧校验（`frames.py:380`、`451`、`506`）。
 
@@ -225,7 +225,7 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 | `w_200_400` | 200 < 宽 < 400 | `width < 400` |
 | `w_gt_400` | 宽 ≥ 400 | 其余 |
 
-- 规则标识 `SIZE_BUCKET_SOURCE = "width_rule_le200_lt400"`，记录里 `size_bucket_source` 取该标识（`feat/eval-fake-slice:script/five_label_eval/frames.py:22`，判定在 34–35 行）。即 **200 归 `w_le_200`、400 归 `w_gt_400`**。
+- 规则标识 `SIZE_BUCKET_SOURCE = "width_rule_le200_lt400"`，记录里 `size_bucket_source` 取该标识（`script/five_label_eval/frames.py:22`，判定在 34–35 行）。即 **200 归 `w_le_200`、400 归 `w_gt_400`**。
 - **旧版边界表述已被实现取代**：旧文档写的「含下界不含上界」（把 200 归 `w_200_400`）与实现不符，不得再引用。
 - `size_bucket` 必须由 `width` 机械推导，不允许人工指定；档名只是标签，归属一律以区间式为准。
 
