@@ -16,8 +16,10 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "script/five_label_eval/tests", "script/integration_tests"]
 pythonpath = ["."]
+# `script/subvideo_generation/tests` 全部跑完约需 272 秒，不进默认收集，需单独运行：
+# PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider --basetemp=/private/tmp/subvideo-generation-tests script/subvideo_generation/tests
 
 [dependency-groups]
 dev = [
