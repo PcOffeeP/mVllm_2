@@ -70,7 +70,7 @@ def record(index):
         "manifest_sha256": "b" * 64,
         "input_id": f"input-c{index:02d}",
         "media": {"width": 320, "height": 240, "fps": 30.0, "total_frames": 60},
-        "frames": [{"clip_frame_index": 0, "source_frame_index": 900, "roi_frame_index": 100,
+        "frames": [{"clip_frame_index": 0, "original_source_frame_index": 900, "roi_frame_index": 100,
                     "kind": "declared_offset"}],
     }
 
