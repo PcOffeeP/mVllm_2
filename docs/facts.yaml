@@ -475,11 +475,11 @@ facts:
     claim: >
       用户要求依据当前子视频规则新建生成入口，使用裁剪后训练视频，结果写入 data/sub_video。按折入口须指定三折中的一折，只处理该折训练成员；后续用户授权包含测试集的一次去重生成，见 DF-027。读取源视频用于验证与 ROI 的帧对应。断裂模式或位置无法确定、视频异常或爆炸性异常不单独阻挡有效断裂帧或完整范围的窗口；未列入 DF-028 指定覆盖来源的视频异常且没有断裂时间时记录“视频异常”。未知模式沿其他模式选窗但保留原标签，源标签参考、候选初值及最终人工标签分开，拟发布片段仍须人工审核。未夹紧现象按 DF-026 的独立锚点处理，缺少锚点时保留待处理；仅有断裂时间点而源帧定位规则未确定时不猜测锚点。源到 ROI 与 ROI 到片段须通过严格重放。
     evidence:
-      - ref: script/subvideo_generation/_legacy/core/generate.py:32
+      - ref: script/subvideo_generation/_legacy/core/generate.py:31
         expect: 'def adapt_annotation(row: dict, media: dict, phenomenon_anchor'
       - ref: script/subvideo_generation/_legacy/core/generate.py:207
         expect: 'def run(project_root: Path, output_dir: Path | None = None'
-      - ref: script/subvideo_generation/_legacy/core/verification.py:221
+      - ref: script/subvideo_generation/_legacy/core/verification.py:234
         expect: 'def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict'
     established: 2026-11-11
     established_by: 用户确认规则并授权新脚本；代码与合成测试核对
@@ -495,9 +495,9 @@ facts:
         expect: '| video_0002 | 174 |'
       - ref: script/subvideo_generation/_legacy/core/anchors.py:20
         expect: 'def load_anchors(document_path: Path)'
-      - ref: script/subvideo_generation/_legacy/core/generate.py:95
+      - ref: script/subvideo_generation/_legacy/core/generate.py:94
         expect: 'def plan_windows(record: dict, media: dict)'
-      - ref: script/subvideo_generation/_legacy/core/verification.py:440
+      - ref: script/subvideo_generation/_legacy/core/verification.py:454
         expect: 'def verify_clip_replay(roi_path: Path'
     established: 2026-11-11
     established_by: 用户确认未夹紧源帧与窗口策略；旧标注身份、代码和验证核对
@@ -509,13 +509,13 @@ facts:
     claim: >
       用户明确要求源视频只生成一次子视频，并授权包含固定测试集的视频以供后续测试；不重新划分，也不因此授权模型训练、测评或数据发布。用户随后要求删除原有三批并按当前规则重新编码生成一个统一批次；旧结果已删除，统一批次对 110 个来源生成 1621 个候选，其中开发集 1307 个、固定测试集 314 个，未复用旧片段。各来源原三折训练／验证归属不变；逐来源窗口、标签初值和划分与重建前规则摘要一致。源到 ROI、ROI 到片段重放及全部输出的最终完整解码检查通过；54 个候选标签初值需人工重点核验。重建完成时所有候选未人工审核、未发布；后续人审进度以独立审核记录为准，机器核验不替代画面审查或模型测评。
 
-      上述逐帧核验对应提交 8a2302b 的代码状态。后续目录重组（script/sub_video_unified 改名为 script/subvideo_generation，四个旧包迁入 script/subvideo_generation/_legacy/，pilot 底层并入 script/subvideo_generation/pilot/）与虚拟视频入口 --videos-dir 的扩展改变了生成侧代码身份（manifest 的 identity.code、loader_code 以及各 receipt 内嵌的 code 摘要均已变化），因此当前检出无法再用 --audit-only 复验本批，需要回到 8a2302b 复核；清单与片段本身未改动，1621 / 1307 / 314 等数字仍是该历史批次的记录。
+      上述逐帧核验对应提交 8a2302b 的代码状态；该批次生成时按当时的做法把代码哈希（identity.code、loader_code 及各 receipt 内嵌的 code 摘要）写进了身份记录，这是历史事实，不改写也不追认现行口径。此后批次判据改为输入身份加规则指纹（见 DF-032），因此目录重组（script/sub_video_unified 改名为 script/subvideo_generation，四个旧包迁入 script/subvideo_generation/_legacy/，pilot 底层并入 script/subvideo_generation/pilot/）与虚拟视频入口 --videos-dir 的扩展只移动代码位置，不再使现行批次失效。旧批没有规则指纹，无法按重放层复验：对它跑 --audit-only 会落到内容审计并标出 legacy_batch / rules_unverifiable，逐片核对现存字节；对它跑 --resume 会被明确拒绝。清单与片段本身未改动，1621 / 1307 / 314 等数字仍是该历史批次的记录。
     evidence:
-      - ref: script/subvideo_generation/generate.py:54
+      - ref: script/subvideo_generation/generate.py:61
         expect: 'def load_inputs(root):'
-      - ref: script/subvideo_generation/generate.py:370
+      - ref: script/subvideo_generation/generate.py:463
         expect: 'def run(project_root, output_dir=None, *, plan_only=False, resume=False):'
-      - ref: script/subvideo_generation/generate.py:469
+      - ref: script/subvideo_generation/generate.py:569
         expect: 'def audit_outputs(project_root, output_dir, *, portable=False):'
       - ref: data/sub_video/summary.json:2
         expect: '"candidate_count": 1621'
@@ -533,9 +533,9 @@ facts:
     evidence:
       - ref: script/subvideo_generation/_legacy/coverage/generate.py:21
         expect: 'def plan_windows(media):'
-      - ref: script/subvideo_generation/_legacy/coverage/generate.py:168
+      - ref: script/subvideo_generation/_legacy/coverage/generate.py:169
         expect: 'candidate_labels=None,final_labels=None'
-      - ref: script/subvideo_generation/_legacy/special/verification.py:231
+      - ref: script/subvideo_generation/_legacy/special/verification.py:244
         expect: 'def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict'
       - ref: docs/subvideo-current-logic.md:20
         expect: '每次取 20 秒并向后移动 15 秒'
@@ -621,6 +621,25 @@ facts:
     established_by: 用户确认用途边界；交接报告与项目索引、清单只读核对
     supersedes: null
     affects: [data, eval]
+
+  - id: DF-032
+    state: active
+    topic: 子视频批次身份改为输入身份加规则指纹，审计分内容层与重放层
+    claim: >
+      批次是否"同一批"只由两件事决定：输入身份（源视频、ROI、七份划分成员、标注表与锚点文档的 sha256）和规则指纹（rules.py 中 20 项生成规则的 sha256 摘要）。代码位置、注释、模块改名、新增命令行参数与 receipt 内记录的构建信息都不参与判定（虚拟视频批 --videos-dir 用同一形态的身份 schema / input_mode / inputs / rules / info，不再记录代码哈希或单独的窗口策略块，窗口策略作为规则值进入同一指纹），只作为 info 留存，供人阅读和追溯具体是哪次检出产生的；因此重构或搬迁目录不再使已完成的批次失效，只有规则值或输入字节变化才要求重建。审计分两层：内容层只核对记录与现存字节（片段是否存在、是否为普通文件、sha256 是否一致、videos/ 有无未记录文件、候选数与摘要是否一致），不解码、不依赖代码或规则身份，旧批因此仍可做内容层审计；重放层需要重跑源到 ROI 与 ROI 到片段的逐帧比对，非 4.4.2 工具链只记为 degraded 且不声称等价于已验证工具链，不得把降级环境的结果写成生产重放证据。旧批没有规则指纹，只可内容层审计，--resume 一律拒绝。内容层通过不等于人工审核通过、也不等于重放通过。
+    evidence:
+      - ref: script/subvideo_generation/rules.py:120
+        expect: 'def digest() -> str:'
+      - ref: script/subvideo_generation/generate.py:144
+        expect: 'def _compare_identity(identity):'
+      - ref: script/subvideo_generation/generate.py:597
+        expect: 'def audit_content(project_root, output_dir=None):'
+      - ref: script/subvideo_generation/_legacy/core/verification.py:77
+        expect: 'result["equivalent_to_verified_toolchain"] = pinned'
+    established: 2026-11-14
+    established_by: 用户确认以规则指纹取代代码指纹；规则登记、身份投影与内容审计实现及契约测试核对
+    supersedes: null
+    affects: [code, data, ops]
 
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
