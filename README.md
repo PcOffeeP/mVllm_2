@@ -35,6 +35,8 @@
 
 ### 环境要求
 
+> **状态说明（2026-11-14）：** 本节的环境准备与核验命令所引用的历史 `scripts/` 目录已按用户要求删除，下面的命令与脚本索引均为历史记录，**当前检出中不可执行**。当前真正在用的代码在 `script/`（子视频生成、视频审查等）与 `docs/`。
+
 本项目支持 **Python 3.11.x**。当前 Mac 用于开发、ROI/审查 UI 和轻量结果检查，通过 `uv` 调用已部署的 Mac 解释器；实际数据处理、训练、评测和模型服务在 Linux GPU 训练机上，直接使用对应的 **Conda 环境 Python**。两平台的依赖保持分开：
 
 | 平台 | 依赖来源与用途 |
@@ -49,9 +51,10 @@
 
 ### Mac：首次部署与日常运行
 
-先准备一个已经存在的 Python 3.11.x 解释器，以其绝对路径设置 `BOOTSTRAP_PYTHON`。`MAC_ENV` 是准备新建且尚不存在的环境绝对目录，不得经过符号链接或包含 `..`。从仓库根运行：
+先准备一个已经存在的 Python 3.11.x 解释器，以其绝对路径设置 `BOOTSTRAP_PYTHON`。`MAC_ENV` 是准备新建且尚不存在的环境绝对目录，不得经过符号链接或包含 `..`。本节命令所引用的脚本原位于已按用户要求删除的历史 `scripts/` 目录，仅作历史记录保留，当前检出中不可执行。从仓库根运行：
 
 ```bash
+# 历史命令（当前不可执行）：脚本原位于已删除的 scripts/ 目录
 BOOTSTRAP_PYTHON=/absolute/existing/python3.11
 MAC_ENV=/absolute/new/mac-environment
 uv --no-config run --no-project --no-python-downloads --python "$BOOTSTRAP_PYTHON" \
@@ -61,9 +64,10 @@ uv --no-config run --no-project --no-python-downloads --python "$BOOTSTRAP_PYTHO
 
 首次调用跳过项目环境发现，用已有解释器启动部署脚本；脚本再按 Mac 锁创建新环境。退出码为 0 且输出 `Deployment verified` 才表示环境检查通过。失败时保留部分环境，调查后重试选择新的目标目录。
 
-日常开发时，`MAC_PYTHON` 指向上述成功部署的 Mac 环境解释器。已部署环境可以直接设置其实际路径，无需重复创建：
+日常开发时，`MAC_PYTHON` 指向上述成功部署的 Mac 环境解释器。已部署环境可以直接设置其实际路径，无需重复创建。本节命令所引用的脚本原位于已按用户要求删除的历史 `scripts/` 目录，仅作历史记录保留，当前检出中不可执行。
 
 ```bash
+# 历史命令（当前不可执行）：脚本原位于已删除的 scripts/ 目录
 MAC_PYTHON="$MAC_ENV/bin/python"
 uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
   python -m versioning --help
@@ -86,9 +90,10 @@ uv --no-config run --no-project --no-python-downloads --python "$MAC_PYTHON" \
 git submodule update --init --recursive
 ```
 
-使用已准备好、按 Linux GPU 锁和当前 checkout 核验的 Conda Python 3.11.x 环境。可以先激活该环境，也可以全程使用其解释器绝对路径；以下写法不依赖 shell 激活状态：
+使用已准备好、按 Linux GPU 锁和当前 checkout 核验的 Conda Python 3.11.x 环境。可以先激活该环境，也可以全程使用其解释器绝对路径；以下写法不依赖 shell 激活状态。本节命令所引用的脚本原位于已按用户要求删除的历史 `scripts/` 目录，仅作历史记录保留，当前检出中不可执行。
 
 ```bash
+# 历史命令（当前不可执行）：脚本原位于已删除的 scripts/ 目录
 PYTHON=/absolute/verified/conda-environment/bin/python
 "$PYTHON" scripts/source_validate_environment.py --profile linux-gpu
 "$PYTHON" -m versioning --help
@@ -98,7 +103,7 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 
 检查覆盖锁定依赖、公共入口、媒体工具、CUDA 和训练模块来源，不下载或加载模型，也不训练或推理。Linux editable 依赖绑定代码工作区，后续使用时须保留或重新核定该来源。只有检查通过的环境才用于后续实际处理；历史环境名字不能代替核验。
 
-如果没有合格的 Conda 环境，先准备并核验，不能直接开始真实任务。现有 `source_prepare_environment.py --profile linux-gpu` 创建的是新的 venv，既不创建 Conda 环境，也不修补已有 Conda 环境；其 `--env` 不接受已存在目录。部署接口与依赖维护规则见[脚本索引](scripts/SCRIPTS.md)。
+如果没有合格的 Conda 环境，先准备并核验，不能直接开始真实任务。现有 `source_prepare_environment.py --profile linux-gpu` 创建的是新的 venv，既不创建 Conda 环境，也不修补已有 Conda 环境；其 `--env` 不接受已存在目录。部署接口与依赖维护规则见脚本索引 `scripts/SCRIPTS.md`（该文件已随历史 `scripts/` 目录按用户要求删除，当前检出中不存在）。
 
 </details>
 
@@ -115,7 +120,7 @@ PYTHON=/absolute/verified/conda-environment/bin/python
 | [versioning/](versioning) | 新体系入口及版本管理；命令见[脚本接口索引](versioning/SCRIPTS.md) |
 | [pipeline/](pipeline) | 数据处理与人工审查相关代码 |
 | [finetune/](finetune) | 训练与评测相关代码 |
-| [scripts/](scripts) | 环境等项目脚本，见[脚本索引](scripts/SCRIPTS.md) |
+| `scripts/`（已删除） | 历史环境等项目脚本目录，已按用户要求删除；原脚本索引 `scripts/SCRIPTS.md` 随之删除，当前检出中不存在 |
 | [docs/](docs) | 专题文档、任务台账与历史结果 |
 | [tests/](tests) | 项目测试 |
 

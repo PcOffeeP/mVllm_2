@@ -35,14 +35,16 @@
 
 本轮在原工作区另行核对 1,123 个唯一文件名与清单一一对应，全部文件 SHA 与清单一致，累计 122,626,625 字节；来源与 21 个 test 来源不交集。该核对只读文件身份，没有解码或观看。另运行并复跑两个子视频模块的合成测试，均为 46 passed，包含合成 H.264；不以单次耗时作为验收依据。这些检查不代表真实媒体画面或模型采样已验证。
 
-文件核对对象为原工作区 `data/subvideos/frame-aligned/manifest.json` 及其候选文件，口径为唯一候选 ID／文件名、逐文件 SHA-256、累计字节及来源与固定 test 成员交集；本次清单 SHA-256 为 `a2d4b79eddbdbe3ee2e3181d5f3326626b6f60fcdfdabdea4b5fbeb3ed712023`。复跑的合成测试命令为：
+文件核对对象为原工作区 `data/subvideos/frame-aligned/manifest.json` 及其候选文件，口径为唯一候选 ID／文件名、逐文件 SHA-256、累计字节及来源与固定 test 成员交集；本次清单 SHA-256 为 `a2d4b79eddbdbe3ee2e3181d5f3326626b6f60fcdfdabdea4b5fbeb3ed712023`。当时复跑的合成测试文件（`script/subvideo_pilot/tests/test_independent.py`、`script/subvideo_pilot/tests/test_alignment_independent.py`）已随 `script/subvideo_pilot/tests` 删除，上述 46 passed 属历史记录；原命令内容不可在当前检出重跑。当前仓库中可直接照抄运行的对应测试入口为：
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python -m pytest -p no:cacheprovider \
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
   --basetemp=/tmp/tensile-subvideo-synthetic-baseline \
-  script/subvideo_pilot/tests/test_independent.py \
-  script/subvideo_pilot/tests/test_alignment_independent.py
+  script/subvideo_generation/tests \
+  script/subvideo_review/tests
 ```
+
+对应入口分别为生成子视频的 `script/subvideo_generation/generate.py` 与视频审查的 `script/subvideo_review/server.py`。
 
 本轮文件身份与复跑日志分别保留在 `/private/tmp/tensile-subvideo-evidence-20261110/file-identity.json`、`/private/tmp/tensile-subvideo-evidence-20261110/synthetic-tests.log`，均为临时记录，不是长期归档或后续运行的稳定依赖；路径清理后不能仅凭本文恢复完整日志。
 

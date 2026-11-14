@@ -1,6 +1,6 @@
 # 子视频生成与审核规则
 
-**状态：** 本文记录当前子视频生成与审核规则。统一入口为 [generate.py](../script/sub_video_unified/generate.py)；实际批次状态见 [项目 TODO](TODO.md)。
+**状态：** 本文记录当前子视频生成与审核规则。统一入口为 [generate.py](../script/subvideo_generation/generate.py)；实际批次状态见 [项目 TODO](TODO.md)。
 
 ## 1. 先按时间确定能否生成
 

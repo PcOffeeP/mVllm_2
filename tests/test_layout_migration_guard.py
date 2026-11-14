@@ -219,7 +219,7 @@ _BACKUP_PACK_STRUCTURE = "workspace/evaluations"
 _SCAN_ROOTS = ("pipeline", "versioning", "finetune", "scripts", "delivery", "tests")
 # 已知限制：扫描后缀不含 ``.md``，文档叙述里允许保留旧路径字面量（例如
 # ``pipeline/scripts/diagnostics/SCRIPTS.md`` 中说明「失效路径」的段落）。
-# ``models/`` 前缀不在 ``scripts/verify_design_facts.py --check-doc-paths`` 的判定范围内
+# ``models/`` 前缀不在 ``scripts/verify_design_facts.py --check-doc-paths``（该脚本已随 ``scripts/`` 按用户要求删除，不再在仓库内，当前无替代校验器）的判定范围内
 # （该检查器只识别 ``docs`` / ``pipeline`` / ``finetune`` / ``versioning`` / ``tests`` /
 # ``scripts`` / ``records`` 七类仓库内前缀），因此此处唯一兜底是 code review；
 # ``docs/`` 另被 ``_SKIP_DIR_NAMES`` 整体跳过。刻意不把 ``.md`` 纳入扫描：文档
