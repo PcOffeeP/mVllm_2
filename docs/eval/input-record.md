@@ -24,7 +24,7 @@
 | `clip_frame_index` | 该帧在 L2 片段中的帧号 | L2 | 由抽帧规则给出，须落在 `[0, L2.total_frames)` |
 | `display_order` | 该帧在送模型序列中的位置 | 记录级序列 | 从 0 起连续，不跳号 |
 
-**字段更名**：旧字段名 `source_frame_index` 已更名为 `original_source_frame_index`。更名原因是旧名既可读成「源视频帧号」也可读成「source_start_frame 推导出的帧号」，正是 §3 那个陷阱的来源。更名随提交 `2baf363` 落地后，记录 schema 与 `derive_lineage`／`verify_lineage` 一律只认新名。旧名在本仓只余三处非 schema 命中：`script/five_label_eval/frames.py:17` 的模块 docstring 记着「删除旧的 ``source_frame_index``」这件事本身；`script/five_label_eval/tests/test_infer_fake.py:73` 的输入记录夹具仍以旧键写 `frames[]`；`script/subvideo_generation/pilot/anchor_evidence.py:240` 只有一个名为 `source_frame_index_is_a_claim_not_a_verified_mapping` 的布尔标记键（语义是「帧号是声明而非已验证映射」，不是该字段）。本仓当前没有任何批次记录使用旧名。读测试夹具时按旧名理解，不得与本契约的 `original_source_frame_index` 混为同一取值。
+**字段更名**：旧字段名 `source_frame_index` 已更名为 `original_source_frame_index`。更名原因是旧名既可读成「源视频帧号」也可读成「source_start_frame 推导出的帧号」，正是 §3 那个陷阱的来源。更名随提交 `2baf363` 落地后，记录 schema 与 `derive_lineage`／`verify_lineage` 一律只认新名。除本文这段更名说明自身的引用外，`script/` 下只余两处非 schema 命中：`script/five_label_eval/frames.py:17` 的模块 docstring 记着「删除旧的 ``source_frame_index``」这件事本身；`script/subvideo_generation/pilot/anchor_evidence.py:240` 只有一个名为 `source_frame_index_is_a_claim_not_a_verified_mapping` 的布尔标记键（语义是「帧号是声明而非已验证映射」，不是该字段）。本仓当前没有任何批次记录使用旧名。
 
 ## 3. 命名陷阱：`source_start_frame` 的 "source" 指 **ROI 视频**
 

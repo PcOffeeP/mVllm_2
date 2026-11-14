@@ -70,8 +70,14 @@ def record(index):
         "manifest_sha256": "b" * 64,
         "input_id": f"input-c{index:02d}",
         "media": {"width": 320, "height": 240, "fps": 30.0, "total_frames": 60},
-        "frames": [{"clip_frame_index": 0, "original_source_frame_index": 900, "roi_frame_index": 100,
-                    "kind": "declared_offset"}],
+        # 此块仅作记录结构示例，不参与断言，也不被 infer 读取（plan_predictions 不看 frames）。
+        "frames": [{"display_order": 0, "clip_frame_index": 0, "roi_frame_index": 973,
+                    "original_source_frame_index": 973,
+                    "frame_index_mapping": {
+                        "source_to_media": {"kind": "manifest_replay", "offset": 973, "reason": None},
+                        "media_to_clip": {"kind": "ffmpeg_select_nth_decoded_frame", "offset": None},
+                        "roi_to_source": {"kind": "offset", "offset": 0,
+                                          "method": "source_replay_mapping", "reason": None}}}],
     }
 
 
