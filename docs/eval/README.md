@@ -25,7 +25,7 @@
 | 字段名、取值字面量、判定逻辑 | `script/five_label_eval/score.py`：`VERSION` 12、`SINGLES` 13–17、`MULTIS` 18–19、`FIELDS` 20、`allowed()` 112–113、`truth_cell()` 116–121、`_extract()` 205–218、`field_metrics()` 359–410 | `python -m pytest script/five_label_eval/tests`，并核对 `VERSION` 已升号 |
 | prompt 文本 | `script/five_label_eval/prompts/five_label_v1.txt` 正文，以及 `prompt_id`（文件字节摘要随之改变）；改一个字即新版本号 | 重算 `prompt@sha256:` 并对比批次记录的 `prompt_id` |
 | 审核工作台取值 | `script/subvideo_review/server.py:22–28` 的 `OPTIONS`（单值三类 + 两组多选叶项） | 工作台 `validate_labels` 拒绝越界值；改后重跑 `script/subvideo_review/tests` |
-| split 管线归一别名 | `script/data_split/generate.py:35–37` 值域、`:46–47` 的 `ALIASES`（把单值字段的 `无法判断` 归一为旧单值字面量） | 改后重跑 `script/data_split/tests`；别名与评分器取值不一致会让输出静默判 `invalid` |
+| split 管线归一别名 | `script/data_split/generate.py:35–37` 值域、`:46–49` 的 `ALIASES`（把单值字段的历史字面量 `无法确定` 与 `无法识别` 归一为 `无法判断`；`无法识别` 仅见于 `断裂模式`） | 改后重跑 `script/data_split/tests`；别名与评分器取值不一致会让输出静默判 `invalid` |
 | CSV 值域 | `data/annotation-table-full.csv` 的 `断裂状态`／`断裂模式`／`断裂位置`／`异常_*`／`现象_*` 列 | 逐列取值与 `allowed()` 比对，越界值单独列出 |
 | 事实登记 | `docs/facts.yaml` 中与本契约相关的条目（如 DF-027、DF-028 的源→ROI 同序与重放结论） | YAML 解析通过、条目 id 唯一、`state` 与实际证据一致（本仓库当前无专门校验脚本，至少做这两项检查）；`state` 变更时同步本集引用的结论 |
 
