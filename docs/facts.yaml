@@ -803,15 +803,15 @@ facts:
     claim: >
       L1→L0（`roi_to_source`）的原始源帧号只在三级证据之一成立时填写，判定顺序固定为「`explicit_pairs`（`manifest_anchors`）→ 来源级三条件成立的 `source_replay_mapping` → 都不成立的 `unverified`」，任一更高级成立即停止、不再检查更低级，都不成立时帧号留 `null`，不猜、不就近取整。**代码已实现（提交 `2baf363`）**：`script/five_label_eval/frames.py` 的 `ROI_TO_SOURCE_METHODS` 把三档固定为这三个 `method` 取值，`derive_lineage` 按上述优先级判定。**实测来自 2026-11-14 全量 `--coverage-scan`**：1,621 条候选里走优先级 1 `manifest_anchors` 的 579 条（35.72%）、走优先级 2 `source_replay_mapping` 的 1,042 条（64.28%）、`unverified` 0 条（0.00%），`frame_index_coverage = 1.0000`。三档计数、占比与覆盖率都是那一次全量扫描的结果，清单批次或判据变更后须重跑，不能当作跨批次的常数。
     evidence:
-      - ref: docs/eval/input-record.md:86
+      - ref: docs/eval/input-record.md:88
         expect: '| 1 | `roi_to_source.kind = explicit_pairs` |'
-      - ref: docs/eval/input-record.md:122
-        expect: '| `manifest_anchors`（优先级 1） | 579 | 35.72% |'
-      - ref: docs/eval/input-record.md:123
-        expect: '| `source_replay_mapping`（优先级 2） | 1,042 | 64.28% |'
       - ref: docs/eval/input-record.md:124
-        expect: '| `unverified`（三级都不成立） | 0 | 0.00% |'
+        expect: '| `manifest_anchors`（优先级 1） | 579 | 35.72% |'
       - ref: docs/eval/input-record.md:125
+        expect: '| `source_replay_mapping`（优先级 2） | 1,042 | 64.28% |'
+      - ref: docs/eval/input-record.md:126
+        expect: '| `unverified`（三级都不成立） | 0 | 0.00% |'
+      - ref: docs/eval/input-record.md:127
         expect: '| `frame_index_coverage` | 1.0000 | — |'
       - ref: script/five_label_eval/frames.py:40
         expect: 'ROI_TO_SOURCE_METHODS = ("manifest_anchors", "source_replay_mapping", "unverified")'
@@ -826,13 +826,13 @@ facts:
     claim: >
       批级 `lineage_summary` 的 schema 固定为 `five-label-lineage-summary/1`，统计项是各 `method` 的计数与占比、以及 `unverified` 行的失败条件 token 直方图（一行多个 token 各计一次，是 token 计数而不是自由文本 `reason`）。**代码已实现（提交 `2baf363`）**：`SUMMARY_SCHEMA` 与 `COVERAGE_WARNING_RATIO = 0.05` 在 `script/five_label_eval/frames.py` 定义；`unverified` 占比**超过** 5%（恰好 5% 仍算可接受）时打印醒目警告 `!!! {warning_text}` 并置 `warning`／`warning_text`，但**不改退出码**，进程仍返回 0。口径上 `--coverage-scan` 是全量口径（探测全部来源），抽帧／推理模式的 summary 只含本批来源（未涉及来源的 `l0_decoded`／`l1_decoded` 保持缺省，c2 判不成立）；两份产物**同一 schema 但没有 scope 标记字段**，不得并排比较，也不得把抽帧模式的 summary 当全批覆盖率。**实测来自 2026-11-14 全量 `--coverage-scan`**：那次 `unverified` 为 0 条（0.00%），低于 5% 阈值，故未触发警告；抽帧／推理模式的 summary 与之不可比，该阈值下的真实警告输出尚无实测样本。
     evidence:
-      - ref: docs/eval/input-record.md:139
+      - ref: docs/eval/input-record.md:141
         expect: 'schema 固定为 `five-label-lineage-summary/1`'
-      - ref: docs/eval/input-record.md:150
+      - ref: docs/eval/input-record.md:152
         expect: '**告警不改退出码**'
-      - ref: docs/eval/input-record.md:151
+      - ref: docs/eval/input-record.md:153
         expect: '`--coverage-scan` 是全量口径'
-      - ref: docs/eval/input-record.md:158
+      - ref: docs/eval/input-record.md:160
         expect: '两份产物**同一 schema 但没有 scope 标记字段**'
       - ref: script/five_label_eval/frames.py:44
         expect: 'SUMMARY_SCHEMA = "five-label-lineage-summary/1"'
@@ -849,11 +849,11 @@ facts:
     claim: >
       来源级证据（优先级 2 的 `source_replay_mapping`）只看声明与帧数，不看媒体字节，因此在 ROI 视频被单独重新生成时会静默错位。**失效场景**：ROI 视频换编码器、改裁剪参数或变帧率源改时间基，而 `sources[]` 的 replay 记录没有重算时，L0 与 L1 的帧数可能仍相等、`status` 仍是 `verified_frame_preserving_replay`、`mapping` 常量没变，于是 c1、c2 全真、c3 也仍成立（**代码已实现的判据**，提交 `2baf363` 的 `frames.py`），但帧号已经错位：同一个 `roi_frame` 在重生成后的 ROI 里指向另一张画面，该来源下的候选会静默产出错位的 `original_source_frame_index`，不报错、不降级、不告警；`manifest_anchors` 候选自带显式帧对自证，不受影响。**`--coverage-scan` 只读帧数，不能替代字节级摘要校验**——帧数相等只证明长度对得上，不证明内容对得上；2026-11-14 的全量扫描正是这种只读口径。**触发条件（必须执行）**：ROI 重生成后必须重算 `sources[]` 的 replay 记录并重新绑定 `evidence_sha256`；未重算前该来源下的候选不得使用优先级 2 的证据，`original_source_frame_index` 须退回 `null`。
     evidence:
-      - ref: docs/eval/input-record.md:182
+      - ref: docs/eval/input-record.md:184
         expect: '此时 L0 与 L1 的**帧数可能仍然相等**'
-      - ref: docs/eval/input-record.md:186
-        expect: '`--coverage-scan` 只读帧数，**不能替代字节级摘要校验**'
       - ref: docs/eval/input-record.md:188
+        expect: '`--coverage-scan` 只读帧数，**不能替代字节级摘要校验**'
+      - ref: docs/eval/input-record.md:190
         expect: '触发条件（必须执行）：**ROI 重生成后必须重算 `sources[]` 的 replay 记录，并重新绑定 `evidence_sha256`。**'
     established: 2026-11-14
     established_by: 文档核对（docs/eval/input-record.md §11）+ 提交 2baf363 代码核对（script/five_label_eval/frames.py 的来源级判据）+ 2026-11-14 全量 `--coverage-scan` 的只读口径核对
@@ -866,16 +866,37 @@ facts:
     claim: >
       `frames[].frame_index_mapping` 固定三个节点，名称与实际方向不完全一致。**代码已实现（提交 `2baf363`）**：`media_to_clip` 是 **L2→L3** 的抽帧规则常量（`kind = ffmpeg_select_nth_decoded_frame`、`offset = None`），不做帧号换算；`source_to_media` 实际是 **L2→L1**，记加性偏移 `offset = source_start_frame`，其名字里的 "source" 指片段自身的来源媒体即 L1 ROI 视频，**不是原始源视频**；`roi_to_source` 才是 **L1→L0**，`kind`／`method` 由三级证据给出、成立时 `offset = 0`。`source_to_media` 这个命名是历史遗留、方向易误读（`source_start_frame` 的 "source" 是同一个陷阱，取值一律以 `docs/eval/input-record.md` §10 的表为准），代码同一处留有命名陷阱注释。重命名是已确认的待办方向，已在 `docs/TODO.md` 登记为 7. MAPPING-NODE-RENAME；落地前不得据名字反推方向。**实测**：2026-11-14 全量 `--coverage-scan` 的档位分布（579／1,042／0，见 DF-038）与该方向不冲突——扫描按 `clip_frame_index = 0` 只判证据级别，不做跨层帧号换算，故不能反验证方向；方向本身以代码与该表为准。
     evidence:
-      - ref: docs/eval/input-record.md:168
+      - ref: docs/eval/input-record.md:170
         expect: '| `media_to_clip` | L2 → L3 |'
-      - ref: docs/eval/input-record.md:169
+      - ref: docs/eval/input-record.md:171
         expect: '| `source_to_media` | **L2 → L1** |'
-      - ref: docs/eval/input-record.md:172
+      - ref: docs/eval/input-record.md:174
         expect: '**`source_to_media` 这个名字是历史遗留、方向易误读，读取时以本表为准。**'
       - ref: script/five_label_eval/frames.py:134
         expect: '命名陷阱（naming trap）'
     established: 2026-11-14
     established_by: 文档核对（docs/eval/input-record.md §10）+ 提交 2baf363 代码核对（script/five_label_eval/frames.py 的节点常量与命名陷阱注释）+ 2026-11-14 全量 `--coverage-scan` 实测
+    supersedes: null
+    affects: [eval, contract, code]
+
+  - id: DF-042
+    state: active
+    topic: '`kind` 只存在于 frame_index_mapping 三节点，帧条目与记录级判定的边界'
+    claim: >
+      `kind` 只出现在 `frames[].frame_index_mapping` 的三个节点上（`media_to_clip`／`source_to_media`／`roi_to_source`），**帧条目本身没有 `kind` 字段**：三节点由 `extract_record` 一次装配（`frames.py:677-679`），`media_to_clip` 取常量 `MEDIA_TO_CLIP`（`kind = ffmpeg_select_nth_decoded_frame`，`frames.py:53`），`source_to_media` 与 `roi_to_source` 由 `derive_lineage` 给出（`frames.py:137-138`／`frames.py:116-118`）。`unverified` 是**记录级**判定，不是帧级：`verify_lineage` 用记录级 `verification.method == "unverified"` 决定整条记录走哪套守卫（`frames.py:394`），再逐帧要求 `roi_to_source.kind`／`method` 与该记录级 method 配对（`frames.py:536-547`）。因此同一条记录内各帧 `roi_to_source.kind`／`method` **必然同值**——`verification` 只由候选决定、不随帧号变化（`frames.py:680-683`），且节点形态与记录级 method 不配对即进 `verify_lineage` 的 reasons；「同记录内不同帧取不同 `kind`」不成立。
+    evidence:
+      - ref: script/five_label_eval/frames.py:53
+        expect: 'MEDIA_TO_CLIP = {"kind": "ffmpeg_select_nth_decoded_frame"'
+      - ref: script/five_label_eval/frames.py:677
+        expect: '"frame_index_mapping": {"source_to_media": lineage["source_to_media"],'
+      - ref: script/five_label_eval/frames.py:138
+        expect: '"roi_to_source": {"kind": kind, "offset": 0, "method": method, "reason": None},'
+      - ref: script/five_label_eval/frames.py:394
+        expect: 'unverified = method == "unverified"'
+      - ref: script/five_label_eval/frames.py:680
+        expect: '候选级证据：verdict_id/method/evidence_sha256/checked_at 只取决于候选，不取决于具体帧号。'
+    established: 2026-11-14
+    established_by: 提交 2baf363 代码核对（script/five_label_eval/frames.py 的节点装配、记录级 method 判定与节点自证守卫）+ 文档核对（docs/eval/input-record.md §2／§4／§10）
     supersedes: null
     affects: [eval, contract, code]
 
