@@ -331,7 +331,7 @@ facts:
     state: active
     topic: 本轮人工标注基准与冻结 v4.1 的适用边界
     claim: >
-      本轮人工标注以 `docs/label.md` 为准，采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；状态为未断裂、发生断裂、已断裂、无法判断，不含临界未断裂。单值三类（状态、模式、位置）的不确定取值现行统一为「无法判断」；历史字面量「无法确定」（状态、模式、位置三列各自的旧值）与「无法识别」（仅断裂模式）除导入兼容与历史语境外，都不作为现行取值。**待同步材料**（旧术语残留，待改写为「无法判断」）：① 尚未同步的断裂位置校准参考图文（`docs/label-position-calibration.md`、`docs/label-calibration/`），其中只有「无法确定」，且只出现在「断裂位置」维度（`grep -c 无法识别` 三份材料实测为 0／0／0）；② `docs/research/virtual-video-provenance.md`：:23 把「无法确定」列为断裂状态的现行枚举、:24 称其为「新 `无法确定`」，仍以旧词书写（见 DF-033 同名清单项）。相反，「无法识别」在本仓文档与数据中已无残留位置——文档里只作为历史兼容的引用字面量出现——它只存在于导入兼容代码（`script/data_split/generate.py:46–49` 的 `ALIASES`、`script/annotation/review_annotation.js:94–95`、`script/roi/label_fields.py:69`、`script/subvideo_generation/_legacy/core/generate.py:31` 等）与测试夹具中；完整清单见 DF-033 与 `docs/eval/output-contract.md` §5.1。导入兼容与历史语境的做法是：标注页面登记这些旧写法、按「无法判断」校验并保留原值供追溯，导出与恢复草稿不改写，需要更新时由用户手动改选。旧术语时代生成的**清单与审核记录**保留原字节、不改写（如 `data/sub_video/manifest.json` 内仍有 461 处「无法确定」）；仓库内**标注表已按新术语就地重写字节**（`data/annotation-table-full.csv`，旧字节 SHA-256 `9970d259…` → 当前 `2f046b06…`），旧值仅以 SHA-256 留痕、当前工作树不保留旧文本（旧文本仍可从 Git 历史取回）。位置采用视频相对位置分类，依次判断夹持根部、明显偏向夹持端及其余可判定位置，不表示测得精确工程标距；典型样例校准及已有标注影响核对待完成。现象包括伸长、颈缩、开裂、界面分离、断后脱夹，可多选；断后脱夹不自动判为未夹紧。异常和现象逐项记录「是」「否」「无法判断」或未标注空白；三项异常均为「否」表示无可见异常。未断裂或未夹紧时，模式和位置均填写固定文字值「无」，与未标注及不确定取值分开；未夹紧时 CSV 的「断裂时间点」也填「无」；该字段用于人工标注，不作为模型微调的预测标签。该基准仅规定人工标注；冻结 v4.1 的四字段、五状态和 null 规则仅适用于旧链路，新训练／业务契约及数据接入尚未实施。本轮五类评分的 JSON 编码及部分统计口径已确认，见 DF-030。本机源视频标注页面支持按上述固定组合填写并导出多列 CSV；它不发布数据或接入训练。
+      本轮人工标注以 `docs/label.md` 为准，采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；状态为未断裂、发生断裂、已断裂、无法判断，不含临界未断裂。单值三类（状态、模式、位置）的不确定取值现行统一为「无法判断」；历史字面量「无法确定」（状态、模式、位置三列各自的旧值）与「无法识别」（仅断裂模式）除导入兼容与历史语境外，都不作为现行取值。**已同步材料**：断裂位置校准三件材料（`docs/label-position-calibration.md`、`docs/label-calibration/README.md`、`docs/label-calibration/cases.csv`）与 `docs/research/virtual-video-provenance.md` 中作为标签取值出现的旧词，已于本次文档清理改写为「无法判断」；前者的旧词只出现在「断裂位置」维度（`grep -c 无法识别` 三份材料实测为 0／0／0），后者的 :23 断裂状态枚举与 :24 的「新 `无法判断`」均按现行取值书写（见 DF-033 同名条目）；「无法确定」今仅在导入兼容代码与历史语境（历史字面量说明、旧清单与审核记录、旧批次记录）中保留。相反，「无法识别」在本仓文档与数据中已无残留位置——文档里只作为历史兼容的引用字面量出现——它只存在于导入兼容代码（`script/data_split/generate.py:46–49` 的 `ALIASES`、`script/annotation/review_annotation.js:94–95`、`script/roi/label_fields.py:69`、`script/subvideo_generation/_legacy/core/generate.py:31` 等）与测试夹具中；完整清单见 DF-033 与 `docs/eval/output-contract.md` §5.1。导入兼容与历史语境的做法是：标注页面登记这些旧写法、按「无法判断」校验并保留原值供追溯，导出与恢复草稿不改写，需要更新时由用户手动改选。旧术语时代生成的**清单与审核记录**保留原字节、不改写（如 `data/sub_video/manifest.json` 内仍有 461 处「无法确定」）；仓库内**标注表已按新术语就地重写字节**（`data/annotation-table-full.csv`，旧字节 SHA-256 `9970d259…` → 当前 `2f046b06…`），旧值仅以 SHA-256 留痕、当前工作树不保留旧文本（旧文本仍可从 Git 历史取回）。位置采用视频相对位置分类，依次判断夹持根部、明显偏向夹持端及其余可判定位置，不表示测得精确工程标距；典型样例校准及已有标注影响核对待完成。现象包括伸长、颈缩、开裂、界面分离、断后脱夹，可多选；断后脱夹不自动判为未夹紧。异常和现象逐项记录「是」「否」「无法判断」或未标注空白；三项异常均为「否」表示无可见异常。未断裂或未夹紧时，模式和位置均填写固定文字值「无」，与未标注及不确定取值分开；未夹紧时 CSV 的「断裂时间点」也填「无」；该字段用于人工标注，不作为模型微调的预测标签。该基准仅规定人工标注；冻结 v4.1 的四字段、五状态和 null 规则仅适用于旧链路，新训练／业务契约及数据接入尚未实施。本轮五类评分的 JSON 编码及部分统计口径已确认，见 DF-030。本机源视频标注页面支持按上述固定组合填写并导出多列 CSV；它不发布数据或接入训练。
     evidence:
       - ref: docs/label.md:54
         expect: 是视频视觉分类，不表示已测得精确工程标距
@@ -352,7 +352,7 @@ facts:
       - ref: docs/label.md:90
         expect: '现行不确定取值为“无法判断”。标注页面登记四组历史写法，均按“无法判断”校验并保留原值供追溯'
       - ref: docs/label-position-calibration.md:35
-        expect: '覆盖 `断裂位置` 的 `夹持根部`、`标距外非根部`、`标距内`、`无法确定` 四类'
+        expect: '覆盖 `断裂位置` 的 `夹持根部`、`标距外非根部`、`标距内`、`无法判断` 四类'
       - ref: docs/label.md:82
         expect: 不作为模型微调的预测标签
       - ref: docs/TODO.md:11
@@ -366,7 +366,7 @@ facts:
       - ref: docs/split/data-split-result.md:9
         expect: 当前该文件的 SHA-256 为
     established: 2026-11-05
-    established_by: 用户确认的人工标注基准；2026-11-14 按现行统一术语订正不确定取值的描述（历史「无法确定」改为现行「无法判断」；「无法确定」除导入兼容与历史语境外，还残留在待同步的断裂位置校准图文与 virtual-video-provenance 的两处；「无法识别」已无文档与数据残留，只见于导入兼容代码（`ALIASES`、标注与审核页面显示层映射、归档生成旧路径的 `LEGACY_UNCERTAIN` 等，完整清单见 DF-033 与 `docs/eval/output-contract.md` §5.1）与测试夹具），并逐条复核 evidence 行号与 expect。
+    established_by: 用户确认的人工标注基准；2026-11-14 按现行统一术语订正不确定取值的描述（历史「无法确定」改为现行「无法判断」）；文档清理时同步订正断裂位置校准图文与 virtual-video-provenance 的正文与样例标签取值，「无法确定」今只在导入兼容代码与历史语境中保留；「无法识别」已无文档与数据残留，只见于导入兼容代码（`ALIASES`、标注与审核页面显示层映射、归档生成旧路径的 `LEGACY_UNCERTAIN` 等，完整清单见 DF-033 与 `docs/eval/output-contract.md` §5.1）与测试夹具。evidence 行号与 expect 已逐条复核。
     supersedes: null
     affects: [data, eval]
   - id: DF-019
@@ -674,12 +674,12 @@ facts:
     state: active
     topic: 不确定取值统一为「无法判断」与历史字面量的处理边界
     claim: >
-      单值三类（断裂状态、断裂模式、断裂位置）与多选两组叶项（异常情况三项、断裂现象五项）的不确定取值统一为「无法判断」。历史字面量「无法确定」（状态、模式、位置三列）与「无法识别」（仅断裂模式）除导入兼容与历史语境外，都不作为现行取值。**待同步材料**（旧术语残留，待改写为「无法判断」）：① 尚未同步的断裂位置校准参考图文（`docs/label-position-calibration.md`、`docs/label-calibration/`），其中只有「无法确定」，且只出现在「断裂位置」维度（`grep -c 无法识别` 三份材料实测为 0／0／0）；② `docs/research/virtual-video-provenance.md`：:23 把「无法确定」列为断裂状态的现行枚举、:24 称其为「新 `无法确定`」。相反，「无法识别」在本仓文档与数据中已无残留位置——文档里只作为历史兼容的引用字面量出现——它只存在于导入兼容代码与测试夹具中。导入兼容与历史语境的做法是：split 管线把两者归一为「无法判断」（`ALIASES` 见 `script/data_split/generate.py:46–49`；同文件第 50 行 `UNCERTAIN` 也仍含「无法确定」），标注与审核页面的旧词只在显示层映射、已存字节不改写（`script/roi/label_fields.py:65` 起的 `_LEGACY_DISPLAY`、`script/subvideo_generation/_legacy/core/generate.py:31` 的 `LEGACY_UNCERTAIN = ("无法确定", "无法识别")`）。其余兼优点不在此穷举，见 `docs/eval/output-contract.md` §5.1。旧术语时代生成的**清单与审核记录**保留原字节、不改写（如 `data/sub_video/manifest.json` 内仍有 461 处「无法确定」）；仓库内**标注表已按新术语就地重写字节**（`data/annotation-table-full.csv`，旧字节 SHA-256 `9970d259…` → 当前 `2f046b06…`），旧值仅以 SHA-256 留痕、当前工作树不保留旧文本（旧文本仍可从 Git 历史取回）。评分器不做历史字面量归一化：`allowed()` 只接受「无法判断」，历史值作人工标签时由 `truth_cell()` 判 `invalid`；代码里仍有两处写着旧词——349 行是断言禁令：`cell["evidence"]` 为 insufficient／unknown 时，`cell["label"]` 只放过 `None`／空串／「无法确定」／「无法判断」，写出其余确定值一律抛 `InputError`；被放过的「无法确定」仍由 `truth_cell()`（348 行）判 `invalid`。另一处是预测侧 `explicit_uncertain` 统计（375–376 行）在判断里把「无法确定」与「无法判断」并列。但 375 行受 `pstatus == "valid"` 约束，而 `allowed()` 已不含「无法确定」，写旧词的预测先被判 `invalid`（`pstatus != "valid"`），故**现行值域下该分支的「无法确定」一半不可达，实际只有「无法判断」计入 `explicit_uncertain`**（`docs/eval/output-contract.md` 第 92 行已写明「现行值域下该分支不可达」）。这两处都不把旧词转成合法取值。消费方须与新术语同步，否则取值被判 `invalid`。
+      单值三类（断裂状态、断裂模式、断裂位置）与多选两组叶项（异常情况三项、断裂现象五项）的不确定取值统一为「无法判断」。历史字面量「无法确定」（状态、模式、位置三列）与「无法识别」（仅断裂模式）除导入兼容与历史语境外，都不作为现行取值。**已同步材料**：断裂位置校准三件材料（`docs/label-position-calibration.md`、`docs/label-calibration/README.md`、`docs/label-calibration/cases.csv`）与 `docs/research/virtual-video-provenance.md` 中作为标签取值出现的旧词，已于本次文档清理改写为「无法判断」；前者的旧词只出现在「断裂位置」维度（`grep -c 无法识别` 三份材料实测为 0／0／0），后者的 :23 断裂状态枚举与 :24 的「新 `无法判断`」均按现行取值书写；「无法确定」今仅在导入兼容代码与历史语境（历史字面量说明、旧清单与审核记录、旧批次记录）中保留。相反，「无法识别」在本仓文档与数据中已无残留位置——文档里只作为历史兼容的引用字面量出现——它只存在于导入兼容代码与测试夹具中。导入兼容与历史语境的做法是：split 管线把两者归一为「无法判断」（`ALIASES` 见 `script/data_split/generate.py:46–49`；同文件第 50 行 `UNCERTAIN` 也仍含「无法确定」），标注与审核页面的旧词只在显示层映射、已存字节不改写（`script/roi/label_fields.py:65` 起的 `_LEGACY_DISPLAY`、`script/subvideo_generation/_legacy/core/generate.py:31` 的 `LEGACY_UNCERTAIN = ("无法确定", "无法识别")`）。其余兼优点不在此穷举，见 `docs/eval/output-contract.md` §5.1。旧术语时代生成的**清单与审核记录**保留原字节、不改写（如 `data/sub_video/manifest.json` 内仍有 461 处「无法确定」）；仓库内**标注表已按新术语就地重写字节**（`data/annotation-table-full.csv`，旧字节 SHA-256 `9970d259…` → 当前 `2f046b06…`），旧值仅以 SHA-256 留痕、当前工作树不保留旧文本（旧文本仍可从 Git 历史取回）。评分器不做历史字面量归一化：`allowed()` 只接受「无法判断」，历史值作人工标签时由 `truth_cell()` 判 `invalid`；代码里仍有两处写着旧词——349 行是断言禁令：`cell["evidence"]` 为 insufficient／unknown 时，`cell["label"]` 只放过 `None`／空串／「无法确定」／「无法判断」，写出其余确定值一律抛 `InputError`；被放过的「无法确定」仍由 `truth_cell()`（348 行）判 `invalid`。另一处是预测侧 `explicit_uncertain` 统计（375–376 行）在判断里把「无法确定」与「无法判断」并列。但 375 行受 `pstatus == "valid"` 约束，而 `allowed()` 已不含「无法确定」，写旧词的预测先被判 `invalid`（`pstatus != "valid"`），故**现行值域下该分支的「无法确定」一半不可达，实际只有「无法判断」计入 `explicit_uncertain`**（`docs/eval/output-contract.md` 第 92 行已写明「现行值域下该分支不可达」）。这两处都不把旧词转成合法取值。消费方须与新术语同步，否则取值被判 `invalid`。
     evidence:
       - ref: docs/label.md:90
         expect: '现行不确定取值为“无法判断”'
       - ref: docs/label-position-calibration.md:35
-        expect: '覆盖 `断裂位置` 的 `夹持根部`、`标距外非根部`、`标距内`、`无法确定` 四类'
+        expect: '覆盖 `断裂位置` 的 `夹持根部`、`标距外非根部`、`标距内`、`无法判断` 四类'
       - ref: script/five_label_eval/score.py:14
         expect: '"断裂状态": ("未断裂", "发生断裂", "已断裂", "无法判断")'
       - ref: script/five_label_eval/score.py:121
@@ -705,9 +705,9 @@ facts:
       - ref: script/subvideo_generation/_legacy/core/generate.py:31
         expect: 'LEGACY_UNCERTAIN = ("无法确定", "无法识别")'
       - ref: docs/research/virtual-video-provenance.md:23
-        expect: 已断或无法确定须看该片段画面
+        expect: 已断或无法判断须看该片段画面
       - ref: docs/research/virtual-video-provenance.md:24
-        expect: 与新 `无法确定` 的字面相近也不能跳过新证据检查
+        expect: 与新 `无法判断` 的字面相近也不能跳过新证据检查
       - ref: script/subvideo_review/static/app.js:10
         expect: 'const legacyUncertain = new Map([["无法确定", "无法判断"], ["无法识别", "无法判断"]]);'
       - ref: data/annotation-table-full.csv:2
@@ -765,7 +765,7 @@ facts:
     state: active
     topic: MiniCPM 路径下单请求帧数不是自由参数
     claim: >
-      MiniCPM 评价链路下 processor 硬性要求 `max_frames == 8`：调用 `configure_processor_max_frames(processor)`，`max_frames != 8` 时抛 `ValueError("MiniCPM-V contract requires max_frames=8")`。因此单请求帧数不是自由参数，不得作为可调项，也不得写进 `input_id`——否则每调整一次就换一批 `input_id`，历史批次无法比较；帧数只能经 processor 侧契约变更（另立 `input_id` 版本）来改。
+      MiniCPM 评价链路下 processor 硬性要求 `max_frames == 8`：调用 `configure_processor_max_frames(processor)`，`max_frames != 8` 时抛 `ValueError("MiniCPM-V contract requires max_frames=8")`。该约束来自旧实现（`mVllm_2`）的 processor 配置，**不是本仓现行代码约束**：本仓 `script/` 尚未实现该 processor 配置（`configure_processor_max_frames` 与 `max_frames` 在 `script/` 内无匹配），故本仓代码不校验也不强加该条件，下列推论只约束沿用该 processor 配置的链路。因此单请求帧数不是自由参数，不得作为可调项，也不得写进 `input_id`——否则每调整一次就换一批 `input_id`，历史批次无法比较；帧数只能经 processor 侧契约变更（另立 `input_id` 版本）来改。
     evidence:
       - ref: docs/eval/inference-entry.md:79
         expect: '`max_frames != 8` 时抛 `ValueError("MiniCPM-V contract requires max_frames=8")`'
