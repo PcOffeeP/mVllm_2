@@ -1,0 +1,28 @@
+{
+  "schema": "five-label-eval-paths/1",
+  "profiles": {
+    "mac": {
+      "source_videos": "~/AgentPlayground/active-projects/TensileAgent-Finetune/data/videos",
+      "roi_videos": "~/AgentPlayground/active-projects/TensileAgent-Finetune/data/roi/videos",
+      "sub_video_dir": "data/sub_video",
+      "sub_video_manifest": "data/sub_video/manifest.json",
+      "sub_video_videos": "~/AgentPlayground/active-projects/TensileAgent-Finetune/data/sub_video/videos",
+      "review_store": "~/AgentPlayground/active-projects/TensileAgent-Finetune/data/subvideo-review/reviews.json",
+      "prompts_dir": "script/five_label_eval/prompts",
+      "output_dir": "/private/tmp/tensile-fake-slice/output",
+      "score_output_dir": "/private/tmp/tensile-fake-slice/score"
+    },
+    "gpu-train": {
+      "note": "训练机路径迁移时填",
+      "source_videos": "TODO_MIGRATION_FILL:source_videos",
+      "roi_videos": "TODO_MIGRATION_FILL:roi_videos",
+      "sub_video_dir": "TODO_MIGRATION_FILL:sub_video_dir",
+      "sub_video_manifest": "TODO_MIGRATION_FILL:sub_video_manifest",
+      "sub_video_videos": "TODO_MIGRATION_FILL:sub_video_videos",
+      "review_store": "TODO_MIGRATION_FILL:review_store",
+      "prompts_dir": "TODO_MIGRATION_FILL:prompts_dir",
+      "output_dir": "TODO_MIGRATION_FILL:output_dir",
+      "score_output_dir": "TODO_MIGRATION_FILL:score_output_dir"
+    }
+  }
+}
