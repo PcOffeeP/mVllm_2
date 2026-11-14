@@ -33,9 +33,9 @@ LEAF_FIELDS = ("断裂状态", "断裂模式", "断裂位置",
 # building them from `score.py` would compare the scorer with itself and hide changes.
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "five_label_v1.txt"
 PROMPT_SINGLE_VALUES = {
-    "断裂状态": ["未断裂", "发生断裂", "已断裂", "无法确定"],
-    "断裂模式": ["脆性断裂", "韧性断裂", "半脆半韧断裂", "无法确定", "无"],
-    "断裂位置": ["标距内", "标距外非根部", "夹持根部", "无法确定", "无"],
+    "断裂状态": ["未断裂", "发生断裂", "已断裂", "无法判断"],
+    "断裂模式": ["脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断", "无"],
+    "断裂位置": ["标距内", "标距外非根部", "夹持根部", "无法判断", "无"],
 }
 PROMPT_MULTI_ITEMS = {
     "异常情况": ["未夹紧", "视频异常", "爆炸性断裂"],
@@ -401,8 +401,8 @@ def test_prompt_literals_should_match_scorer_vocabulary():
     for field, expected in PROMPT_SINGLE_VALUES.items():
         assert singles[field] == expected, f"prompt「{field}」取值与字面量期望不一致：{singles[field]}"
         assert singles[field] == list(SINGLES[field]), f"prompt「{field}」取值与 score.SINGLES 不一致：{singles[field]}"
-        assert "无法确定" in singles[field], f"prompt「{field}」缺少单值不确定值「无法确定」"
-        assert "无法判断" not in singles[field], f"prompt「{field}」把多选不确定值「无法判断」写成了单值取值"
+        assert "无法判断" in singles[field], f"prompt「{field}」缺少单值不确定值「无法判断」"
+        assert "无法确定" not in singles[field], f"prompt「{field}」不应再出现历史字面量「无法确定」"
     for group, expected in PROMPT_MULTI_ITEMS.items():
         assert multis[group] == expected, f"prompt「{group}」子项与字面量期望不一致：{multis[group]}"
         assert multis[group] == list(MULTIS[group]), f"prompt「{group}」子项与 score.MULTIS 不一致：{multis[group]}"
