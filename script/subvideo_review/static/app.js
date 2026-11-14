@@ -1,4 +1,4 @@
-/* Human-only decisions. Source references never populate the label controls. */
+/* Human-only decisions. Source labels remain references; candidate labels prefill drafts only. */
 "use strict";
 (() => {
   const byId = (id) => document.getElementById(id);
@@ -151,6 +151,7 @@
     state.dirty = false;
     byId("view-source").disabled = true;
     setControls();
+    byId("prefill-notice").hidden = true;
     byId("review-note").value = "";
     byId("decision-reason").value = "";
     byId("clip-title").textContent = `原视频 · ${source.source_id}`;
@@ -177,6 +178,12 @@
     });
     return labels;
   }
+  const prefillSource = (candidate) => candidate.candidate_labels || candidate.candidate_reference || {};
+  const hasAnyPrefill = (labels) => names.some((name) => {
+    const parts = name.split(".");
+    const value = parts.length === 1 ? labels[name] : labels[parts[0]]?.[parts[1]];
+    return typeof value === "string" && value.trim() !== "";
+  });
   function setControls(labels = {}) {
     names.forEach((name) => {
       const parts = name.split(".");
@@ -218,6 +225,10 @@
     state.latest = null;
     state.dirty = false;
     setControls();
+    const prefill = prefillSource(candidate);
+    setControls(prefill);
+    byId("prefill-notice").textContent = "已按生成标签预填，确认前为草稿；请逐项核对修改，空白表示未判断。";
+    byId("prefill-notice").hidden = !hasAnyPrefill(prefill);
     byId("review-note").value = "";
     byId("decision-reason").value = "";
     byId("clip-title").textContent = candidate.candidate_id;
@@ -240,6 +251,7 @@
       state.latest = review.latest;
       if (review.latest) {
         setControls(review.latest.labels);
+        byId("prefill-notice").hidden = true;
         byId("review-note").value = review.latest.note || "";
         byId("decision-reason").value = review.latest.reason || "";
       }
@@ -276,6 +288,7 @@
     state.selected = state.latest = null;
     state.dirty = false;
     setControls();
+    byId("prefill-notice").hidden = true;
     byId("review-note").value = "";
     byId("decision-reason").value = "";
     byId("view-source").disabled = true;
@@ -364,7 +377,7 @@
     }
   }
   async function start() {
-    const required = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history", "export-reviews", "export-all-revisions"];
+    const required = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "prefill-notice", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history", "export-reviews", "export-all-revisions"];
     const missing = required.filter((id) => !byId(id));
     names.forEach((name) => {
       const node = [...document.querySelectorAll("#label-fields select[name]")].find((item) => item.name === name);

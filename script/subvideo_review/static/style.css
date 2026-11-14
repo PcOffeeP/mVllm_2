@@ -94,6 +94,8 @@ input::placeholder, textarea::placeholder { color: #748394; opacity: 1; }
 .section-heading-row { margin-bottom: .8rem; }
 .section-heading-row h2, .history-heading h2 { margin-bottom: 0; }
 .field-guidance, .history-hint { max-width: 34ch; margin: .2rem 0 0; color: var(--muted); font-size: .83rem; text-align: right; }
+.prefill-notice { margin: 0 0 .8rem; padding: .65rem .75rem; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); background: var(--surface-muted); font-size: .84rem; }
+.prefill-notice[hidden] { display: none; }
 .label-fields { min-height: 7rem; border: 1px dashed var(--line-strong); border-radius: 5px; background: var(--surface-muted); }
 .fields-intro { margin: 0; padding: .7rem .8rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: .84rem; }
 .label-grid { display: grid; gap: .8rem; padding: .9rem; }

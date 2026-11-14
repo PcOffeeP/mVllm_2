@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light" />
     <meta
       name="description"
-      content="子视频五类标签审核工作台。本页面仅提供本地审核界面，不自动采用任何参考标签。"
+      content="子视频五类标签审核工作台。本页面仅提供本地审核界面，候选标签只预填为草稿。"
     />
     <title>子视频审核工作台</title>
     <link rel="stylesheet" href="/style.css" />
@@ -19,8 +19,8 @@
         <h1>子视频审核工作台</h1>
       </div>
       <div class="header-note" aria-label="审核原则">
-        <strong>审核值默认留空</strong>
-        <span>仅用户本人决定画面与标签</span>
+        <strong>默认按候选标签预填</strong>
+        <span>预填值只是草稿，决定仍由你本人作出</span>
       </div>
     </header>
 
@@ -134,7 +134,7 @@
               <p class="reference-flag">仅供参考</p>
               <h3 id="reference-heading">源标签与事件线索</h3>
             </div>
-            <p class="reference-warning">源标签和候选初值只供参考，不会自动写入审核值。</p>
+            <p class="reference-warning">源标签只供参考，不写入审核值；候选初值已预填为草稿，可逐项修改。</p>
             <button id="view-source" type="button" class="button button-secondary" disabled>查看原视频</button>
             <div class="reference-empty" role="status">
               <strong>尚无来源参考信息</strong>
@@ -149,10 +149,11 @@
               <p class="section-kicker">人工填写</p>
               <h2>五类逐项审核</h2>
             </div>
-            <p class="field-guidance">所有审核字段初始为空；未判断时请保持空白。</p>
+            <p class="field-guidance">已按候选标签预填，确认前为草稿；未判断时请保持空白。</p>
           </div>
+          <p id="prefill-notice" class="prefill-notice" hidden>已按生成标签预填，确认前为草稿；请逐项核对修改，空白表示未判断。</p>
           <div id="label-fields" class="label-fields" aria-live="polite">
-            <p class="fields-intro">各项审核值均为空白。请选择你本人依据画面作出的判断。</p>
+            <p class="fields-intro">各项已按候选标签预填，确认前为草稿；请按画面核对并逐项修改。</p>
             <div class="label-grid label-grid-single" aria-label="单选审核字段">
               <div class="label-control">
                 <label for="fracture-status">断裂状态</label>
