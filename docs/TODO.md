@@ -192,6 +192,37 @@
 
 审核由用户本人看画面执行；审核进度以独立审核记录为准，不以机器核验代替。本任务不运行模型、不训练、不测评；测试集候选仅参与看片与标签审核，不因此授权模型测试或用于训练。
 
+## 7. MAPPING-NODE-RENAME — 重命名映射节点，消除 source_to_media 的方向误读
+
+**状态：** 未开始。
+
+### 目标
+
+把 `frames[].frame_index_mapping` 的三个节点改成名字与实际方向一致的名字，消除 `source_to_media` 被读成「源视频 → 媒体」的误读空间，并同步代码、记录 schema 与文档口径。
+
+### 当前情况
+
+- 三个节点的实际方向：`media_to_clip` = L2 → L3（抽帧规则常量，不做帧号换算）、`source_to_media` = **L2 → L1**（加性偏移 `source_start_frame`）、`roi_to_source` = L1 → L0。方向表见 `docs/eval/input-record.md` §10；同一事实已记为 DF-041。
+- 该组命名已两次导致实现错误：（1）`source_start_frame` 的 "source" 指 ROI 视频（L1 ROI），被当成原始源视频后导致 64% 的候选帧号被置空；（2）`source_to_media` 实际是 **L2 → L1**，不是「源视频 → 媒体」。代码同一处留有命名陷阱注释（`script/five_label_eval/frames.py:134`）。
+
+### 下一步
+
+- [ ] 定三个节点的新名字（要求能直接读出层级方向，不用 source／media 这类多义词），并确认旧名到新名的映射。
+- [ ] 在 `script/five_label_eval/frames.py` 改输出字段名，同步记录 schema 版本与新名字的合法性校验。
+- [ ] 同步 `docs/eval/input-record.md` §10 的方向表与其失效条件，并用新的 `docs/facts.yaml` 条目 supersede DF-041（不就地改写旧结论）。
+- [ ] 说明旧批次记录（含现行 `source_to_media` 键的记录）如何兼容或显式拒绝，并写进同批文档。
+
+### 完成标准
+
+- [ ] `frames.py` 输出、记录 schema、`docs/eval/input-record.md` §10 表与 `docs/facts.yaml` 四处用同一套名字，无残留旧键名。
+- [ ] 旧批次记录的处理有明确说明（兼容读取或显式拒绝），并有对应测试。
+- [ ] 全量测试通过，命名契约变更的证据落进 `docs/facts.yaml` 新条目。
+
+### 限制与关联
+
+- 改 `frames.py` 的输出字段名属契约变更，需用户确认后才可实施；实施时须同步 `docs/facts.yaml`。
+- 本任务只登记方向与验收要求，不构成任何代码、数据或批次重跑的授权。见 `docs/eval/input-record.md` §10、DF-041。
+
 ## 1. LABEL-ANNOTATION — 确认标签基准并进行人工标注
 
 **状态：** 已解决（2026-11-07）；本轮标注、结果整理及材料类型补全已完成。
