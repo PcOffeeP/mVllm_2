@@ -1,0 +1,10 @@
+video_id,易混淆对,人工标签,前帧号,后帧号,roi图路径,广角图路径,判定理由
+video_0017,① 夹持根部 vs 标距外非根部,夹持根部,6207,6208,docs/label-calibration/images/video_0017_6207_roi.png,docs/label-calibration/images/video_0017_6238_wide.jpg,断口紧贴上夹具夹口下沿、位于画面顶部约 1/5 高度处；断口以上看不到未断试样段，断口以下是一整段连续试样直落到画面底部的下夹具
+video_0027,① 夹持根部 vs 标距外非根部,夹持根部,5659,5660,docs/label-calibration/images/video_0027_5659_roi.png,docs/label-calibration/images/video_0027_5690_wide.jpg,断口紧贴上夹具夹口下沿、位于画面顶部约 1/4 高度处；断口处是一段较粗的残样并有一条细丝斜向左上方伸出，断口以下整段试样延伸到画面底部的下夹具
+video_0029,① 夹持根部 vs 标距外非根部,标距外非根部,5179,5180,docs/label-calibration/images/video_0029_5179_roi.png,docs/label-calibration/images/video_0029_5210_wide.jpg,断口位于画面下部约 3/4 高度、明显偏向下方夹持端；断口以下到画面底部的下夹块之间仍可见一小段未断试样，断口以上是较长的未断试样段
+video_0110,② 标距外非根部 vs 标距内,标距外非根部,4416,4417,docs/label-calibration/images/video_0110_4416_roi.png,docs/label-calibration/images/video_0110_4442_wide.jpg,断口位于画面下部约 7 成高度、明显偏向下方夹持端；断口以上是较长的未断试样段，断口以下到画面底部的下夹板之间仍留有一小段未断试样、未直接压在夹口面上
+video_0004,② 标距外非根部 vs 标距内,标距内,5510,5511,docs/label-calibration/images/video_0004_5510_roi.png,docs/label-calibration/images/video_0004_5541_wide.jpg,断口位于画面中部约 4 成高度、落在两夹口之间可见试样段的内部；断口以上试样仍连到上夹口、以下延伸到画面底部的下夹具，两侧都可见未断试样段
+video_0030,② 标距外非根部 vs 标距内,标距内,6075,6076,docs/label-calibration/images/video_0030_6075_roi.png,docs/label-calibration/images/video_0030_6106_wide.jpg,断口位于画面中下部约 6 成高度、落在两夹口之间可见试样段的内部并可见一条横向亮缝与轻微错位；断口上下都可见未断试样段
+video_0009,③ 标距内 vs 无法确定,标距内,5651,5652,docs/label-calibration/images/video_0009_5651_roi.png,docs/label-calibration/images/video_0009_5682_wide.jpg,断裂处位于画面约 6 成高度、落在画面顶部上夹具夹口与画面底部下夹块之间可见试样段的内部；断口以上试样条带仍连到上夹口、断口以下条带继续延伸到下夹块，两侧都可见未断试样段
+video_0045,③ 标距内 vs 无法确定,无法确定,5530,5531,docs/label-calibration/images/video_0045_5530_roi.png,docs/label-calibration/images/video_0045_5561_wide.jpg,画面内只可见下方的圆盘夹具、试样向上伸出后另一端悬空；画面上部看不到上夹具或试样交界，无法指认断裂处与夹具的可见关系
+video_0083,③ 标距内 vs 无法确定,无法确定,4858,4873,docs/label-calibration/images/video_0083_4858_roi.png,docs/label-calibration/images/video_0083_4903_wide.jpg,上夹具与下夹块分别在画面上下缘、中间试样条带的右侧被强反光遮挡且条带内未见可指认的横向断口，无法指认断裂处与夹口的可见关系
