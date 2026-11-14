@@ -52,7 +52,7 @@
 
 **术语同步（第一条实例，现已完成）**：v1 正文已随评测切片合入本分支，单值三类的不确定值现为 `无法判断`，与 `score.SINGLES`（13–17 行）一致。按当前字节重算的 `prompt_id` 为 `prompt@sha256:4066d161c757131d9398db76e8a4eef0399fc73a73480b20dace53d9bc2ee794`（由 `script/five_label_eval/prompt_id.py` 的 `load_prompt` 算出，与 `shasum -a 256 script/five_label_eval/prompts/five_label_v1.txt` 一致）。
 
-**版本标签处置**：文件名与批次记录里人可读版本标签**仍为 `v1`**。旧字面量 `无法确定` 的字节从未在本分支落地，也没有任何批次或评测记录引用过它，因此不存在需要区分的「旧 v1」。此后正文任何字节变化都换新 `prompt_id`，且须同步更新引用 v1 的评测记录说明。
+**版本标签处置**：文件名与批次记录里人可读版本标签**仍为 `v1`**。旧字面量 `无法确定` 的字节确实进过本分支，但只存在于同一次 squash 合并的中间提交 `2baf363`（该版正文 sha256 `4d01a48ee1fe0015bfdde6dc40ada1549ef5991a70a6afab9592bdd9514ecb27`，`git show 2baf363:script/five_label_eval/prompts/five_label_v1.txt | grep -c 无法确定` 为 5），当日提交 `29a7688` 即订正为现行字面量（`4066d161c757131d9398db76e8a4eef0399fc73a73480b20dace53d9bc2ee794`，见上段）；本分支从未推送（`codeup`／`github` 的 `git ls-remote --heads` 只列出 `main` 与各自一条备份／重构分支，没有 `feat/tensileagent-finetune`），也没有任何批次或评测记录引用过旧摘要（全仓 `grep -rn 4d01a48e` 无命中），因此不存在需要区分的「旧 v1」。保持 `v1` 标签的理由不是「字节从未变过」，而是旧字节无任何引用者、且未获升 v2 的授权（见下「显式待确认」）。此后正文任何字节变化都换新 `prompt_id`，且须同步更新引用 v1 的评测记录说明。
 
 **显式待确认**：若用户要求按「改一个字即升版本号」把正文升为 v2（文件改名并批量更新引用），本文与 `docs/eval/README.md` 的版本说明须同步改；当前未获该授权，故保持 v1。
 

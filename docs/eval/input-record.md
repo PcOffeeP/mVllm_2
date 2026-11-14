@@ -13,7 +13,7 @@
 | L2 子视频（片段） | `<candidate_id>.mp4` | `data/sub_video/videos/<candidate_id>.mp4` | 候选 `output.sha256`（1621/1621 有，即 `clip_sha256`） | `output.media.fps`（1621/1621 有） | `output.media.total_frames` | `output.media.width/height` |
 | L3 模型输入帧 | 抽出的 N 帧（PNG 导出，无独立媒体文件） | `<export_dir>/frame_<n>.png` | 逐帧 PNG 的 sha256 | 不适用（先后由 `display_order` 决定） | 送模型的帧数（帧数不是自由参数，见 `docs/eval/inference-entry.md` §7） | 每帧 PNG 的宽高（预处理后） |
 
-**现状（写作时）**：`data/` 下无 `data/videos/`、`data/roi/videos/`、`data/sub_video/videos/` 目录，`.mp4` 被 `.gitignore` 忽略，媒体须另行授权取得；`data/roi/` 只有 `decisions.json` 与 `manifest.json`，`data/sub_video/` 只有 `audit.json`、`manifest.json`、`summary.json`。L0 的 fps／总帧数／宽高清单未直接提供，只能实测，不得沿用 L1 或 L2 的值代替。
+**现状**：本文写作时 `data/videos/`、`data/roi/videos/`、`data/sub_video/videos/` 三个媒体目录未检出；2026-11-14 实测三目录已存在，分别有 110、110、1,621 个 `.mp4`（`ls data/videos | wc -l` 等）。媒体字节被 `.gitignore` 的 `*.mp4` 忽略、不随本文档分发，真实数据处理仍按各阶段授权执行；`data/roi/` 除 `videos/` 外为 `decisions.json` 与 `manifest.json`，`data/sub_video/` 除 `videos/` 外为 `audit.json`、`manifest.json`、`summary.json`。L0 的 fps／总帧数／宽高清单未直接提供，只能实测，不得沿用 L1 或 L2 的值代替。
 
 ## 2. 每帧四个索引
 
@@ -24,7 +24,7 @@
 | `clip_frame_index` | 该帧在 L2 片段中的帧号 | L2 | 由抽帧规则给出，须落在 `[0, L2.total_frames)` |
 | `display_order` | 该帧在送模型序列中的位置 | 记录级序列 | 从 0 起连续，不跳号 |
 
-**字段更名**：旧字段名 `source_frame_index` 已更名为 `original_source_frame_index`。更名原因是旧名既可读成「源视频帧号」也可读成「source_start_frame 推导出的帧号」，正是 §3 那个陷阱的来源。尚未合并的分支代码里仍用旧名 `source_frame_index`，读那些产物时须按旧名理解，不得与本契约的 `original_source_frame_index` 混为同一取值。
+**字段更名**：旧字段名 `source_frame_index` 已更名为 `original_source_frame_index`。更名原因是旧名既可读成「源视频帧号」也可读成「source_start_frame 推导出的帧号」，正是 §3 那个陷阱的来源。更名随提交 `2baf363` 落地后，记录 schema 与 `derive_lineage`／`verify_lineage` 一律只认新名。旧名在本仓只余三处非 schema 命中：`script/five_label_eval/frames.py:17` 的模块 docstring 记着「删除旧的 ``source_frame_index``」这件事本身；`script/five_label_eval/tests/test_infer_fake.py:73` 的输入记录夹具仍以旧键写 `frames[]`；`script/subvideo_generation/pilot/anchor_evidence.py:240` 只有一个名为 `source_frame_index_is_a_claim_not_a_verified_mapping` 的布尔标记键（语义是「帧号是声明而非已验证映射」，不是该字段）。本仓当前没有任何批次记录使用旧名。读测试夹具时按旧名理解，不得与本契约的 `original_source_frame_index` 混为同一取值。
 
 ## 3. 命名陷阱：`source_start_frame` 的 "source" 指 **ROI 视频**
 
@@ -104,7 +104,7 @@ L1→L0（`roi_to_source`）的原始源帧号只在三级证据之一成立时�
 | c2 | L0 与 L1 的**实测解码帧数**相等 | `l0_decoded` 与 `l1_decoded` 都是正整数且相等；任一边缺失或探测失败都不算通过（不得当 0，也不得「缺一边按相等处理」） | `_source_decoded_counts_equal`，`frames.py:104` |
 | c3 | 该候选自身 replay 已验 | `output.frame_preserving_replay.status == "verified_frame_preserving_replay"` | `derive_lineage`，`frames.py:146` |
 
-- **c2 用实测解码帧数，不读文件头**：`decoded_frame_count` 走 `ffprobe -count_frames -show_entries stream=nb_read_frames`（`frames.py:274`），**不是**文件头 `nb_frames`；清单里的 `frame_count`／`metadata_frame_count` 也不参与。110 个来源里有 1 条的清单帧数与 ROI 实解码帧数不等，用清单值会把这个差异抹平（`frames.py:802` 注释）。
+- **c2 用实测解码帧数，不读文件头**：`decoded_frame_count` 走 `ffprobe -count_frames -show_entries stream=nb_read_frames`（`frames.py:274`），**不是**文件头 `nb_frames`；清单里的 `frame_count`／`metadata_frame_count` 也不参与。110 个来源里有 1 条的清单帧数与 ROI 实解码帧数不等，用清单值会把这个差异抹平（`frames.py:805-806` 注释）。
 - **c2 的开销**：`-count_frames` 会全解码，同一路径一次运行内只探测一次（`_FRAME_COUNT_CACHE`，`frames.py:56`）。
 - **`proof_type` 不在 c1 判据内**：§5 证据 2 把 `proof_type == "exact_static_spatial_pipeline_replay"` 列为声明侧条件，代码只校 `status` 与 `mapping`，`proof_type` 仅被读入来源证据索引供追溯（`frames.py:796`），不参与判定。清单实测该项 110/110 都是该值，两者目前没有分歧。
 - c3 同时是 §6 的前置链条件；它在 `verification.conditions.source_replay` 三元组里仍被独立记录，前置链已失败时也如实写布尔值，便于按条件建诊断直方图。
@@ -169,7 +169,7 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 | `source_to_media` | **L2 → L1** | 记片段帧号到 ROI 帧号的加性偏移：`offset = source_start_frame`，`roi_frame_index = clip_frame_index + offset`。名字里的 source 指**片段自身的来源媒体（L1 ROI 视频）**，不是原始源视频 |
 | `roi_to_source` | L1 → L0 | ROI 帧号 → 原始源视频帧号；`kind` 与 `method` 由 §6 的三级证据给出，成立时 `offset = 0` |
 
-**`source_to_media` 这个名字是历史遗留、方向易误读，读取时以本表为准。** 代码同一处也留了命名陷阱注释（`frames.py:134-137`、`155-157`），并明确 `source_to_media` 记 L2→L1、`roi_to_source` 才是 L1→L0。该重命名是已确认的待办方向，已在 `docs/TODO.md` 登记为「7. MAPPING-NODE-RENAME — 重命名映射节点，消除 source_to_media 的方向误读」：登记前不得据名字反推方向。
+**`source_to_media` 这个名字是历史遗留、方向易误读，读取时以本表为准。** 代码同一处也留了命名陷阱注释（`frames.py:134-136`、`150-155`），并明确 `source_to_media` 记 L2→L1、`roi_to_source` 才是 L1→L0。该重命名是已确认的待办方向，已在 `docs/TODO.md` 登记为「7. MAPPING-NODE-RENAME — 重命名映射节点，消除 source_to_media 的方向误读」：登记前不得据名字反推方向。
 
 补充：节点自证只覆盖后两项——`verify_lineage` 校 `source_to_media.offset` 与 `roi_to_source` 的形态，`media_to_clip` 是常量，不逐帧校验（`frames.py:380`、`451`、`506`）。
 
