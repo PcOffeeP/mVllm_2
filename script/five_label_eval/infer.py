@@ -31,7 +31,8 @@ def fake_raw_output(category: str) -> str | None:
     if category == "missing_fields":
         del labels["断裂位置"], labels["断裂现象"]["开裂"]
     elif category == "invalid_literal":
-        labels["断裂状态"] = "无法判断"
+        # 词表外取值：「无法判断」已是 score.SINGLES 的合法单值，这里要造非法字面量。
+        labels["断裂状态"] = "部分断裂"
     elif category == "conflict":
         labels["断裂状态"], labels["断裂模式"], labels["断裂位置"] = "未断裂", "韧性断裂", "无"
     elif category not in ("complete", "fenced"):
