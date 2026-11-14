@@ -40,6 +40,31 @@ def test_resume_refuses_a_changed_window_policy(project, monkeypatch):
     assert not encoded, "a refused resume must not encode anything"
 
 
+def test_resume_refuses_a_changed_coverage_criterion(project, monkeypatch):
+    """The criterion string alone decides which sources get which windows."""
+    root, g, descriptions, encoded = project
+    manifest = g.run(root, plan_only=True)
+    recorded = manifest["identity"]["rules"]["digest"]
+    rules = rules_module()
+    patched = "video_id in coverage_ids"
+
+    monkeypatch.setitem(rules.STRATEGY_RULE, "coverage", patched)
+
+    assert rules.registry()["coverage_rule"] == patched
+    assert rules.digest() != recorded, (
+        "the identity digest must follow the criterion the registry publishes")
+    manifest_path = root / "data/sub_video/manifest.json"
+    before = manifest_path.read_bytes()
+
+    with pytest.raises(g.base.PilotError) as caught:
+        g.run(root, resume=True)
+
+    assert "rules digest differs" in str(caught.value), (
+        f"a changed coverage criterion must be named explicitly, got: {caught.value}")
+    assert manifest_path.read_bytes() == before, "a refused resume must not rewrite the batch"
+    assert not encoded, "a refused resume must not encode anything"
+
+
 def test_resume_refuses_a_changed_special_rule(project, monkeypatch):
     root, g, descriptions, encoded = project
     manifest = g.run(root, plan_only=True)

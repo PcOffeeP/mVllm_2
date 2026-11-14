@@ -2,8 +2,8 @@
 
 A batch records this registry instead of hashing source files. Moving a module,
 renaming a package or editing a comment must not invalidate a batch, while a
-changed window policy, guard length, coverage list or special-source rule must:
-those values are the rules, the file layout is not.
+changed window policy, guard length, coverage criterion or special-source rule
+must: those values are the rules, the file layout is not.
 
 Values are read from the code that actually applies them (not restated here),
 except the few approved literals this module owns: the official window geometry
@@ -19,10 +19,48 @@ import json
 WINDOW_SECONDS = 20
 STEP_SECONDS = 15
 
-# Coverage subset: the same 20 s / 15 s sliding grid, kept as its own rule value
+# Coverage route: the same 20 s / 15 s sliding grid, kept as its own rule value
 # because DF-028 pins it independently of the official event windows.
 COVERAGE_WINDOW_SECONDS = 20
 COVERAGE_STEP_SECONDS = 15
+
+# The five source-annotation columns that can carry one fracture event anchor.
+COVERAGE_ANCHOR_FIELDS = ("断裂帧_前", "断裂帧_后", "断裂时间点",
+                          "断裂时间范围_下界", "断裂时间范围_上界")
+
+# The source states that mean "this annotation cannot decide the fracture time".
+COVERAGE_UNCERTAIN_STATES = ("无法判断", "无法确定")
+
+# The coverage route is a data criterion over the source annotation, never an id
+# list: a source with no usable anchor and an undecidable state gets the sliding
+# coverage windows instead of event windows.
+COVERAGE_RULE = "断裂状态 in {无法判断, 无法确定} 且 断裂帧/断裂时间/断裂时间范围锚点全为空"
+
+
+def _present(value) -> bool:
+    """Whether a source cell carries a value.
+
+    Mirror of ``_legacy/core/generate.py:_present``; the legacy module must stay
+    independent of this one, so the two copies are pinned equal by the contract
+    tests instead of being shared.
+    """
+    return value not in (None, "", "无")
+
+
+def has_fracture_anchor(row: dict) -> bool:
+    """Whether the row carries any of the five fracture event anchors."""
+    return any(_present(row.get(name)) for name in COVERAGE_ANCHOR_FIELDS)
+
+
+def is_coverage_source(row: dict) -> bool:
+    """The coverage route, decided from the annotation row alone.
+
+    No usable fracture anchor *and* a source state that could not be decided.
+    Any other source, including an unbroken one, keeps the event policy.
+    """
+    return (not has_fracture_anchor(row)
+            and row.get("断裂状态") in COVERAGE_UNCERTAIN_STATES)
+
 
 # video_0093 is the one source whose presentation frames were approved by hand.
 SPECIAL_VIDEO_ID = "video_0093"
@@ -37,7 +75,7 @@ ROLE_NAMES = {"pre_event": "pre", "transition": "fracture", "post_event": "post"
 # How a source is routed to one of the three approved generators.
 STRATEGY_RULE = {
     "special": "video_id == special_video_id",
-    "coverage": "video_id in coverage_ids",
+    "coverage": COVERAGE_RULE,
     "default": "regular",
 }
 
@@ -54,7 +92,7 @@ FIELDS = (
     "min_candidate_seconds",
     "role_caps",
     "role_names",
-    "coverage_ids",
+    "coverage_rule",
     "coverage_window_seconds",
     "coverage_step_seconds",
     "special_video_id",
@@ -78,7 +116,6 @@ def registry() -> dict:
     module at import time, so importing them at module scope would be circular.
     """
     from script.subvideo_generation import generate, virtual
-    from script.subvideo_generation._legacy.coverage import generate as coverage
     from script.subvideo_generation._legacy.special import verification as special_verification
     from script.subvideo_generation.pilot import aligned, geometry
 
@@ -100,7 +137,7 @@ def registry() -> dict:
                       "post_event": geometry.POST_EVENT_CAP,
                       "normal_negative": geometry.NORMAL_NEGATIVE_CAP},
         "role_names": _jsonable(ROLE_NAMES),
-        "coverage_ids": tuple(coverage.DEFAULT_IDS),
+        "coverage_rule": STRATEGY_RULE["coverage"],
         "coverage_window_seconds": COVERAGE_WINDOW_SECONDS,
         "coverage_step_seconds": COVERAGE_STEP_SECONDS,
         "special_video_id": SPECIAL_VIDEO_ID,
@@ -143,8 +180,8 @@ def _jsonable(value):
 def stored_rules() -> dict:
     """The same fingerprint in the JSON form a manifest can hold.
 
-    ``registry()`` keeps ``coverage_ids`` as an ordered tuple; JSON has no tuple,
-    so a manifest written with the raw registry would not read back equal to the
-    dict it was produced from.
+    JSON has no tuple, so any ordered value the registry exposes as one is
+    converted to a list here; a manifest written with the raw registry would
+    otherwise not read back equal to the dict it was produced from.
     """
     return {"digest": digest(), "fields": _jsonable(registry())}

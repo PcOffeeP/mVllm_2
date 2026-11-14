@@ -18,6 +18,14 @@ RULES_MODULE = "script.subvideo_generation.rules"
 GENERATE_MODULE = "script.subvideo_generation.generate"
 PILOT_MODULE = "script.subvideo_generation.pilot.pilot"
 
+# The five source-annotation columns that can carry one fracture event anchor, and
+# the values that mean "this column carries nothing". Restated here independently
+# of ``rules.py``: a criterion that reads a different column set, or that treats a
+# different set of words as empty, must fail the contract instead of drifting.
+FRACTURE_ANCHOR_FIELDS = ("断裂帧_前", "断裂帧_后", "断裂时间点",
+                          "断裂时间范围_下界", "断裂时间范围_上界")
+EMPTY_ANNOTATION_VALUES = (None, "", "无")
+
 
 def load(name):
     return importlib.import_module(name)

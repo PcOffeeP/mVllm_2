@@ -9,12 +9,14 @@ from __future__ import annotations
 import json
 import re
 
+import pytest
+
 from script.subvideo_generation._legacy.core import generate as legacy_generate
-from script.subvideo_generation._legacy.coverage import generate as coverage
 from script.subvideo_generation._legacy.special import verification as special_verification
 from script.subvideo_generation.pilot import aligned, geometry
 from script.subvideo_generation import virtual
-from script.subvideo_generation.tests.rules_support import generate_module, rules_module
+from script.subvideo_generation.tests.rules_support import (
+    EMPTY_ANNOTATION_VALUES, FRACTURE_ANCHOR_FIELDS, generate_module, rules_module)
 from script.subvideo_generation.tests.test_generation_contract import annotation
 
 
@@ -31,7 +33,7 @@ EXPECTED_FIELDS = (
     "min_candidate_seconds",
     "role_caps",
     "role_names",
-    "coverage_ids",
+    "coverage_rule",
     "coverage_window_seconds",
     "coverage_step_seconds",
     "special_video_id",
@@ -66,11 +68,50 @@ EXPECTED_ROLE_NAMES = {
     "unclamped": "unclamped",
 }
 
-# The 17 approved coverage sources, restated independently of the implementation.
-EXPECTED_COVERAGE_IDS = {
-    "video_" + suffix for suffix in (
-        "0005", "0015", "0021", "0034", "0036", "0042", "0049", "0050",
-        "0054", "0056", "0058", "0064", "0078", "0087", "0094", "0096", "0107")}
+# The words the coverage criterion must accept as "the source says we cannot decide".
+UNCERTAIN_SOURCE_STATES = ("无法判断", "无法确定")
+
+
+def coverage_criterion():
+    """The pure rule that decides the coverage route from one annotation row."""
+    rules = rules_module()
+    criterion = getattr(rules, "is_coverage_source", None)
+    assert callable(criterion), (
+        "rules.is_coverage_source(row) must decide the coverage route from the source "
+        "annotation alone; the coverage route is no longer a video_id allowlist")
+    return criterion
+
+
+def source_row(status, **overrides):
+    """One annotation row with every fracture anchor explicitly cleared."""
+    row = annotation("video_0001", 断裂状态=status)
+    row.update({name: "无" for name in FRACTURE_ANCHOR_FIELDS})
+    row.update(overrides)
+    return row
+
+
+COVERAGE_CASES = (
+    ("no anchor + 无法判断", source_row("无法判断"), True),
+    ("no anchor + 无法确定", source_row("无法确定"), True),
+    ("no anchor + 未断裂", source_row("未断裂"), False),
+    ("no anchor + 发生断裂", source_row("发生断裂"), False),
+    ("no anchor + 已断裂", source_row("已断裂"), False),
+    ("no anchor + empty 断裂状态", source_row(""), False),
+    ("no anchor + 无法识别", source_row("无法识别"), False),
+    ("exact frames + 无法判断", source_row("无法判断", 断裂帧_前="299", 断裂帧_后="300"), False),
+    ("time point + 无法确定", source_row("无法确定", 断裂时间点="30"), False),
+    ("frame range + 无法判断",
+     source_row("无法判断", 断裂时间范围_下界="29", 断裂时间范围_上界="31"), False),
+    ("partial range + 无法判断", source_row("无法判断", 断裂时间范围_下界="29"), False),
+    ("empty strings + 无法判断",
+     source_row("无法判断", **{name: "" for name in FRACTURE_ANCHOR_FIELDS}), True),
+    ("None + 无法确定",
+     source_row("无法确定", **{name: None for name in FRACTURE_ANCHOR_FIELDS}), True),
+    ("mixed 无/''/None + 无法判断",
+     source_row("无法判断", 断裂帧_前="无", 断裂帧_后="", 断裂时间点=None,
+                断裂时间范围_下界="无", 断裂时间范围_上界=None), True),
+    ("anchors + 未断裂 conflict", source_row("未断裂", 断裂帧_前="299", 断裂帧_后="300"), False),
+)
 
 
 def jsonable(value):
@@ -125,11 +166,20 @@ def test_registry_values_match_the_approved_generation_rules():
         "the event positions the planner samples must be a rule, in order")
     assert registry["min_candidate_seconds"] == 1.0, (
         "the minimum candidate length the planner enforces must be a rule")
-    coverage_ids = registry["coverage_ids"]
-    assert isinstance(coverage_ids, tuple), (
-        f"coverage_ids must be an ordered tuple, got {type(coverage_ids).__name__}")
-    assert len(coverage_ids) == len(set(coverage_ids)) == 17
-    assert set(coverage_ids) == EXPECTED_COVERAGE_IDS
+    coverage_rule = registry["coverage_rule"]
+    assert isinstance(coverage_rule, str) and coverage_rule.strip(), (
+        "coverage_rule must be a readable criterion string, not an id list")
+    assert "video_" not in coverage_rule, (
+        f"the coverage criterion must not name any video_id: {coverage_rule!r}")
+    assert "断裂状态" in coverage_rule, (
+        f"the coverage criterion must state the column it reads: {coverage_rule!r}")
+    for state in UNCERTAIN_SOURCE_STATES:
+        assert state in coverage_rule, (
+            f"the coverage criterion must accept {state} explicitly: {coverage_rule!r}")
+    assert any(token in coverage_rule for token in ("锚点", "断裂帧", "断裂时间", "断裂时刻")), (
+        f"the coverage criterion must say it needs no fracture anchor: {coverage_rule!r}")
+    assert registry["strategy_rule"]["coverage"] == coverage_rule, (
+        "the dispatch rule and the registered criterion must be one value")
     assert registry["coverage_window_seconds"] == 20
     assert registry["coverage_step_seconds"] == 15
     assert registry["special_video_id"] == "video_0093"
@@ -152,7 +202,10 @@ def test_registry_agrees_with_the_constants_the_code_actually_uses():
     assert registry["virtual_window_seconds"] == virtual.WINDOW_SECONDS
     assert registry["virtual_step_seconds"] == virtual.STEP_SECONDS
     assert registry["virtual_role"] == virtual.ROLE
-    assert registry["coverage_ids"] == tuple(coverage.DEFAULT_IDS)
+    assert registry["coverage_rule"] == rules_module().STRATEGY_RULE["coverage"], (
+        "registry()['coverage_rule'] must be the registered dispatch rule")
+    assert "coverage_ids" not in registry, (
+        "the coverage route must not be described by a video_id allowlist")
     assert registry["guard_seconds"] == aligned.GUARD_SECONDS
     assert registry["post_remaining_seconds"] == aligned.POST_REMAINING_SECONDS
     assert registry["event_guard_seconds"] == geometry.EVENT_GUARD_SECONDS, (
@@ -215,9 +268,110 @@ def test_strategy_dispatch_follows_the_registered_special_source(monkeypatch):
     if hasattr(generate, "SPECIAL_VIDEO_ID"):
         monkeypatch.setattr(generate, "SPECIAL_VIDEO_ID", "video_0001")
 
-    assert generate.strategy_for("video_0001") == "0093", (
+    regular_row = annotation("video_0001")
+    assert generate.strategy_for("video_0001", regular_row) == "0093", (
         "the special source must be resolved through the rule value")
-    assert generate.strategy_for("video_0093") == "regular"
+    assert generate.strategy_for("video_0093", regular_row) == "regular"
+
+
+@pytest.mark.parametrize("row,expected", [(row, expected) for _, row, expected in COVERAGE_CASES],
+                         ids=[case for case, _, _ in COVERAGE_CASES])
+def test_coverage_criterion_reads_only_the_source_annotation(row, expected):
+    criterion = coverage_criterion()
+    snapshot = dict(row)
+
+    verdict = criterion(row)
+
+    assert bool(verdict) is expected, f"got {verdict!r}"
+    assert row == snapshot, "the criterion must not rewrite the annotation"
+
+
+def test_coverage_criterion_ignores_the_video_id():
+    criterion = coverage_criterion()
+    row = source_row("无法判断")
+
+    verdicts = [bool(criterion(dict(row, id=key))) for key in ("video_0001", "video_0107")]
+
+    assert verdicts == [True, True], (
+        "the same annotation features must route the same way whatever the id is")
+
+
+@pytest.mark.parametrize("empty", EMPTY_ANNOTATION_VALUES,
+                         ids=["None", "empty-string", "无"])
+def test_every_empty_annotation_value_means_no_anchor(empty):
+    """The emptiness rule is part of the criterion: all five columns × every blank spelling."""
+    row = source_row("无法判断", **{name: empty for name in FRACTURE_ANCHOR_FIELDS})
+
+    verdict = coverage_criterion()(row)
+
+    assert verdict is True, (
+        f"a row whose five anchor columns are all {empty!r} carries no anchor and must "
+        "route to coverage")
+
+
+def test_coverage_anchor_fields_are_the_five_fracture_anchor_columns():
+    """The criterion's column set is a contract, not an incidental tuple."""
+    rules = rules_module()
+
+    assert len(rules.COVERAGE_ANCHOR_FIELDS) == len(set(rules.COVERAGE_ANCHOR_FIELDS)) == 5, (
+        "COVERAGE_ANCHOR_FIELDS must list five distinct columns, got "
+        f"{rules.COVERAGE_ANCHOR_FIELDS!r}")
+    assert set(rules.COVERAGE_ANCHOR_FIELDS) == set(FRACTURE_ANCHOR_FIELDS), (
+        "the columns that make a source ineligible for coverage must be the five "
+        "fracture anchor columns: "
+        f"missing={sorted(set(FRACTURE_ANCHOR_FIELDS) - set(rules.COVERAGE_ANCHOR_FIELDS))} "
+        f"unexpected={sorted(set(rules.COVERAGE_ANCHOR_FIELDS) - set(FRACTURE_ANCHOR_FIELDS))}")
+
+
+@pytest.mark.parametrize("anchored", FRACTURE_ANCHOR_FIELDS, ids=list(FRACTURE_ANCHOR_FIELDS))
+def test_any_single_present_anchor_keeps_the_event_policy(anchored):
+    """Dropping one anchor column from the criterion must fail on that column alone."""
+    rules = rules_module()
+    row = source_row("无法判断")
+    row[anchored] = "300"
+
+    assert rules.has_fracture_anchor(row) is True, (
+        f"{anchored} must count as a fracture anchor")
+    verdict = coverage_criterion()(row)
+
+    assert verdict is False, (
+        f"only {anchored} carries a value, so the source has an anchor and must keep "
+        "the event policy; 断裂状态=无法判断 alone does not route to coverage")
+
+
+def test_all_five_anchors_empty_stays_coverage():
+    """Control for the per-column guard: the same row with no anchor at all."""
+    row = source_row("无法判断")
+
+    verdict = coverage_criterion()(row)
+
+    assert verdict is True, (
+        "no anchor + 无法判断 is exactly the coverage route, otherwise the per-column "
+        "guard could pass for the wrong reason")
+
+
+def test_registry_reads_the_coverage_rule_from_the_strategy_table(monkeypatch):
+    """``coverage_rule`` must be the dispatch string, not a second literal."""
+    rules = rules_module()
+    patched = "断裂状态 in {无法判断, 无法确定} and no 断裂帧/断裂时间 anchor"
+
+    monkeypatch.setitem(rules.STRATEGY_RULE, "coverage", patched)
+    registry = rules.registry()
+
+    assert registry["coverage_rule"] == patched, (
+        "registry() must read the coverage criterion from STRATEGY_RULE")
+    assert registry["strategy_rule"]["coverage"] == registry["coverage_rule"]
+
+
+def test_digest_reacts_to_the_coverage_criterion(monkeypatch):
+    rules = rules_module()
+    baseline = rules.digest()
+
+    monkeypatch.setitem(rules.STRATEGY_RULE, "coverage", "video_id in coverage_ids")
+
+    assert rules.registry()["coverage_rule"] == "video_id in coverage_ids"
+    assert rules.digest() != baseline, (
+        "a changed coverage criterion must change the rules digest")
 
 
 def test_digest_reacts_to_the_event_positions(monkeypatch):

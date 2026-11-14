@@ -6,8 +6,9 @@ import shutil
 
 import pytest
 
+from script.subvideo_generation.tests.rules_support import FRACTURE_ANCHOR_FIELDS
 from script.subvideo_generation.tests.test_generation_contract import annotation, media
-from .conftest import COVERAGE_IDS, TEST_IDS, write_json
+from .conftest import COVERAGE_IDS, RETIRED_COVERAGE_IDS, TEST_IDS, write_json
 
 
 def read_manifest(root):
@@ -45,18 +46,49 @@ def test_empty_output_rebuilds_all_sources_once_and_preserves_each_fold(project)
     assert g.audit_outputs(root, root / "data/sub_video")["verified_outputs"] == len(encoded)
 
 
-def test_approved_coverage_routes_keep_unknown_source_labels_without_inventing_events(project):
+def test_coverage_routes_keep_unknown_source_labels_and_start_from_them(project):
     root, g, _, _ = project
     m = g.run(root, plan_only=True)
     actual = {s["video_id"] for s in m["sources"] if s["strategy"] == "coverage"}
+    # The fixture's coverage rows are the ones with no fracture anchor and an
+    # undecidable 断裂状态; the route must follow those features, not the ids.
     assert actual == COVERAGE_IDS
+    assert COVERAGE_IDS - RETIRED_COVERAGE_IDS and RETIRED_COVERAGE_IDS - COVERAGE_IDS, (
+        "the fixture coverage set must differ from the retired id allowlist in both "
+        "directions, otherwise this assertion cannot tell features from ids")
+    seen = 0
     for c in m["candidates"]:
         if c["source_video_id"] not in COVERAGE_IDS:
             continue
-        assert c["candidate_labels"] is None and c["final_labels"] is None
-        assert c["source_labels"]["断裂状态"] == "无法确定"
-        assert c["source_labels"]["异常情况"]["视频异常"] == "是"
+        seen += 1
+        source_labels = c["source_labels"]
+        assert source_labels["断裂状态"] in ("无法判断", "无法确定"), (
+            "source_labels must keep the wording the annotation actually used")
+        assert c["candidate_labels"] == dict(source_labels, 断裂状态="无法判断"), (
+            "a coverage candidate starts from the source labels with the unified "
+            "uncertain state; nothing may be zeroed to 无")
+        assert c["final_labels"] is None and c["labels_status"] == "unreviewed"
+        assert c["manual_review"] == "required"
         assert c["event_kind"] == "none_unlocated" and c["source_anchor_frames"] == []
+    assert seen, "the fixture must still produce coverage candidates"
+    # The retired rows also have to keep their source-mode wording initial values.
+    uncertain = [c for c in m["candidates"]
+                 if c["source_video_id"] in COVERAGE_IDS
+                 and c["source_labels"]["断裂状态"] == "无法确定"]
+    assert uncertain, "the fixture must still contain a 无法确定 coverage source"
+    for c in uncertain:
+        assert c["source_labels"]["异常情况"]["视频异常"] == "是"
+        assert c["candidate_labels"]["断裂模式"] == "无法确定"
+        assert c["candidate_labels"]["断裂位置"] == "无法确定"
+    # A coverage source that was never on the retired list: 无法判断 + 无 in the source.
+    never_listed = [c for c in m["candidates"] if c["source_video_id"] == "video_0003"]
+    assert never_listed and all(
+        c["source_labels"]["断裂状态"] == "无法判断" for c in never_listed)
+    assert all(c["candidate_labels"]["断裂模式"] == "无" for c in never_listed), (
+        "a source that says 无 keeps 无: only the uncertain state is rewritten")
+    # A retired id is a plain unbroken source here, planned by the event policy.
+    row = next(s for s in m["sources"] if s["video_id"] == "video_0107")
+    assert row["strategy"] == "regular" and row["source_annotation"]["断裂状态"] == "未断裂"
     one = [c for c in m["candidates"] if c["source_video_id"] == "video_0015"]
     assert [(c["start_frame"], c["end_frame"]) for c in one] == [(0, 200), (150, 350), (160, 360)]
 
@@ -103,12 +135,29 @@ def test_0093_uses_presented_733_frames_and_does_not_force_an_event_window(proje
     assert all(c["folds"] == {"0": "test", "1": "test", "2": "test"} for c in clips)
 
 
-def test_nonapproved_unknown_source_cannot_borrow_coverage_policy(project):
+def test_route_follows_the_annotation_features_rather_than_the_source_id(project):
+    """The old id allowlist is gone: one id routes differently by its own row."""
     root, g, _, _ = project
     rows, rois, folds, *_ = g.load_inputs(root)
-    row = annotation("video_0001", 断裂状态="无法确定", 断裂帧_前="无", 断裂帧_后="无", 断裂时间点="")
-    source, clips, _ = g._plan_source(root, "video_0001", row, rois["video_0001"], folds["video_0001"], {})
-    assert source["status"] != "planned" and clips == []
+    regular = rows["video_0001"]
+    assert regular["断裂状态"] == "未断裂"
+    assert all(regular.get(name) in (None, "", "无") for name in FRACTURE_ANCHOR_FIELDS)
+    assert g.strategy_for("video_0001", regular) == "regular"
+
+    unknown = dict(regular, 断裂状态="无法确定",
+                   **{name: "无" for name in FRACTURE_ANCHOR_FIELDS})
+    assert g.strategy_for("video_0001", unknown) == "coverage"
+
+    source, clips, _ = g._plan_source(
+        root, "video_0001", unknown, rois["video_0001"], folds["video_0001"], {})
+    assert source["strategy"] == "coverage" and source["status"] == "planned", (
+        source.get("reason"))
+    assert [c["event_kind"] for c in clips] == ["none_unlocated"]
+
+    anchored = dict(regular, 断裂状态="无法确定", 断裂帧_前="20", 断裂帧_后="21",
+                    断裂时间点="2.1")
+    assert g.strategy_for("video_0001", anchored) == "regular", (
+        "a source with a usable anchor keeps the event policy whatever its status says")
 
 
 def test_one_source_failure_is_persisted_and_cannot_masquerade_as_complete(project, monkeypatch):
@@ -211,7 +260,8 @@ def test_resume_checks_input_identity_before_retrying_failed_source(project, mon
 
 
 @pytest.mark.parametrize("attack", ["drop_source", "duplicate_source", "drop_candidate", "duplicate_candidate", "invent_candidate",
-    "source_fold", "candidate_fold", "source_scope", "candidate_scope", "range", "labels", "proof", "schema", "published"])
+    "source_fold", "candidate_fold", "source_scope", "candidate_scope", "source_strategy",
+    "range", "labels", "proof", "schema", "published"])
 def test_resume_refuses_tampered_inventory_before_encoding(project, attack):
     root, g, _, encoded = project
     m = g.run(root, plan_only=True)
@@ -227,13 +277,22 @@ def test_resume_refuses_tampered_inventory_before_encoding(project, attack):
     elif attack == "candidate_fold": test_clip["folds"] = dict.fromkeys(("0", "1", "2"), "train")
     elif attack == "source_scope": test_source["scope"] = "development"
     elif attack == "candidate_scope": test_clip["scope"] = "development"
+    elif attack == "source_strategy":
+        # The stored route is downgraded to the event policy while the annotation
+        # still says coverage: the plan must be replanned from the inputs, not trusted.
+        assert test_source["strategy"] == "coverage"
+        test_source["strategy"] = "regular"
     elif attack == "range": test_clip["start_frame"] += 1
     elif attack == "labels": test_clip["candidate_labels"] = {"断裂状态": "发生断裂"}
     elif attack == "proof": m["sources"][0]["frame_preserving_replay"]["source_sha256"] = "0" * 64
     elif attack == "schema": m["schema"] = "legacy-batch"
     elif attack == "published": m["published"] = True
     path = root / "data/sub_video/manifest.json"; write_json(path, m); before = path.read_bytes()
-    with pytest.raises(Exception): g.run(root, resume=True)
+    with pytest.raises(Exception) as caught: g.run(root, resume=True)
+    if attack == "source_strategy":
+        assert isinstance(caught.value, g.base.PilotError) and "strategy" in str(caught.value), (
+            "a tampered source route must be rejected by the replanned strategy check, "
+            f"got {caught.value!r}")
     assert not encoded and path.read_bytes() == before
 
 

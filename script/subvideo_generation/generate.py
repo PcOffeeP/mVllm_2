@@ -26,15 +26,15 @@ from script.subvideo_generation import virtual
 
 SCHEMA = "tensile-unified-sub-video/1"
 SOURCE_COUNT = 110
-COVERAGE_IDS = coverage.DEFAULT_IDS
 MEDIA_FIELDS = ("duration", "total_frames", "fps", "width", "height", "time_base")
 MUTABLE_CANDIDATE_FIELDS = {"status", "output", "reason", "details"}
 
 
-def strategy_for(video_id):
+def strategy_for(video_id, row):
+    """Route one source: the special id first, then the annotation's coverage criterion."""
     if video_id == rules_registry.SPECIAL_VIDEO_ID:
         return "0093"
-    return "coverage" if video_id in COVERAGE_IDS else "regular"
+    return "coverage" if rules_registry.is_coverage_source(row) else "regular"
 
 
 def code_identity():
@@ -63,7 +63,7 @@ def load_inputs(root):
     # ROI records. Its parent-manifest-dependent run/check functions are unused.
     rows, rois, folds, hashes, loader_code = coverage._verified_inputs(root)
     if (len(rows) != SOURCE_COUNT or set(rows) != set(rois) or set(rows) != set(folds)
-        or not set(COVERAGE_IDS) <= set(rows) or rules_registry.SPECIAL_VIDEO_ID not in rows):
+        or rules_registry.SPECIAL_VIDEO_ID not in rows):
         raise base.PilotError("unified input inventory must contain exactly 110 approved sources")
     if folds[rules_registry.SPECIAL_VIDEO_ID] != {str(i): "test" for i in range(3)}:
         raise base.PilotError("the special source must remain in fixed test")
@@ -188,7 +188,7 @@ def _backend(strategy):
 
 def _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor_records):
     """Replan entirely from current inputs; never trust a stored candidate list."""
-    strategy = strategy_for(key)
+    strategy = strategy_for(key, row)
     if strategy == "coverage":
         candidates = []
         for sequence, window in enumerate(coverage.plan_windows(raw_media), 1):
@@ -196,8 +196,8 @@ def _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor
             candidates.append(dict(window, candidate_id=name, filename=name + ".mp4",
                 source_video_id=key, scope=_scope(folds), folds=folds, role="coverage", sequence=sequence,
                 output_path=f"videos/{name}.mp4", source_sha256=source_sha, roi_sha256=roi_sha,
-                source_labels=legacy._source_labels(row), candidate_labels=None, final_labels=None,
-                labels_status="unreviewed", manual_review="required",
+                source_labels=legacy._source_labels(row), candidate_labels=legacy.candidate_labels(row, "coverage"),
+                final_labels=None, labels_status="unreviewed", manual_review="required",
                 review={"status": "未审核", "decision": None, "change_notes": ""}, status="planned"))
         return candidates, []
     record = legacy.adapt_annotation(row, raw_media, phenomenon_anchor=anchor_records.get(key))
@@ -214,7 +214,7 @@ def _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor
 
 def _plan_source(root, key, row, roi, folds, anchor_records):
     """Admit one source only after its complete source-to-ROI replay passes."""
-    strategy = strategy_for(key)
+    strategy = strategy_for(key, row)
     source = {"video_id": key, "strategy": strategy, "source_annotation": row,
               "folds": folds, "scope": _scope(folds)}
     raw, cropped = _paths(root, key)
@@ -270,7 +270,7 @@ def _portable_anchor(anchor):
 def _validate_source(root, source, row, roi, anchor_records, *, portable=False):
     key = source["video_id"]
     raw, cropped = _paths(root, key)
-    verifier = special_verification if strategy_for(key) == "0093" else core
+    verifier = special_verification if strategy_for(key, row) == "0093" else core
     proof = source["frame_preserving_replay"]
     _sealed(proof, verifier.SOURCE_SCHEMA)
     source_sha, roi_sha = base.sha256_file(raw), base.sha256_file(cropped)
@@ -301,7 +301,7 @@ def _validate_source(root, source, row, roi, anchor_records, *, portable=False):
                    for t, actual in zip(decoded["normalized_pts"], media["timestamps"]))
             or abs(Fraction(decoded["usable_end"]) - Fraction(str(media["duration"]))) > Fraction(1, 1000000)):
             raise base.PilotError("bound replay timeline differs from current media: " + key)
-    if strategy_for(key) == "0093":
+    if strategy_for(key, row) == "0093":
         evidence = proof["source_decode"].get("presentation_evidence", {})
         if (source_sha != special_verification.APPROVED_SOURCE_SHA256
             or raw_media["total_frames"] != 733 or evidence.get("declared_frame_count") != 771
@@ -384,7 +384,7 @@ def _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records
         raise base.PilotError("unified source inventory does not cover all 110 sources")
     expected, excluded = [], []
     for key, source in sources.items():
-        if (source.get("strategy") != strategy_for(key) or source.get("scope") != _scope(folds[key])
+        if (source.get("strategy") != strategy_for(key, rows[key]) or source.get("scope") != _scope(folds[key])
             or source.get("folds") != folds[key] or source.get("source_annotation") != rows[key]):
             raise base.PilotError("source strategy, fixed split or annotation mismatch: " + key)
         if source.get("status") != "planned":

@@ -29,9 +29,10 @@ def validate_source_receipt(proof, roi_path, candidate):
         raise core.ReplayUncertain('coverage_candidate_identity_or_source_labels_mismatch')
     if candidate.get('source_anchor_frames')!=[] or candidate.get('event_kind')!='none_unlocated':
         raise core.ReplayUncertain('coverage_must_not_invent_event')
-    if (candidate.get('candidate_labels') is not None or candidate.get('final_labels') is not None
-        or candidate.get('labels_status')!='unreviewed' or candidate.get('manual_review')!='required'):
-        raise core.ReplayUncertain('coverage_requires_unassigned_human_labels')
+    expected_labels = labels.candidate_labels(proof['source_annotation'], 'coverage')
+    if (candidate.get('candidate_labels') != expected_labels or candidate.get('final_labels') is not None
+        or candidate.get('labels_status') != 'unreviewed' or candidate.get('manual_review') != 'required'):
+        raise core.ReplayUncertain('coverage_candidate_labels_must_be_the_unreviewed_initial_values')
     pts=[Fraction(t) for t in proof['source_decode']['normalized_pts']]
     end=Fraction(proof['source_decode']['usable_end']); bounds=pts+[end]
     count=len(pts)

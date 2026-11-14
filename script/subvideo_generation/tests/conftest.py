@@ -14,9 +14,19 @@ from script.subvideo_generation.tests.test_generation_contract import annotation
 from script.subvideo_generation.tests.test_unclamped_contract import anchor_document
 
 
-COVERAGE_IDS = {"video_" + n for n in (
+# The video_id allowlist the orchestrator used to carry for the coverage route. It no
+# longer exists in the code; it is kept here *only* as a negative control, so that a
+# fixture whose coverage rows happened to reproduce it could be caught (an id-based
+# route would then look feature-based and the whole suite would stay green).
+RETIRED_COVERAGE_IDS = {"video_" + n for n in (
     "0005", "0015", "0021", "0034", "0036", "0042", "0049", "0050",
     "0054", "0056", "0058", "0064", "0078", "0087", "0094", "0096", "0107")}
+
+# The sources whose synthetic annotation rows actually carry the coverage features
+# (no fracture anchor + an undecidable 断裂状态), i.e. what the criterion must route.
+# Deliberately *not* the retired list: video_0107 is a plain unbroken source here and
+# video_0003 is coverage although it was never on the list.
+COVERAGE_IDS = (RETIRED_COVERAGE_IDS - {"video_0107"}) | {"video_0003"}
 TEST_IDS = {"video_0005", "video_0093"}
 
 
@@ -43,7 +53,12 @@ def project(tmp_path, monkeypatch):
         row = annotation(key, 断裂状态="未断裂", 断裂模式="无", 断裂位置="无",
                          断裂帧_前="无", 断裂帧_后="无", 断裂时间点="无")
         description = media(count=60, fps=10)
-        if key in COVERAGE_IDS:
+        if key == "video_0003":
+            # Coverage through the other accepted wording, and without the 视频异常
+            # flag the retired rows carry: the route must not depend on either.
+            row.update(断裂状态="无法判断")
+            description = media(count=360, fps=10)
+        elif key in COVERAGE_IDS:
             row.update(断裂状态="无法确定", 断裂模式="无法确定", 断裂位置="无法确定", 异常_视频异常="是")
             description = media(count=360, fps=10)
         elif key == "video_0002":

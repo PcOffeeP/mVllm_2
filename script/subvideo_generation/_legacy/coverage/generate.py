@@ -166,7 +166,7 @@ def run(project_root,output_dir=None,*,plan_only=False,resume=False,source_ids=D
                     name=f'{key}_coverage_{sequence:02d}'
                     m['candidates'].append(dict(w,candidate_id=name,filename=name+'.mp4',source_video_id=key,scope=source['scope'],folds=folds[key],
                         role='coverage',sequence=sequence,output_path=f'videos/{name}.mp4',source_sha256=proof['source_sha256'],roi_sha256=proof['roi_sha256'],
-                        source_labels=labels._source_labels(row),candidate_labels=None,final_labels=None,labels_status='unreviewed',manual_review='required',
+                        source_labels=labels._source_labels(row),candidate_labels=labels.candidate_labels(row,'coverage'),final_labels=None,labels_status='unreviewed',manual_review='required',
                         review={'status':'未审核','decision':None,'change_notes':''},status='planned'))
             except (core.ReplayUncertain,aligned.AlignmentUncertain,FileNotFoundError) as e:source.update(status='pending',reason=str(e))
             except (base.PilotError,KeyError,TypeError,ValueError,OSError) as e:source.update(status='failed',reason=f'{type(e).__name__}: {e}')
@@ -267,7 +267,7 @@ def audit_outputs(project_root, output_dir):
         key,sequence,w=expected[c['candidate_id']];s=sources[key];source=s['frame_preserving_replay']
         if any(c.get(k)!=v for k,v in w.items()) or c['sequence']!=sequence or c['folds']!=folds[key] or c['scope']!=s['scope']:
             raise base.PilotError('supplement candidate window/membership mismatch')
-        if (c['source_labels']!=labels._source_labels(rows[key]) or c['candidate_labels'] is not None or c['final_labels'] is not None
+        if (c['source_labels']!=labels._source_labels(rows[key]) or c['candidate_labels']!=labels.candidate_labels(rows[key],'coverage') or c['final_labels'] is not None
             or c['labels_status']!='unreviewed' or c['manual_review']!='required' or c['role']!='coverage'
             or c['filename']!=c['candidate_id']+'.mp4' or c['output_path']!='videos/'+c['filename']):raise base.PilotError('supplement candidate label/identity mismatch')
         if c['status']!='cropped':continue
