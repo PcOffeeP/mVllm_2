@@ -34,6 +34,7 @@ EXPECTED_FIELDS = (
     "role_caps",
     "role_names",
     "coverage_rule",
+    "coverage_label_rule",
     "coverage_window_seconds",
     "coverage_step_seconds",
     "special_video_id",
@@ -71,6 +72,11 @@ EXPECTED_ROLE_NAMES = {
 # The words the coverage criterion must accept as "the source says we cannot decide".
 UNCERTAIN_SOURCE_STATES = ("无法判断", "无法确定")
 
+# The second coverage feature: an unanchored source whose *video* is flagged abnormal
+# carries no usable fracture anchor either, so it cannot be cut with event windows.
+ABNORMAL_VIDEO_VALUE = "是"
+ABNORMAL_VIDEO_OTHER_VALUES = ("否", "", None, "无法判断")
+
 
 def coverage_criterion():
     """The pure rule that decides the coverage route from one annotation row."""
@@ -88,6 +94,62 @@ def source_row(status, **overrides):
     row.update({name: "无" for name in FRACTURE_ANCHOR_FIELDS})
     row.update(overrides)
     return row
+
+
+# A row whose 断裂状态 column is *absent*, not blank: ``_source_labels`` reads it with a
+# ``""`` default, so the approved initial-label rule has to pass that blank through instead
+# of inventing 无法判断 for a source that never claimed to be undecidable.
+MISSING_SOURCE_STATE = object()
+
+# The one shape with an absent state column. Mode/location stay populated on purpose: that
+# is what shows the rule does not zero them just because the state is missing (only the
+# unbroken state and 异常_未夹紧=是 zero them).
+MISSING_SOURCE_STATE_CHANGES = {"断裂状态": MISSING_SOURCE_STATE, "断裂模式": "脆性断裂",
+                               "断裂位置": "标距内"}
+
+# The source shapes on which the two implementations of the approved initial-label rule
+# must say the same thing: one on the producer side
+# (``_legacy.core.generate.candidate_labels(row, "coverage")``) and one on the rules side
+# (``rules.coverage_candidate_labels``). The list deliberately covers the branches of that
+# rule: the unbroken state, the legacy uncertain wording, blank labels, an absent state
+# column, the unclamped anomaly (which also zeroes mode/location) and the abnormal-video
+# flag.
+COVERAGE_LABEL_SHAPES = (
+    ("unbroken + abnormal video",
+     {"断裂状态": "未断裂", "断裂模式": "无", "断裂位置": "无", "异常_视频异常": "是"}),
+    ("legacy uncertain state",
+     {"断裂状态": "无法确定", "断裂模式": "无法确定", "断裂位置": "无法确定"}),
+    ("blank source labels", {"断裂状态": "无法判断", "断裂模式": "", "断裂位置": ""}),
+    ("unclamped undecidable",
+     {"断裂状态": "无法判断", "断裂模式": "脆性断裂", "断裂位置": "标距内",
+      "异常_未夹紧": "是"}),
+    ("unbroken + unclamped + abnormal video",
+     {"断裂状态": "未断裂", "异常_未夹紧": "是", "异常_视频异常": "是"}),
+    ("unclamped undecidable + abnormal video",
+     {"断裂状态": "无法判断", "异常_未夹紧": "是", "异常_视频异常": "是"}),
+    ("missing source state", MISSING_SOURCE_STATE_CHANGES),
+)
+
+
+def label_shape_row(changes):
+    """The annotation row of one ``COVERAGE_LABEL_SHAPES`` entry.
+
+    ``MISSING_SOURCE_STATE`` builds a row whose 断裂状态 key is deleted outright; every other
+    shape simply sets the column as given.
+    """
+    state = changes.get("断裂状态", "")
+    fields = {name: value for name, value in changes.items() if name != "断裂状态"}
+    row = source_row("" if state is MISSING_SOURCE_STATE else state, **fields)
+    if state is MISSING_SOURCE_STATE:
+        del row["断裂状态"]
+    return row
+
+
+def describe_label_difference(actual, expected):
+    """One readable line per differing label field, so a failure names the field."""
+    fields = sorted(set(actual) | set(expected))
+    return [f"{field}: rules-side={actual.get(field)!r} producer={expected.get(field)!r}"
+            for field in fields if actual.get(field) != expected.get(field)]
 
 
 COVERAGE_CASES = (
@@ -111,6 +173,24 @@ COVERAGE_CASES = (
      source_row("无法判断", 断裂帧_前="无", 断裂帧_后="", 断裂时间点=None,
                 断裂时间范围_下界="无", 断裂时间范围_上界=None), True),
     ("anchors + 未断裂 conflict", source_row("未断裂", 断裂帧_前="299", 断裂帧_后="300"), False),
+    # The 异常_视频异常 branch: no anchor + abnormal video is coverage whatever the
+    # 断裂状态 says (video_0107 is 未断裂 and still cannot be cut by event windows).
+    ("no anchor + 未断裂 + 视频异常=是", source_row("未断裂", 异常_视频异常="是"), True),
+    ("no anchor + 发生断裂 + 视频异常=是", source_row("发生断裂", 异常_视频异常="是"), True),
+    ("no anchor + empty 断裂状态 + 视频异常=是",
+     source_row("", 异常_视频异常="是"), True),
+    # A video abnormality is not a coverage feature on its own: an anchor wins.
+    ("exact frames + 视频异常=是",
+     source_row("未断裂", 断裂帧_前="299", 断裂帧_后="300", 异常_视频异常="是"), False),
+    ("exact frames + 无法判断 + 视频异常=是",
+     source_row("无法判断", 断裂帧_前="299", 断裂帧_后="300", 异常_视频异常="是"), False),
+    ("time point + 视频异常=是",
+     source_row("未断裂", 断裂时间点="30", 异常_视频异常="是"), False),
+    # The existing status branch does not depend on the video flag.
+    ("no anchor + 无法判断 + 视频异常=否",
+     source_row("无法判断", 异常_视频异常="否"), True),
+    ("no anchor + 未断裂 + 视频异常=否",
+     source_row("未断裂", 异常_视频异常="否"), False),
 )
 
 
@@ -178,8 +258,17 @@ def test_registry_values_match_the_approved_generation_rules():
             f"the coverage criterion must accept {state} explicitly: {coverage_rule!r}")
     assert any(token in coverage_rule for token in ("锚点", "断裂帧", "断裂时间", "断裂时刻")), (
         f"the coverage criterion must say it needs no fracture anchor: {coverage_rule!r}")
+    assert "视频异常" in coverage_rule, (
+        "the coverage criterion must name the video-abnormal flag it now also accepts: "
+        f"{coverage_rule!r}")
     assert registry["strategy_rule"]["coverage"] == coverage_rule, (
         "the dispatch rule and the registered criterion must be one value")
+    label_rule = registry["coverage_label_rule"]
+    assert isinstance(label_rule, str) and label_rule.strip(), (
+        "coverage_label_rule must be a readable statement of where a coverage candidate's "
+        f"initial labels come from, got {label_rule!r}")
+    assert label_rule == rules_module().COVERAGE_LABEL_RULE, (
+        "registry()['coverage_label_rule'] must be rules.COVERAGE_LABEL_RULE itself")
     assert registry["coverage_window_seconds"] == 20
     assert registry["coverage_step_seconds"] == 15
     assert registry["special_video_id"] == "video_0093"
@@ -350,6 +439,35 @@ def test_all_five_anchors_empty_stays_coverage():
         "guard could pass for the wrong reason")
 
 
+@pytest.mark.parametrize("value,expected",
+                         [(ABNORMAL_VIDEO_VALUE, True)]
+                         + [(other, False) for other in ABNORMAL_VIDEO_OTHER_VALUES],
+                         ids=["是", "否", "empty-string", "None", "无法判断"])
+def test_only_the_abnormal_video_flag_yes_triggers_the_second_branch(value, expected):
+    """Only "是" in 异常_视频异常 is a coverage feature; the other spellings are not.
+
+    断裂状态 is 未断裂 here, so the status branch cannot fire: the verdict can only come
+    from the video flag.
+    """
+    row = source_row("未断裂", 异常_视频异常=value)
+
+    verdict = coverage_criterion()(row)
+
+    assert bool(verdict) is expected, (
+        f"异常_视频异常={value!r} with no anchor and 断裂状态=未断裂: only "
+        f"{ABNORMAL_VIDEO_VALUE!r} routes to coverage, got {verdict!r}")
+
+
+def test_a_row_without_the_abnormal_video_column_keeps_the_event_policy():
+    """A missing column is not "是": the criterion must read it through a default."""
+    row = source_row("未断裂")
+    del row["异常_视频异常"]
+
+    verdict = coverage_criterion()(row)
+
+    assert bool(verdict) is False, f"got {verdict!r}"
+
+
 def test_registry_reads_the_coverage_rule_from_the_strategy_table(monkeypatch):
     """``coverage_rule`` must be the dispatch string, not a second literal."""
     rules = rules_module()
@@ -372,6 +490,19 @@ def test_digest_reacts_to_the_coverage_criterion(monkeypatch):
     assert rules.registry()["coverage_rule"] == "video_id in coverage_ids"
     assert rules.digest() != baseline, (
         "a changed coverage criterion must change the rules digest")
+
+
+def test_digest_reacts_to_the_coverage_label_rule(monkeypatch):
+    """The initial label rule decides what a coverage candidate records, so it is a rule."""
+    rules = rules_module()
+    baseline = rules.digest()
+
+    monkeypatch.setattr(rules, "COVERAGE_LABEL_RULE", rules.COVERAGE_LABEL_RULE + "（候选初值取空）")
+
+    assert rules.registry()["coverage_label_rule"] == rules.COVERAGE_LABEL_RULE
+    assert rules.digest() != baseline, (
+        "changing rules.COVERAGE_LABEL_RULE must change the rules digest; the registry is "
+        "not reading the label rule the coverage branch applies")
 
 
 def test_digest_reacts_to_the_event_positions(monkeypatch):
@@ -405,6 +536,183 @@ def test_digest_reacts_to_the_role_caps(monkeypatch):
     assert rules.digest() != baseline, (
         "changing a role cap must change the rules digest; the registry is not "
         "reading the caps the planner applies")
+
+
+@pytest.mark.parametrize("status,expected", [
+    ("未断裂", "未断裂"),
+    ("无法判断", "无法判断"),
+    ("无法确定", "无法判断"),
+    ("发生断裂", "发生断裂"),
+], ids=["unbroken", "undecidable", "legacy-undecidable", "fractured"])
+def test_coverage_label_state_comes_from_the_source_annotation(status, expected):
+    """A coverage candidate starts from the source's own 断裂状态, not from a fixed word."""
+    rules = rules_module()
+    row = source_row(status)
+    snapshot = dict(row)
+
+    state = rules.coverage_label_state(row)
+
+    assert state == expected, f"断裂状态={status!r} must start the candidate at {expected!r}"
+    assert row == snapshot, "the initial-label rule must not rewrite the annotation"
+
+
+def test_coverage_label_state_is_blank_when_the_source_has_no_state():
+    row = source_row("未断裂")
+    del row["断裂状态"]
+
+    state = rules_module().coverage_label_state(row)
+
+    assert state == "", f"a missing source state must stay empty, got {state!r}"
+
+
+def test_coverage_candidate_labels_take_the_source_state():
+    """An unbroken coverage source keeps 未断裂 and has mode/location zeroed to 无."""
+    rules = rules_module()
+    row = source_row("未断裂", 断裂模式="无", 断裂位置="无", 异常_视频异常="是")
+    labels = {"断裂状态": "无法判断", "断裂模式": "无法确定", "断裂位置": "无法确定"}
+
+    returned = rules.coverage_candidate_labels(labels, row)
+
+    assert returned is labels, (
+        "coverage_candidate_labels must rewrite the candidate labels dict it is given")
+    assert labels["断裂状态"] == "未断裂", (
+        f"the source says 未断裂, so the candidate starts there; got {labels['断裂状态']!r}")
+    assert labels["断裂状态"] != "无法判断", (
+        "an unbroken source must not be relabelled with the unified uncertain state")
+    assert labels["断裂模式"] == "无" and labels["断裂位置"] == "无", (
+        "an unbroken candidate must record 无/无, got "
+        f"{labels['断裂模式']!r}/{labels['断裂位置']!r}")
+
+
+def test_an_uncertain_coverage_candidate_keeps_its_source_mode_and_location():
+    """Only the 未断裂 case zeroes mode/location; an uncertain source keeps its wording."""
+    rules = rules_module()
+    row = source_row("无法确定", 断裂模式="无法确定", 断裂位置="无法确定")
+
+    labels = rules.coverage_candidate_labels(legacy_generate.candidate_labels(row, "coverage"), row)
+
+    assert labels["断裂状态"] == "无法判断", (
+        f"无法确定 is unified to 无法判断 for the candidate, got {labels['断裂状态']!r}")
+    assert labels["断裂模式"] == "无法确定" and labels["断裂位置"] == "无法确定", (
+        "an uncertain candidate keeps the source wording instead of being zeroed, got "
+        f"{labels['断裂模式']!r}/{labels['断裂位置']!r}")
+
+
+@pytest.mark.parametrize("shape,changes", COVERAGE_LABEL_SHAPES,
+                         ids=[shape for shape, _ in COVERAGE_LABEL_SHAPES])
+def test_coverage_candidate_labels_agree_with_the_producer(shape, changes):
+    """The two implementations of the initial-label rule must not disagree.
+
+    Why this expectation is not circular (not a copy of the rule side's code): The
+    expected value comes from ``_legacy.core.generate.candidate_labels(row, "coverage")``,
+    a second, independent implementation of the same approved rule (both read
+    ``rules.COVERAGE_LABEL_RULE``, and the unified entry stacks the rule side on the
+    producer). Comparing the two therefore catches a change to either one; a copy of the
+    rule side's own code could not.
+
+    What it guards: stacking ``rules.coverage_candidate_labels`` on the producer's output
+    must change nothing, and applying it twice must not change anything either. The
+    producer already recorded the approved initial values, so any extra rewrite here would
+    silently relabel a candidate that the manifest audit later compares against these
+    very values.
+    """
+    rules = rules_module()
+    row = label_shape_row(changes)
+    produced = legacy_generate.candidate_labels(row, "coverage")
+
+    stacked = rules.coverage_candidate_labels(dict(produced), row)
+
+    differences = describe_label_difference(stacked, produced)
+    assert not differences, (
+        f"{shape}: the rule side rewrote the producer's coverage labels: "
+        + "; ".join(differences))
+    assert list(stacked) == list(produced), (
+        "the rule side must keep the producer's label keys (and their order), got "
+        f"{list(stacked)!r} instead of {list(produced)!r}")
+
+    twice = rules.coverage_candidate_labels(dict(stacked), row)
+    assert describe_label_difference(twice, produced) == [], (
+        f"{shape}: applying the rule side twice must give the same labels, got "
+        f"{describe_label_difference(twice, produced)}")
+
+
+@pytest.mark.parametrize("shape,changes", COVERAGE_LABEL_SHAPES,
+                         ids=[shape for shape, _ in COVERAGE_LABEL_SHAPES])
+def test_coverage_candidate_labels_match_the_producer_from_the_same_starting_point(shape, changes):
+    """The rule side must derive the same labels the producer does, from the same input.
+
+    ``candidate_labels`` starts from ``_source_labels(row)``; feeding the rule side that
+    same starting point is the only way to compare the *rules* rather than the producer
+    with itself (stacking on the producer's own output is a no-op and cannot see a branch
+    the rule side is missing).
+
+    Why this expectation is not circular (not a copy of the rule side's code): the expected labels are the producer's, an
+    independent implementation, not a copy of the rule side. The unclamped shapes below
+    are the regression this test exists for: the producer zeroes 断裂模式/断裂位置 for any
+    source with 异常_未夹紧=是, and a rule side that only looks at 未断裂 keeps the source's
+    brittle-break wording instead - which is what a coverage candidate must never record.
+    """
+    rules = rules_module()
+    row = label_shape_row(changes)
+    expected = legacy_generate.candidate_labels(row, "coverage")
+    raw = legacy_generate._source_labels(row)
+
+    actual = rules.coverage_candidate_labels(dict(raw), row)
+
+    differences = describe_label_difference(actual, expected)
+    assert not differences, (
+        f"{shape}: rules.coverage_candidate_labels disagrees with the producer "
+        f"_legacy.core.generate.candidate_labels(row, 'coverage'): " + "; ".join(differences))
+
+
+def test_the_coverage_label_rule_text_states_the_values_it_produces():
+    """``COVERAGE_LABEL_RULE`` is a registered, documented invalidation condition.
+
+    The text is the only place that states which initial values a coverage candidate
+    carries, so it must name all three the rule can produce, otherwise the code and the
+    documentation no longer point at the same rule: 未断裂 (an unbroken source keeps its
+    own state), 无 (the mode/location such a candidate records) and 无法判断 (the unified
+    wording an undecidable source is normalised to).
+    """
+    rules = rules_module()
+
+    text = rules.COVERAGE_LABEL_RULE
+
+    assert isinstance(text, str) and text.strip(), (
+        f"COVERAGE_LABEL_RULE must be a readable rule string, got {text!r}")
+    # 未夹紧 is in the set because the approved rule zeroes mode/location for "未断裂" *or*
+    # for 异常_未夹紧=是; a text that names only the first condition describes half the rule.
+    for token in ("未断裂", "无", "无法判断", "未夹紧"):
+        assert token in text, (
+            f"the registered label rule must name {token!r}, otherwise text and behaviour "
+            f"no longer describe the same rule: {text!r}")
+
+
+def test_a_missing_source_state_is_passed_through_as_a_blank_label():
+    """A row with no 断裂状态 column must not be labelled 无法判断 by the rule side.
+
+    ``coverage_label_state`` passes a missing state through as "" (only the two legacy
+    undecidable spellings are unified), and the initial-label rule must preserve that: an
+    absent state says nothing about decidability, so inventing 无法判断 would claim the
+    source is undecidable. Expectations are written out explicitly here ("" and the source
+    mode/location untouched); the shape is also compared field by field with the producer
+    by the two agreement tests above.
+    """
+    rules = rules_module()
+    row = label_shape_row(MISSING_SOURCE_STATE_CHANGES)
+    assert "断裂状态" not in row, "the shape must build a row without the 断裂状态 column"
+
+    produced = legacy_generate.candidate_labels(row, "coverage")
+    actual = rules.coverage_candidate_labels(dict(legacy_generate._source_labels(row)), row)
+
+    assert produced["断裂状态"] == "", (
+        f"the producer reads a missing state as blank, got {produced['断裂状态']!r}")
+    assert actual["断裂状态"] == "", (
+        "a missing source state must stay blank, not become 无法判断 (the source never said "
+        f"it was undecidable), got {actual['断裂状态']!r}")
+    assert actual["断裂模式"] == "脆性断裂" and actual["断裂位置"] == "标距内", (
+        "a missing state is neither 未断裂 nor 异常_未夹紧=是, so mode/location must survive "
+        f"verbatim, got {actual['断裂模式']!r}/{actual['断裂位置']!r}")
 
 
 MINIMAL_WINDOWS = [

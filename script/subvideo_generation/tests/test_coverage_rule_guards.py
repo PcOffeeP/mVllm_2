@@ -1,13 +1,16 @@
 """Guards for the coverage route: it is decided by annotation features, not by ids.
 
-Three separate contracts live here, because each of them can regress on its own:
+Four separate contracts live here, because each of them can regress on its own:
 
 * the orchestrator no longer carries a ``video_id`` allowlist for coverage;
 * the routing decision needs the source annotation row (no default fallback that
   would silently route a source on its id alone);
 * the "has no fracture anchor" test uses the same emptiness rule as the legacy
   planner (``_present``: anything but ``None``/``""``/``"无"`` is a value), so the
-  two places cannot drift into disagreeing about a blank anchor.
+  two places cannot drift into disagreeing about a blank anchor;
+* the criterion has two branches, and only the anchored case keeps the event policy:
+  no anchor + 无法判断/无法确定, or no anchor + 异常_视频异常=是 (an unbroken source whose
+  video is flagged abnormal, which the event policy would leave pending).
 """
 from __future__ import annotations
 
@@ -124,6 +127,79 @@ def test_blank_source_labels_pass_through_a_coverage_candidate():
     assert labels["断裂模式"] == "" and labels["断裂位置"] == "", (
         "blank source labels must survive verbatim; got "
         f"{labels['断裂模式']!r}/{labels['断裂位置']!r}")
+
+
+def test_an_unanchored_undecidable_source_routes_to_coverage():
+    """Branch one: no anchor + a state that cannot decide the fracture time."""
+    row = annotation("video_0107", 断裂状态="无法判断", 异常_视频异常="否",
+                     **{name: "无" for name in FRACTURE_ANCHOR_FIELDS})
+
+    verdict = coverage_criterion()(row)
+
+    assert verdict is True, (
+        "断裂状态=无法判断 with all five anchor columns empty: the source cannot locate "
+        "the fracture, so it must get the sliding coverage windows, got "
+        f"{verdict!r}")
+
+
+def test_an_unanchored_abnormal_video_source_routes_to_coverage():
+    """Branch two: the real video_0107 shape — 未断裂/无/无 + 异常_视频异常=是, no anchor."""
+    row = annotation("video_0107", 断裂状态="未断裂", 断裂模式="无", 断裂位置="无",
+                     异常_视频异常="是", **{name: "无" for name in FRACTURE_ANCHOR_FIELDS})
+
+    verdict = coverage_criterion()(row)
+
+    assert verdict is True, (
+        "an unbroken source whose video is flagged abnormal carries no usable fracture "
+        "anchor: routing it to the event policy is what turns it into a 视频异常 pending "
+        "source with zero candidates, so it must route to coverage, got "
+        f"{verdict!r}")
+
+
+def test_an_anchored_abnormal_video_source_keeps_the_event_policy():
+    """视频异常=是 is not a coverage feature by itself: a usable anchor still wins."""
+    row = annotation("video_0107", 断裂状态="未断裂", 断裂模式="无", 断裂位置="无",
+                     异常_视频异常="是", 断裂帧_前="299", 断裂帧_后="300")
+
+    verdict = coverage_criterion()(row)
+
+    assert verdict is False, (
+        "the source carries both fracture frames (299/300), so the event windows can be "
+        "cut precisely and the video-abnormal flag must not override that, got "
+        f"{verdict!r}")
+
+
+def test_an_unanchored_abnormal_video_source_is_planned_by_coverage(project):
+    """End to end: video_0108 (未断裂 + 视频异常, no anchor) plans coverage clips."""
+    root, g, _, _ = project
+    rows, rois, folds, *_ = g.load_inputs(root)
+    row = rows["video_0108"]
+    assert row["断裂状态"] == "未断裂" and row["异常_视频异常"] == "是", (
+        "the fixture source must keep the real video_0107 shape: unbroken, video abnormal, "
+        f"no fracture anchor; got {row['断裂状态']!r}/{row['异常_视频异常']!r}")
+    assert not any(legacy_generate._present(row.get(name)) for name in FRACTURE_ANCHOR_FIELDS), (
+        "the fixture source must carry no fracture anchor")
+
+    source, clips, excluded = g._plan_source(
+        root, "video_0108", row, rois["video_0108"], folds["video_0108"], {})
+
+    assert source["strategy"] == "coverage", (
+        "an unanchored 未断裂 source with 异常_视频异常=是 must route to coverage, got "
+        f"{source['strategy']!r} (reason: {source.get('reason')!r})")
+    assert source["status"] == "planned", (
+        f"the coverage route must plan it rather than leave it pending: {source.get('reason')!r}")
+    assert len(clips) > 0, "a 360-frame source must yield coverage candidates"
+    assert excluded == [], f"coverage planning excludes nothing, got {excluded!r}"
+    assert all(c["candidate_labels"]["断裂状态"] == "未断裂" for c in clips), (
+        "the candidate starts from the source's 未断裂, not from 无法判断, got "
+        f"{[c['candidate_labels']['断裂状态'] for c in clips]!r}")
+    assert all(c["candidate_labels"]["断裂模式"] == "无"
+               and c["candidate_labels"]["断裂位置"] == "无" for c in clips), (
+        "an unbroken candidate records 无/无 for mode and location")
+    assert all(c["labels_status"] == "unreviewed" for c in clips), (
+        "coverage candidates still require human review")
+    assert all(c["event_kind"] == "none_unlocated" for c in clips), (
+        "a coverage window never claims to locate the fracture")
 
 
 def test_routing_follows_the_annotation_features_rather_than_a_fixed_id(project):

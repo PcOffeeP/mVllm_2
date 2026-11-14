@@ -62,15 +62,36 @@ def test_coverage_routes_keep_unknown_source_labels_and_start_from_them(project)
             continue
         seen += 1
         source_labels = c["source_labels"]
-        assert source_labels["断裂状态"] in ("无法判断", "无法确定"), (
+        assert source_labels["断裂状态"] in ("无法判断", "无法确定", "未断裂"), (
             "source_labels must keep the wording the annotation actually used")
-        assert c["candidate_labels"] == dict(source_labels, 断裂状态="无法判断"), (
-            "a coverage candidate starts from the source labels with the unified "
-            "uncertain state; nothing may be zeroed to 无")
+        if source_labels["断裂状态"] == "未断裂":
+            expected = dict(source_labels, 断裂状态="未断裂", 断裂模式="无", 断裂位置="无")
+        else:
+            expected = dict(source_labels, 断裂状态="无法判断")
+        assert c["candidate_labels"] == expected, (
+            "a coverage candidate starts from the source's own 断裂状态 (无法确定 → 无法判断); "
+            "an unbroken one records 无/无 for mode and location, an uncertain one keeps "
+            "the source wording; nothing else may be rewritten")
         assert c["final_labels"] is None and c["labels_status"] == "unreviewed"
         assert c["manual_review"] == "required"
         assert c["event_kind"] == "none_unlocated" and c["source_anchor_frames"] == []
     assert seen, "the fixture must still produce coverage candidates"
+    # The video-abnormal shape (video_0108): unbroken source, no anchor, 视频异常=是.
+    abnormal_video = [c for c in m["candidates"] if c["source_video_id"] == "video_0108"]
+    assert abnormal_video, (
+        "an unanchored source whose video is flagged abnormal must be planned by the "
+        "coverage route, not left pending by the event policy")
+    assert all(c["source_labels"]["断裂状态"] == "未断裂" for c in abnormal_video)
+    for c in abnormal_video:
+        assert c["candidate_labels"]["断裂状态"] == "未断裂", (
+            "video_0108 is 未断裂 in the source, so its candidate must start at 未断裂; "
+            f"got {c['candidate_labels']['断裂状态']!r}")
+        assert c["candidate_labels"]["断裂状态"] != "无法判断", (
+            "an unbroken coverage source must not be relabelled 无法判断")
+        assert c["candidate_labels"]["断裂模式"] == "无", (
+            f"got {c['candidate_labels']['断裂模式']!r}")
+        assert c["candidate_labels"]["断裂位置"] == "无", (
+            f"got {c['candidate_labels']['断裂位置']!r}")
     # The retired rows also have to keep their source-mode wording initial values.
     uncertain = [c for c in m["candidates"]
                  if c["source_video_id"] in COVERAGE_IDS
@@ -86,9 +107,13 @@ def test_coverage_routes_keep_unknown_source_labels_and_start_from_them(project)
         c["source_labels"]["断裂状态"] == "无法判断" for c in never_listed)
     assert all(c["candidate_labels"]["断裂模式"] == "无" for c in never_listed), (
         "a source that says 无 keeps 无: only the uncertain state is rewritten")
-    # A retired id is a plain unbroken source here, planned by the event policy.
+    # A retired id is a plain unbroken source here (no abnormal-video flag), planned by
+    # the event policy: the reverse control for the video-abnormal coverage branch.
     row = next(s for s in m["sources"] if s["video_id"] == "video_0107")
     assert row["strategy"] == "regular" and row["source_annotation"]["断裂状态"] == "未断裂"
+    assert row["source_annotation"]["异常_视频异常"] != "是", (
+        "video_0107 in this fixture is the control: 未断裂 *and* no video-abnormal flag, "
+        "so it must stay on the event policy")
     one = [c for c in m["candidates"] if c["source_video_id"] == "video_0015"]
     assert [(c["start_frame"], c["end_frame"]) for c in one] == [(0, 200), (150, 350), (160, 360)]
 

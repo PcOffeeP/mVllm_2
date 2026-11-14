@@ -156,10 +156,24 @@ def _source_labels(row: dict) -> dict:
 
 def candidate_labels(row: dict, role: str) -> dict:
     labels = _source_labels(row)
-    state = row.get("断裂状态", UNCERTAIN) if role == "unclamped" else {"pre": "未断裂", "pre_event": "未断裂", "fracture": "发生断裂",
+    if role == "coverage":
+        # This branch produces a coverage candidate's initial labels; the archived
+        # coverage verifier (``_legacy/coverage/verification.py``) and the archived
+        # audit read them back from here, while the unified entry derives the same
+        # labels from the source labels with ``rules.coverage_candidate_labels``. The
+        # state is derived by ``rules.coverage_label_state``; the 未断裂 and
+        # 异常_未夹紧=="是" zeroing of 断裂模式/断裂位置 is the tail of this function.
+        # The two implementations are pinned field-for-field equal by
+        # ``test_coverage_candidate_labels_agree_with_the_producer`` and
+        # ``test_coverage_candidate_labels_match_the_producer_from_the_same_starting_point``;
+        # changing either side requires changing the other one in the same edit.
+        from script.subvideo_generation import rules
+        labels["断裂状态"] = rules.coverage_label_state(row)
+    else:
+        state = row.get("断裂状态", UNCERTAIN) if role == "unclamped" else {"pre": "未断裂", "pre_event": "未断裂", "fracture": "发生断裂",
                             "transition": "发生断裂", "post": "已断裂", "post_event": "已断裂",
                             "no_fracture": "未断裂", "stable_negative": "未断裂"}.get(role, UNCERTAIN)
-    labels["断裂状态"] = _unified_uncertain(state)
+        labels["断裂状态"] = _unified_uncertain(state)
     if labels["断裂状态"] == "未断裂" or row.get("异常_未夹紧") == "是":
         labels["断裂模式"] = labels["断裂位置"] = "无"
     return labels

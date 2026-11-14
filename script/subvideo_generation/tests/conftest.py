@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from script.subvideo_generation.tests.rules_support import FRACTURE_ANCHOR_FIELDS
 from script.subvideo_generation.tests.test_generation_contract import annotation, digest, media
 from script.subvideo_generation.tests.test_unclamped_contract import anchor_document
 
@@ -22,11 +23,13 @@ RETIRED_COVERAGE_IDS = {"video_" + n for n in (
     "0005", "0015", "0021", "0034", "0036", "0042", "0049", "0050",
     "0054", "0056", "0058", "0064", "0078", "0087", "0094", "0096", "0107")}
 
-# The sources whose synthetic annotation rows actually carry the coverage features
-# (no fracture anchor + an undecidable 断裂状态), i.e. what the criterion must route.
-# Deliberately *not* the retired list: video_0107 is a plain unbroken source here and
-# video_0003 is coverage although it was never on the list.
-COVERAGE_IDS = (RETIRED_COVERAGE_IDS - {"video_0107"}) | {"video_0003"}
+# The sources whose synthetic annotation rows actually carry the coverage features, i.e.
+# what the criterion must route. Two shapes qualify: no fracture anchor + an undecidable
+# 断裂状态 (the retired rows), and no fracture anchor + 异常_视频异常=是 (video_0108, an
+# *unbroken* source whose video is flagged abnormal, i.e. the real shape of video_0107).
+# Deliberately *not* the retired list: video_0107 is a plain unbroken source here (no
+# abnormal-video flag) and video_0003 is coverage although it was never on the list.
+COVERAGE_IDS = (RETIRED_COVERAGE_IDS - {"video_0107"}) | {"video_0003", "video_0108"}
 TEST_IDS = {"video_0005", "video_0093"}
 
 
@@ -57,6 +60,13 @@ def project(tmp_path, monkeypatch):
             # Coverage through the other accepted wording, and without the 视频异常
             # flag the retired rows carry: the route must not depend on either.
             row.update(断裂状态="无法判断")
+            description = media(count=360, fps=10)
+        elif key == "video_0108":
+            # 视频异常 without any fracture anchor: the criterion must route it to coverage,
+            # and its candidate labels must start from the source's own 未断裂 state
+            # instead of the unified uncertain wording.
+            row.update(断裂状态="未断裂", 断裂模式="无", 断裂位置="无", 异常_视频异常="是",
+                       **{name: "无" for name in FRACTURE_ANCHOR_FIELDS})
             description = media(count=360, fps=10)
         elif key in COVERAGE_IDS:
             row.update(断裂状态="无法确定", 断裂模式="无法确定", 断裂位置="无法确定", 异常_视频异常="是")
@@ -129,7 +139,17 @@ def project(tmp_path, monkeypatch):
     def crop(roi, destination, candidate, roi_media, source_proof):
         key = candidate["source_video_id"]
         verifier = g.special_verification if key == "video_0093" else g.core
-        clip_verifier = g.coverage_verification if key in COVERAGE_IDS else verifier
+        # Two separate things are checked here. This assertion is the fixture's own,
+        # independent expectation of the route (an id list that predates the run), so a
+        # planning regression is reported as the route it broke rather than as a proof
+        # mismatch further down. The verifier is then picked by the role the planner
+        # actually produced, so a coverage candidate is validated by the coverage verifier
+        # even while the expectation above is still red.
+        assert (key in COVERAGE_IDS) == (candidate.get("role") == "coverage"), (
+            f"fixture expects coverage route for {key} = {key in COVERAGE_IDS}, but the "
+            f"planner produced role={candidate.get('role')!r} for candidate "
+            f"{candidate.get('candidate_id')!r}")
+        clip_verifier = g.coverage_verification if candidate.get("role") == "coverage" else verifier
         window = clip_verifier.validate_source_receipt(source_proof, roi, candidate)
         description = dict(roi_media, total_frames=candidate["end_frame"] - candidate["start_frame"],
                            duration=candidate["duration"])

@@ -193,10 +193,19 @@ def _expected_candidates(key, row, folds, raw_media, source_sha, roi_sha, anchor
         candidates = []
         for sequence, window in enumerate(coverage.plan_windows(raw_media), 1):
             name = f"{key}_coverage_{sequence:02d}"
+            # The coverage initial labels are derived here from the source labels; the
+            # archived verifier reads the same rule off the legacy producer, and the two
+            # must stay field-for-field equal (pinned by
+            # test_coverage_candidate_labels_agree_with_the_producer and
+            # test_coverage_candidate_labels_match_the_producer_from_the_same_starting_point).
             candidates.append(dict(window, candidate_id=name, filename=name + ".mp4",
                 source_video_id=key, scope=_scope(folds), folds=folds, role="coverage", sequence=sequence,
                 output_path=f"videos/{name}.mp4", source_sha256=source_sha, roi_sha256=roi_sha,
-                source_labels=legacy._source_labels(row), candidate_labels=legacy.candidate_labels(row, "coverage"),
+                # Two independent _source_labels() calls on purpose: the rule rewrites the
+                # dict it is given in place, so a shared local would silently overwrite
+                # source_labels with the candidate's initial labels.
+                source_labels=legacy._source_labels(row),
+                candidate_labels=rules_registry.coverage_candidate_labels(legacy._source_labels(row), row),
                 final_labels=None, labels_status="unreviewed", manual_review="required",
                 review={"status": "未审核", "decision": None, "change_notes": ""}, status="planned"))
         return candidates, []
