@@ -9,8 +9,8 @@ from pathlib import Path
 import os
 import sys
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from script.sub_video import generate as legacy, anchors, verification
+    sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from script.subvideo_generation._legacy.core import generate as legacy, anchors, verification
 from script.subvideo_pilot import pilot as base, aligned
 PendingSource = legacy.PendingSource
 adapt_annotation = legacy.adapt_annotation
@@ -491,7 +491,7 @@ def run(project_root: Path, output_dir: Path | None = None, *, plan_only=False, 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--project-root', type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument('--project-root', type=Path, default=Path(__file__).resolve().parents[4])
     parser.add_argument('--output-dir', type=Path)
     parser.add_argument('--reuse-manifest', type=Path, action='append', default=[])
     parser.add_argument('--plan-only', action='store_true')

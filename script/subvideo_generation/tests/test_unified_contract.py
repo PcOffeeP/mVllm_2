@@ -6,7 +6,7 @@ import shutil
 
 import pytest
 
-from script.sub_video.tests.test_generation_contract import annotation, media
+from script.subvideo_generation.tests.test_generation_contract import annotation, media
 from .conftest import COVERAGE_IDS, TEST_IDS, write_json
 
 

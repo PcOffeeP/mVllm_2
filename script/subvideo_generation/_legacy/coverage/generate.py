@@ -10,11 +10,11 @@ from pathlib import Path
 import os
 import sys
 import tempfile
-if __package__ in (None,''):sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
-from script.sub_video_all import generate as inputs
-from script.sub_video import generate as labels, verification as core
+if __package__ in (None,''):sys.path.insert(0,str(Path(__file__).resolve().parents[4]))
+from script.subvideo_generation._legacy.all_sources import generate as inputs
+from script.subvideo_generation._legacy.core import generate as labels, verification as core
 from script.subvideo_pilot import aligned, pilot as base
-from script.sub_video_supplement import verification
+from script.subvideo_generation._legacy.coverage import verification
 DEFAULT_IDS=tuple('video_'+x for x in ('0005','0015','0021','0034','0036','0042','0049','0050','0054','0056','0058','0064','0078','0087','0094','0096','0107'))
 SCHEMA='tensile-sub-video-coverage/1'
 
@@ -223,7 +223,7 @@ def run(project_root,output_dir=None,*,plan_only=False,resume=False,source_ids=D
         m['plan_only']=bool(plan_only);m['complete']=not plan_only and all(s['status']=='planned' for s in m['sources']) and all(c['status']=='cropped' for c in m['candidates']);save();return m
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--project-root',type=Path,default=Path(__file__).resolve().parents[2]);parser.add_argument('--output-dir',type=Path);parser.add_argument('--plan-only',action='store_true');parser.add_argument('--resume',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--project-root',type=Path,default=Path(__file__).resolve().parents[4]);parser.add_argument('--output-dir',type=Path);parser.add_argument('--plan-only',action='store_true');parser.add_argument('--resume',action='store_true');args=parser.parse_args()
     try:m=run(args.project_root,args.output_dir,plan_only=args.plan_only,resume=args.resume)
     except (base.PilotError,OSError,ValueError,KeyError) as e:parser.exit(1,str(e)+'\n')
     print(base.canonical_bytes(summarize(m)).decode(),end='');return 0 if args.plan_only or m['complete'] else 2

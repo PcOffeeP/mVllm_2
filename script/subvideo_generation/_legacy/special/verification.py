@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 
 from script.subvideo_pilot import pilot as base
-from script.sub_video import anchors as anchor_records
+from script.subvideo_generation._legacy.core import anchors as anchor_records
 
 SOURCE_SCHEMA = "tensile-video-0093-source-replay/1"
 APPROVED_SOURCE_SHA256 = "14ee72afd09d733b6ab2f8549d477523f0572674fb1aa5f787f608fdf5fef788"
@@ -41,10 +41,11 @@ def _digest(value) -> str:
 
 def _code() -> dict:
     package = Path(__file__).resolve().parent
-    paths = (sorted(package.glob("*.py")) + sorted((package.parent / "subvideo_pilot").glob("*.py"))
-             + sorted((package.parent / "sub_video").glob("*.py"))
-             + sorted((package.parent / "sub_video_all").glob("*.py")))
-    return {str(p.relative_to(package.parent)): base.sha256_file(p) for p in paths}
+    script = package.parents[2]
+    paths = (sorted(package.glob("*.py")) + sorted((script / "subvideo_pilot").glob("*.py"))
+             + sorted((script / "subvideo_generation/_legacy/core").glob("*.py"))
+             + sorted((script / "subvideo_generation/_legacy/all_sources").glob("*.py")))
+    return {str(p.relative_to(script)): base.sha256_file(p) for p in paths}
 
 
 def _checked(command: list[str]) -> subprocess.CompletedProcess:

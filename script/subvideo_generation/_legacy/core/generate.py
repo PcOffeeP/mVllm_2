@@ -10,10 +10,10 @@ import sys
 import tempfile
 
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
 from script.subvideo_pilot import aligned, geometry, pilot as base
-from script.sub_video import anchors, verification
+from script.subvideo_generation._legacy.core import anchors, verification
 
 SCHEMA = "tensile-sub-video/2"
 ROLE_NAMES = {"pre_event": "pre", "transition": "fracture", "post_event": "post", "stable_negative": "no_fracture", "unclamped": "unclamped"}
@@ -345,7 +345,7 @@ def run(project_root: Path, output_dir: Path | None = None, *, fold: int, plan_o
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[4])
     parser.add_argument("--output-dir", type=Path, default=None, help="default: PROJECT_ROOT/data/sub_video")
     parser.add_argument("--fold", type=int, required=True, choices=(0, 1, 2), help="process only this fold's train members")
     parser.add_argument("--plan-only", action="store_true")

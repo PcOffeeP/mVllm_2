@@ -14,8 +14,8 @@ import subprocess
 
 import pytest
 
-from script.sub_video import generate as generator
-from script.sub_video import verification
+from script.subvideo_generation._legacy.core import generate as generator
+from script.subvideo_generation._legacy.core import verification
 
 
 def media(count=600, fps=10):

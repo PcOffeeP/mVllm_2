@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from script.sub_video import generate as generator
-from script.sub_video import verification
-from script.sub_video.tests.test_generation_contract import (
+from script.subvideo_generation._legacy.core import generate as generator
+from script.subvideo_generation._legacy.core import verification
+from script.subvideo_generation.tests.test_generation_contract import (
     annotation, digest, encode, media, synthetic_project,
 )
 
@@ -33,13 +33,13 @@ def unclamped_row(video_id="video_0003"):
 
 
 def parsed_anchor(tmp_path, frame=300, sha="a" * 64):
-    from script.sub_video import anchors
+    from script.subvideo_generation._legacy.core import anchors
     path = anchor_document(tmp_path / "rules.md", [("video_0003", frame, sha)])
     return anchors.load_anchors(path)["video_0003"]
 
 
 def test_markdown_anchor_reads_explicit_source_frame_without_mutating_document(tmp_path):
-    from script.sub_video import anchors
+    from script.subvideo_generation._legacy.core import anchors
     path = anchor_document(tmp_path / "rules.md", [("video_0003", 300, "a" * 64)])
     before = path.read_bytes()
     result = anchors.load_anchors(path)
@@ -59,7 +59,7 @@ def test_markdown_anchor_reads_explicit_source_frame_without_mutating_document(t
     [("video_0003", 300, "not-a-content-hash")],
 ])
 def test_markdown_anchor_rejects_ambiguous_or_unusable_records(tmp_path, rows):
-    from script.sub_video import anchors
+    from script.subvideo_generation._legacy.core import anchors
     path = anchor_document(tmp_path / "rules.md", rows)
     with pytest.raises(anchors.AnchorError):
         anchors.load_anchors(path)

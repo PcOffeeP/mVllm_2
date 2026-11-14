@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from script.sub_video.tests.test_generation_contract import annotation, digest, media
-from script.sub_video.tests.test_unclamped_contract import anchor_document
+from script.subvideo_generation.tests.test_generation_contract import annotation, digest, media
+from script.subvideo_generation.tests.test_unclamped_contract import anchor_document
 
 
 COVERAGE_IDS = {"video_" + n for n in (
@@ -27,7 +27,7 @@ def write_json(path, value):
 
 @pytest.fixture
 def project(tmp_path, monkeypatch):
-    from script.sub_video_unified import generate as g
+    from script.subvideo_generation import generate as g
     root = tmp_path / "project"
     ids = [f"video_{i:04d}" for i in range(1, 111)]
     dev = sorted(set(ids) - TEST_IDS)

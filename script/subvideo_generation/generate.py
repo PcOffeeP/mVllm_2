@@ -15,10 +15,11 @@ import sys
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from script.sub_video import anchors, generate as legacy, verification as core
-from script.sub_video_0093 import generate as special, verification as special_verification
-from script.sub_video_supplement import generate as coverage, verification as coverage_verification
+from script.subvideo_generation._legacy.core import anchors, generate as legacy, verification as core
+from script.subvideo_generation._legacy.special import generate as special, verification as special_verification
+from script.subvideo_generation._legacy.coverage import generate as coverage, verification as coverage_verification
 from script.subvideo_pilot import aligned, pilot as base
+from script.subvideo_generation import virtual
 
 SCHEMA = "tensile-unified-sub-video/1"
 SOURCE_COUNT = 110
@@ -34,12 +35,20 @@ def strategy_for(video_id):
 
 
 def code_identity():
-    """Pin orchestration as well as every imported generator/verifier/loader."""
+    """Pin orchestration as well as every imported generator/verifier/loader.
+
+    ``virtual.py`` is deliberately excluded: the videos-dir mode records its own
+    identity (window policy plus its own module hash) in its own manifest, so its
+    changes must not move the 110-source batch code identity.
+    """
     script = Path(__file__).resolve().parents[1]
-    packages = ("sub_video_unified", "sub_video", "sub_video_all", "sub_video_0093",
-                "sub_video_supplement", "subvideo_pilot")
+    packages = ("subvideo_generation", "subvideo_generation/_legacy",
+                "subvideo_generation/_legacy/core", "subvideo_generation/_legacy/special",
+                "subvideo_generation/_legacy/coverage", "subvideo_generation/_legacy/all_sources",
+                "subvideo_pilot")
     return {str(p.relative_to(script)): base.sha256_file(p)
-            for name in packages for p in sorted((script / name).glob("*.py"))}
+            for name in packages for p in sorted((script / name).glob("*.py"))
+            if str(p.relative_to(script)) != "subvideo_generation/virtual.py"}
 
 
 def load_inputs(root):
@@ -492,7 +501,22 @@ def main():
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--audit-only", action="store_true")
     parser.add_argument("--portable-audit", action="store_true", help="read-only audit after copying outputs; no claim of current RGB replay")
+    parser.add_argument("--videos-dir", type=Path, help="cut one window batch from this directory's top-level mp4 files; replaces the 110-source project mode and requires --output-dir")
     args = parser.parse_args()
+    if args.videos_dir is not None:
+        if args.portable_audit:
+            parser.error("--portable-audit cannot be combined with --videos-dir")
+        if args.audit_only:
+            parser.error("--audit-only cannot be combined with --videos-dir")
+        if args.output_dir is None:
+            parser.error("--videos-dir requires an explicit --output-dir")
+        try:
+            manifest = virtual.run(args.project_root, args.videos_dir, args.output_dir,
+                                   plan_only=args.plan_only, resume=args.resume)
+        except (base.PilotError, OSError, ValueError, KeyError, TypeError) as exc:
+            parser.exit(1, str(exc) + "\n")
+        print(base.canonical_bytes(virtual.summarize(manifest)).decode(), end="")
+        return 0 if args.plan_only or manifest["complete"] else 2
     if args.portable_audit and not args.audit_only:
         parser.error("--portable-audit requires --audit-only")
     if args.audit_only and (args.plan_only or args.resume):

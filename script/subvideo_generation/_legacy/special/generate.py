@@ -7,11 +7,11 @@ from pathlib import Path
 import sys
 import tempfile
 if __package__ in (None, ""):
-    sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
-from script.sub_video import generate as legacy
+    sys.path.insert(0,str(Path(__file__).resolve().parents[4]))
+from script.subvideo_generation._legacy.core import generate as legacy
 from script.subvideo_pilot import aligned, geometry, pilot as base
-from script.sub_video_all.generate import load_inputs
-from script.sub_video_0093 import verification
+from script.subvideo_generation._legacy.all_sources.generate import load_inputs
+from script.subvideo_generation._legacy.special import verification
 PendingSource = legacy.PendingSource
 SCHEMA="tensile-0093-supplement/1"
 
@@ -190,7 +190,7 @@ def run(project_root: Path, output_dir: Path | None = None, *, plan_only=False, 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project-root",type=Path,default=Path(__file__).resolve().parents[2]);parser.add_argument("--output-dir",type=Path)
+    parser.add_argument("--project-root",type=Path,default=Path(__file__).resolve().parents[4]);parser.add_argument("--output-dir",type=Path)
     parser.add_argument("--plan-only",action="store_true");parser.add_argument("--resume",action="store_true")
     a=parser.parse_args();m=run(a.project_root,a.output_dir,plan_only=a.plan_only,resume=a.resume)
     print(base.canonical_bytes(m["sources"][0]).decode());return 0 if a.plan_only or m["complete"] else 2

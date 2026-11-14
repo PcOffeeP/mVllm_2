@@ -3,7 +3,7 @@ from __future__ import annotations
 from fractions import Fraction
 from pathlib import Path
 import tempfile
-from script.sub_video import verification as core, generate as labels
+from script.subvideo_generation._legacy.core import verification as core, generate as labels
 from script.subvideo_pilot import pilot as base
 
 SCHEMA = 'tensile-coverage-clip-replay/1'
