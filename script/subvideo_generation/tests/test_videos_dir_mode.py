@@ -30,7 +30,7 @@ from script.subvideo_generation.tests.test_generation_contract import digest, en
 REPO_ROOT = Path(__file__).resolve().parents[3]
 GENERATE_MODULE = "script.subvideo_generation.generate"
 VIRTUAL_MODULE = "script.subvideo_generation.virtual"
-PILOT_MODULE = "script.subvideo_pilot.pilot"
+PILOT_MODULE = "script.subvideo_generation.pilot.pilot"
 OFFICIAL_BATCH = Path("data") / "sub_video"
 
 

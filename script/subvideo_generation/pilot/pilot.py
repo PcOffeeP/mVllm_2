@@ -416,7 +416,7 @@ def run(project_root: Path, output_dir: Path, *, plan_only: bool = False, resume
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[3])
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--resume", action="store_true")

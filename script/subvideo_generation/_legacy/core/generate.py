@@ -12,7 +12,7 @@ import tempfile
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
-from script.subvideo_pilot import aligned, geometry, pilot as base
+from script.subvideo_generation.pilot import aligned, geometry, pilot as base
 from script.subvideo_generation._legacy.core import anchors, verification
 
 SCHEMA = "tensile-sub-video/2"

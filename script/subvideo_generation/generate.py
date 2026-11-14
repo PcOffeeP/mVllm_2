@@ -18,7 +18,7 @@ if __package__ in (None, ""):
 from script.subvideo_generation._legacy.core import anchors, generate as legacy, verification as core
 from script.subvideo_generation._legacy.special import generate as special, verification as special_verification
 from script.subvideo_generation._legacy.coverage import generate as coverage, verification as coverage_verification
-from script.subvideo_pilot import aligned, pilot as base
+from script.subvideo_generation.pilot import aligned, pilot as base
 from script.subvideo_generation import virtual
 
 SCHEMA = "tensile-unified-sub-video/1"
@@ -45,7 +45,7 @@ def code_identity():
     packages = ("subvideo_generation", "subvideo_generation/_legacy",
                 "subvideo_generation/_legacy/core", "subvideo_generation/_legacy/special",
                 "subvideo_generation/_legacy/coverage", "subvideo_generation/_legacy/all_sources",
-                "subvideo_pilot")
+                "subvideo_generation/pilot")
     return {str(p.relative_to(script)): base.sha256_file(p)
             for name in packages for p in sorted((script / name).glob("*.py"))
             if str(p.relative_to(script)) != "subvideo_generation/virtual.py"}

@@ -17,7 +17,7 @@ import shutil
 import subprocess
 import tempfile
 
-from script.subvideo_pilot import pilot as base
+from script.subvideo_generation.pilot import pilot as base
 from script.subvideo_generation._legacy.core import anchors as anchor_records
 
 SOURCE_SCHEMA = "tensile-video-0093-source-replay/1"
@@ -42,7 +42,7 @@ def _digest(value) -> str:
 def _code() -> dict:
     package = Path(__file__).resolve().parent
     script = package.parents[2]
-    paths = (sorted(package.glob("*.py")) + sorted((script / "subvideo_pilot").glob("*.py"))
+    paths = (sorted(package.glob("*.py")) + sorted((package.parents[1] / "pilot").glob("*.py"))
              + sorted((script / "subvideo_generation/_legacy/core").glob("*.py"))
              + sorted((script / "subvideo_generation/_legacy/all_sources").glob("*.py")))
     return {str(p.relative_to(script)): base.sha256_file(p) for p in paths}

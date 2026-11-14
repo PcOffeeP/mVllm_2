@@ -50,7 +50,7 @@
 
 ### 2.3 旧数据采样辅助器不是模型调用证据
 
-`pipeline/preprocessing/minicpm_preprocessor.py:336-477` 中 `MiniCPMVideoPreprocessor.sample` 用来建立候选视频的帧映射：按区间解码、计算采样位置，调用 image processor 后返回原帧号和时间戳。该辅助器选出的原始 RGB 帧直接进入 image processor，没有经过上述训练插件的像素面积规整；而且它是独立的一次采样，不天然绑定到之后某次模型调用。它不能独立证明最终模型接收了同样的像素、切片或张量。当前子视频生成代码 `script/subvideo_pilot/aligned.py:402,428` 记录 `model_sampling_gate=not_run`；片段重放通过不等于已完成模型采样检查。
+`pipeline/preprocessing/minicpm_preprocessor.py:336-477` 中 `MiniCPMVideoPreprocessor.sample` 用来建立候选视频的帧映射：按区间解码、计算采样位置，调用 image processor 后返回原帧号和时间戳。该辅助器选出的原始 RGB 帧直接进入 image processor，没有经过上述训练插件的像素面积规整；而且它是独立的一次采样，不天然绑定到之后某次模型调用。它不能独立证明最终模型接收了同样的像素、切片或张量。当前子视频生成代码 `script/subvideo_generation/pilot/aligned.py:402,428` 记录 `model_sampling_gate=not_run`；片段重放通过不等于已完成模型采样检查。
 
 ## 3. 为什么旧项目增加自己的抽帧
 

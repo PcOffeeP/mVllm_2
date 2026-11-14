@@ -6,15 +6,15 @@ only top-level ``*.mp4`` files of the given directory, never opens ``data/``,
 assigns no fold membership, and produces an unpublished batch that must not be
 used for training or evaluation. Media probing, frame-accurate trimming, whole
 output decoding, atomic record writes and the run lock are reused from
-``script.subvideo_pilot``.
+``script.subvideo_generation.pilot``.
 """
 from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
 
-from script.subvideo_pilot import aligned
-from script.subvideo_pilot import pilot as base
+from script.subvideo_generation.pilot import aligned
+from script.subvideo_generation.pilot import pilot as base
 
 SCHEMA = "tensile-virtual-sub-video/1"
 INPUT_MODE = "videos_dir"
@@ -138,8 +138,8 @@ def _identity(hashes: dict) -> dict:
     module = Path(__file__).resolve()
     script = module.parents[1]
     pipeline = {"subvideo_generation/virtual.py": module,
-                "subvideo_pilot/pilot.py": script / "subvideo_pilot/pilot.py",
-                "subvideo_pilot/aligned.py": script / "subvideo_pilot/aligned.py"}
+                "subvideo_generation/pilot/pilot.py": script / "subvideo_generation/pilot/pilot.py",
+                "subvideo_generation/pilot/aligned.py": script / "subvideo_generation/pilot/aligned.py"}
     code = {name: base.sha256_file(path) for name, path in pipeline.items()}
     return {"schema": SCHEMA, "input_mode": INPUT_MODE,
             "videos": dict(hashes),

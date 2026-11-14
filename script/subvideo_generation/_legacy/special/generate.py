@@ -9,7 +9,7 @@ import tempfile
 if __package__ in (None, ""):
     sys.path.insert(0,str(Path(__file__).resolve().parents[4]))
 from script.subvideo_generation._legacy.core import generate as legacy
-from script.subvideo_pilot import aligned, geometry, pilot as base
+from script.subvideo_generation.pilot import aligned, geometry, pilot as base
 from script.subvideo_generation._legacy.all_sources.generate import load_inputs
 from script.subvideo_generation._legacy.special import verification
 PendingSource = legacy.PendingSource

@@ -11,7 +11,7 @@ import sys
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 from script.subvideo_generation._legacy.core import generate as legacy, anchors, verification
-from script.subvideo_pilot import pilot as base, aligned
+from script.subvideo_generation.pilot import pilot as base, aligned
 PendingSource = legacy.PendingSource
 adapt_annotation = legacy.adapt_annotation
 plan_windows = legacy.plan_windows

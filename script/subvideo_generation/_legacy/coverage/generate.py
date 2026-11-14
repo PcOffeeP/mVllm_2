@@ -13,7 +13,7 @@ import tempfile
 if __package__ in (None,''):sys.path.insert(0,str(Path(__file__).resolve().parents[4]))
 from script.subvideo_generation._legacy.all_sources import generate as inputs
 from script.subvideo_generation._legacy.core import generate as labels, verification as core
-from script.subvideo_pilot import aligned, pilot as base
+from script.subvideo_generation.pilot import aligned, pilot as base
 from script.subvideo_generation._legacy.coverage import verification
 DEFAULT_IDS=tuple('video_'+x for x in ('0005','0015','0021','0034','0036','0042','0049','0050','0054','0056','0058','0064','0078','0087','0094','0096','0107'))
 SCHEMA='tensile-sub-video-coverage/1'

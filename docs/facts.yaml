@@ -233,7 +233,7 @@ facts:
         expect: 两列默认留空
       - ref: docs/label.md:96
         expect: 未夹紧的视频若能确认确有断裂
-      - ref: docs/TODO.md:152
+      - ref: docs/TODO.md:153
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -421,13 +421,13 @@ facts:
     claim: >
       用户确认先按旧窗口规则加严生成开发集初步片段，再依据实际结果提出新规则供审查；审查后才按新规则重新生成。初裁工具以旧规划器空参考行为选窗，对断裂时间和源、ROI 身份执行严格检查，事件后保护间隔外以可解码帧末端和记录时长的较小值检查至少 2 秒素材；不处理测试集媒体，不把旧几何辅助标签当作本轮最终标签，也不执行模型采样门禁。初裁结果不等于人工审核或数据发布；所有拟发布片段须人工审核。
     evidence:
-      - ref: script/subvideo_pilot/pilot.py:120
+      - ref: script/subvideo_generation/pilot/pilot.py:120
         expect: 'def adapt_annotation(row: dict, media: dict)'
-      - ref: script/subvideo_pilot/pilot.py:167
+      - ref: script/subvideo_generation/pilot/pilot.py:167
         expect: 'def plan_windows(record: dict)'
-      - ref: script/subvideo_pilot/pilot.py:184
+      - ref: script/subvideo_generation/pilot/pilot.py:184
         expect: 'def load_inputs(project_root: Path)'
-      - ref: script/subvideo_pilot/pilot.py:319
+      - ref: script/subvideo_generation/pilot/pilot.py:319
         expect: model_sampling_gate
       - ref: docs/migration-review-outline.md:110
         expect: 初裁
@@ -441,15 +441,15 @@ facts:
     claim: >
       用户确认有精确断裂帧时不将其扩展为时间段，新一轮先沿用旧目标时长 2、3、5、10、20 秒、事件前后各 0.5 秒保护间隔和旧角色数量上限，画面对应通过后才生成；仅有断裂时间范围时，断前窗口截至下界前 0.5 秒，断后窗口不早于上界后 0.5 秒，事件窗口覆盖完整范围，保护间隔后至少还需 2 秒源素材。单片段可短于 2 秒。源标注帧、ROI 和片段的画面对应需要检查，不能仅靠放宽固定帧率时间格阈值判定无漂移；此前三个视频 video_0002、video_0015、video_0050 在旧批次暂留。此前生成的开发集候选及其当前目录已按用户要求删除；19 个来源的历史待处理状态见 DF-024。原分辨率局部证据工具仅辅助分析，不改变生成准入或自动通过待核实画面。
     evidence:
-      - ref: script/subvideo_pilot/aligned.py:129
+      - ref: script/subvideo_generation/pilot/aligned.py:129
         expect: 'def adapt_annotation(row: dict, media: dict)'
-      - ref: script/subvideo_pilot/aligned.py:184
+      - ref: script/subvideo_generation/pilot/aligned.py:184
         expect: 'def plan_windows(record: dict, source_media: dict | None = None)'
-      - ref: script/subvideo_pilot/aligned.py:248
+      - ref: script/subvideo_generation/pilot/aligned.py:248
         expect: def compare_sequences(expected_frames, actual_frames, anchor_indices)
-      - ref: script/subvideo_pilot/aligned.py:330
+      - ref: script/subvideo_generation/pilot/aligned.py:330
         expect: 'def build_crop_command(source: Path, output: Path, candidate: dict)'
-      - ref: script/subvideo_pilot/anchor_evidence.py:199
+      - ref: script/subvideo_generation/pilot/anchor_evidence.py:199
         expect: 'def analyze_project_anchor(project_root: Path, video_id: str, anchor_index: int'
     established: 2026-11-09
     established_by: 用户确认时间范围两端保护间隔、保留特殊视频与帧画面对应；代码及合成测试核对
@@ -461,9 +461,9 @@ facts:
     claim: >
       本轮自动生成采用两段独立帧对应证据：源到 ROI 仅接受身份一致、固定空间滤镜的可复现重放，现有 ROI 与重放文件及完整解码帧序列、时间戳一致；ROI 到片段使用独立绝对帧 select 重放主 trim 结果，核对输入标注帧、边界及保护间隔后，比较完整结果与帧映射。任一重放不能验证时保持待核实，不以画面相似替代；通过不等于人工审核、标签正确或数据发布。此前真实开发集批次中 67 个来源通过源到 ROI 重放，1123 个片段通过片段重放及文件摘要核对；当时 19 个来源待处理，另 3 个特殊来源暂留。测试集媒体未参与生成。记录的 842 个被窗口覆盖的标注锚点均核对帧映射；模型采样、人工标签审核与发布未进行。用户已要求删除该批次当前目录，媒体和逐条收据不再作为当前产物，历史 JSON 可从 Git 提交追溯。
     evidence:
-      - ref: script/subvideo_pilot/replay.py:201
+      - ref: script/subvideo_generation/pilot/replay.py:201
         expect: 'def verify_source_replay(source_path: Path, roi_path: Path, roi_record: dict'
-      - ref: script/subvideo_pilot/replay.py:374
+      - ref: script/subvideo_generation/pilot/replay.py:374
         expect: 'def verify_clip_replay(roi_path: Path, output_path: Path, candidate: dict'
     established: 2026-11-09
     established_by: 两段验证合成测试、独立审查及训练机真实开发集批次核验
@@ -509,7 +509,7 @@ facts:
     claim: >
       用户明确要求源视频只生成一次子视频，并授权包含固定测试集的视频以供后续测试；不重新划分，也不因此授权模型训练、测评或数据发布。用户随后要求删除原有三批并按当前规则重新编码生成一个统一批次；旧结果已删除，统一批次对 110 个来源生成 1621 个候选，其中开发集 1307 个、固定测试集 314 个，未复用旧片段。各来源原三折训练／验证归属不变；逐来源窗口、标签初值和划分与重建前规则摘要一致。源到 ROI、ROI 到片段重放及全部输出的最终完整解码检查通过；54 个候选标签初值需人工重点核验。重建完成时所有候选未人工审核、未发布；后续人审进度以独立审核记录为准，机器核验不替代画面审查或模型测评。
 
-      上述逐帧核验对应提交 8a2302b 的代码状态。后续目录重组（script/sub_video_unified 改名为 script/subvideo_generation，四个旧包迁入 script/subvideo_generation/_legacy/）与虚拟视频入口 --videos-dir 的扩展改变了生成侧代码身份（manifest 的 identity.code、loader_code 以及各 receipt 内嵌的 code 摘要均已变化），因此当前检出无法再用 --audit-only 复验本批，需要回到 8a2302b 复核；清单与片段本身未改动，1621 / 1307 / 314 等数字仍是该历史批次的记录。
+      上述逐帧核验对应提交 8a2302b 的代码状态。后续目录重组（script/sub_video_unified 改名为 script/subvideo_generation，四个旧包迁入 script/subvideo_generation/_legacy/，pilot 底层并入 script/subvideo_generation/pilot/）与虚拟视频入口 --videos-dir 的扩展改变了生成侧代码身份（manifest 的 identity.code、loader_code 以及各 receipt 内嵌的 code 摘要均已变化），因此当前检出无法再用 --audit-only 复验本批，需要回到 8a2302b 复核；清单与片段本身未改动，1621 / 1307 / 314 等数字仍是该历史批次的记录。
     evidence:
       - ref: script/subvideo_generation/generate.py:54
         expect: 'def load_inputs(root):'
