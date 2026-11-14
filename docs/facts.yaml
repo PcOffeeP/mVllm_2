@@ -584,7 +584,7 @@ facts:
     state: active
     topic: 统一子视频的本地人工审核与独立记录
     claim: >
-      人工审核工具读取当前统一候选清单、视频、固定测试及三折成员；源标注和候选标签仅供参考，首次审核值为空。覆盖候选已有初值，人工审核可以覆盖（初值规则见 DF-045）。人工决定写入独立的 data/subvideo-review/reviews.json，并与片段、来源、生成规则、划分及标签规则身份关联；媒体播放和保存前核对摘要，不回写生成清单或源标注。audit.json 只有通过清单身份与条目一致性核对后才提供重点提示，技术检查不代替用户人工看片。审核记录进入 Git，视频和本地锁文件不进入 Git；审核本身不等于数据发布、模型训练或模型测评。
+      人工审核工具读取当前统一候选清单、视频、固定测试及三折成员；源标注和候选标签仅供参考，首次审核值为空。覆盖候选已有初值，人工审核可以覆盖（初值规则见 DF-045）。人工决定写入独立的 data/subvideo-review/reviews.json，并与片段、来源、生成规则、划分及标签规则身份关联；媒体播放和保存前核对摘要，不回写生成清单或源标注。audit.json 只有通过清单身份与条目一致性核对后才提供重点提示，技术检查不代替用户人工看片。审核记录进入 Git，视频和本地锁文件不进入 Git；审核本身不等于数据发布、模型训练或模型测评。本段中「首次审核值为空」的表述已由 DF-047 修订。
     evidence:
       - ref: script/subvideo_review/server.py:36
         expect: 'STORE_SCHEMA = "tensile-subvideo-human-review/2"'
@@ -597,7 +597,7 @@ facts:
       - ref: script/subvideo_review/static/app.js:226
         expect: '生成时建议关注'
       - ref: script/subvideo_review/README.md:3
-        expect: '首次审核时不会自动填入答案'
+        expect: '候选标签预填为草稿，须经人工核对并确认'
       - ref: script/subvideo_review/README.md:29
         expect: 覆盖窗口的候选标签初值已由生成规则写入
       - ref: .gitignore:35
@@ -613,10 +613,10 @@ facts:
     claim: >
       用户于 2026-11-10 确认：候选片段由用户本人看画面并审核五类标签；审核字段默认留空，源标签和窗口角色只作另列参考，独立保存草稿、确认、退回、疑问和关联修订，旧决定不因候选同名自动继承。五类评分采用三个单选值及异常三项、现象五项的逐项「是／否／无法判断」编码。每项人工真值有效且请求已尝试者进入对应准确率或召回分母；失败和缺字段不算正确但单列，未处理与人工未标另列，多选人工无法判断不当作正负例。精确率按模型明确报出且人工可比较的样本计；多选误报率以人工为否且模型明确答是或否的样本为分母，失败与模型不确定另列。五类全对作为补充，只以人工各项可比较且请求已尝试的片段为分母；多选人工未知或未标不计入，模型缺项或失败不算全对。冲突按原输出逐项评分并另报，不自动修正或接入晋级与发布。完整片段与实际输入的人审结果分开，真实与虚拟分别报告；其他未定统计和阈值不得擅自定案。代码和合成测试、用户实际审核、模型运行及发布是不同阶段；本条确认不授权真实／虚拟媒体生成、固定测试媒体处理、模型运行或发布。
       上述不授权固定测试媒体的限制属于 2026-11-10 的原范围；2026-11-11 用户允许本轮已生成的固定测试候选参与人工看片与标签审核，不因此授权模型测试或将测试片段用于训练。现审核入口读取当前 data/sub_video/manifest.json，独立保存人工修订并核对固定划分；其他候选追加后，片段、来源参考、批次、标签规则与划分身份未变的修订可恢复，身份变化的历史隔离。代码和合成检查不表示已审核真实片段。
-      本段中「多选人工无法判断不当作正负例」与「多选人工未知或未标不计入五类全对分母」属 2026-11-10 的旧口径，已由 DF-043 及 docs/decisions/0003-five-label-eval-scope.md 第 2 条取代；其余审核字段与分母口径仍适用。
+      本段中「多选人工无法判断不当作正负例」与「多选人工未知或未标不计入五类全对分母」属 2026-11-10 的旧口径，已由 DF-043 及 docs/decisions/0003-five-label-eval-scope.md 第 2 条取代；其余审核字段与分母口径仍适用。本段中「审核字段默认留空」的表述已由 DF-047 修订。
     evidence:
       - ref: docs/subvideo-review-workflow.md:24
-        expect: 11 个可编辑字段全部默认留空
+        expect: 11 个可编辑字段默认按候选标签预填
       - ref: docs/design-test.md:64
         expect: 已确认逐类准确率和召回采用以下分母
       - ref: docs/design-test.md:79
@@ -1011,6 +1011,33 @@ facts:
     established_by: 用户确认数据与运行位置迁移（DEC-003 第 10 条）；TODO 的 DATA-HANDOFF 条目、审核工具 README 与当前工作树路径核对
     supersedes: null
     affects: [ops, data]
+
+  - id: DF-047
+    state: active
+    topic: 审查台按候选标签预填 11 个字段（草稿初值）
+    claim: >
+      本条部分修订 DF-030 与 DF-029 中关于「审核字段默认留空」「首次审核值为空」的表述，其余结论仍适用。现行审查台打开候选时按生成阶段写入的候选标签预填 11 个可编辑字段：断裂状态、断裂模式、断裂位置三个单选，以及三项异常、五项现象。预填值只是草稿初值，用户须逐项核对或修改并人工点击确认；未确认的预填不等于审核通过。已保存的人工修订优先于预填；源标签只作另列参考，不参与预填；候选标签缺项时留空，不补「否」，空白表示未标；预填来源是生成阶段候选标签，身份变化的历史修订被隔离、不自动继承。
+    evidence:
+      - ref: docs/subvideo-review-workflow.md:24
+        expect: 11 个可编辑字段默认按候选标签预填
+      - ref: script/subvideo_review/README.md:29
+        expect: 页面用候选标签初值预填 11 项
+      - ref: script/subvideo_review/README.md:29
+        expect: 源标签仍只作参考，已保存修订优先于预填
+      - ref: script/subvideo_review/README.md:29
+        expect: 缺项留空，不补“否”
+      - ref: script/subvideo_review/static/app.js:181
+        expect: candidate.candidate_labels || candidate.candidate_reference
+      - ref: script/subvideo_review/static/app.js:230
+        expect: 已按生成标签预填，确认前为草稿
+      - ref: script/subvideo_review/static/index.html:137
+        expect: 源标签只供参考，不写入审核值
+      - ref: script/subvideo_review/tests/test_app_dom.cjs:280
+        expect: saved human revision overrides the candidate prefill
+    established: 2026-11-14
+    established_by: 按代码与文档核对（提交 `723fafb`、`6b69ef3` 的预填实现）
+    supersedes: DF-030
+    affects: [data, code]
 
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
