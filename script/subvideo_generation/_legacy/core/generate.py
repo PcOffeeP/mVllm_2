@@ -19,6 +19,17 @@ SCHEMA = "tensile-sub-video/2"
 ANOMALIES = ("未夹紧", "视频异常", "爆炸性断裂")
 PHENOMENA = ("伸长", "颈缩", "开裂", "界面分离", "断后脱夹")
 
+# 本模块是历史归档生成路径（subvideo_generation/_legacy），只用于复现此前批次。
+# 此前批次使用的 CSV/清单里 `断裂状态` 可能是旧词「无法确定」：为保持旧批次可复现，
+# 输入判定同时接受「无法判断」与「无法确定」（UNCERTAIN_INPUTS）；但派生输出统一为
+# 「无法判断」。新口径 CSV 归一化在 script/data_split 侧完成，本模块不做源值改写
+# （`_source_labels` 仍原样透传源值）。
+# 失效条件：旧批次不再需要复现，或历史清单里的旧词已离线迁移为「无法判断」
+#（那时应把输入判定收缩为单一取值并删除本段说明）。
+UNCERTAIN = "无法判断"
+UNCERTAIN_INPUTS = (UNCERTAIN, "无法确定")
+LEGACY_UNCERTAIN = ("无法确定", "无法识别")
+
 
 class PendingSource(base.SkipSource):
     """An input cannot yet be processed under the approved rules."""
@@ -26,6 +37,11 @@ class PendingSource(base.SkipSource):
 
 def _present(value) -> bool:
     return value not in (None, "", "无")
+
+
+def _unified_uncertain(value):
+    """Derived labels use the unified term even when the source row kept an old word."""
+    return UNCERTAIN if value in LEGACY_UNCERTAIN else value
 
 
 def adapt_annotation(row: dict, media: dict, phenomenon_anchor: dict | None = None) -> dict:
@@ -52,7 +68,9 @@ def adapt_annotation(row: dict, media: dict, phenomenon_anchor: dict | None = No
               "location_canonical": None, "source_fracture_mode": row.get("断裂模式", "")}
     if not has_event:
         if row.get("断裂状态") != "未断裂":
-            raise PendingSource("无法确定" if row.get("断裂状态") == "无法确定" else "缺少断裂时刻或完整时间范围")
+            raise PendingSource("断裂状态为无法判断（含旧记录的无法确定）且缺少断裂时刻或完整时间范围"
+                                if row.get("断裂状态") in UNCERTAIN_INPUTS
+                                else "缺少断裂时刻或完整时间范围")
         if row.get("异常_爆炸性断裂") == "是":
             raise PendingSource("未断裂与爆炸性断裂标签冲突")
         return dict(record, type="未断裂", has_fracture_canonical=False,
@@ -138,9 +156,10 @@ def _source_labels(row: dict) -> dict:
 
 def candidate_labels(row: dict, role: str) -> dict:
     labels = _source_labels(row)
-    labels["断裂状态"] = row.get("断裂状态", "无法确定") if role == "unclamped" else {"pre": "未断裂", "pre_event": "未断裂", "fracture": "发生断裂",
+    state = row.get("断裂状态", UNCERTAIN) if role == "unclamped" else {"pre": "未断裂", "pre_event": "未断裂", "fracture": "发生断裂",
                             "transition": "发生断裂", "post": "已断裂", "post_event": "已断裂",
-                            "no_fracture": "未断裂", "stable_negative": "未断裂"}.get(role, "无法确定")
+                            "no_fracture": "未断裂", "stable_negative": "未断裂"}.get(role, UNCERTAIN)
+    labels["断裂状态"] = _unified_uncertain(state)
     if labels["断裂状态"] == "未断裂" or row.get("异常_未夹紧") == "是":
         labels["断裂模式"] = labels["断裂位置"] = "无"
     return labels

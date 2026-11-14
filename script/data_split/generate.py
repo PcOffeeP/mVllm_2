@@ -32,9 +32,9 @@ from fractions import Fraction
 
 RULE_VERSION = "explicit-source-five-task-v1"
 FIELDS = {
-    "断裂状态": ("未断裂", "发生断裂", "已断裂", "无法确定"),
-    "断裂模式": ("脆性断裂", "韧性断裂", "半脆半韧断裂", "无法确定", "无"),
-    "断裂位置": ("标距内", "标距外非根部", "夹持根部", "无法确定", "无"),
+    "断裂状态": ("未断裂", "发生断裂", "已断裂", "无法判断"),
+    "断裂模式": ("脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断", "无"),
+    "断裂位置": ("标距内", "标距外非根部", "夹持根部", "无法判断", "无"),
     **{f"异常_{name}": ("是", "否", "无法判断") for name in
        ("未夹紧", "视频异常", "爆炸性断裂")},
     **{f"现象_{name}": ("是", "否", "无法判断") for name in
@@ -43,8 +43,10 @@ FIELDS = {
 TASKS = (("断裂状态",), ("断裂模式",), ("断裂位置",),
          tuple(f for f in FIELDS if f.startswith("异常_")),
          tuple(f for f in FIELDS if f.startswith("现象_")))
-ALIASES = {("断裂状态", "无法判断"): "无法确定",
-           ("断裂模式", "无法识别"): "无法确定"}
+ALIASES = {("断裂状态", "无法确定"): "无法判断",
+           ("断裂模式", "无法确定"): "无法判断",
+           ("断裂位置", "无法确定"): "无法判断",
+           ("断裂模式", "无法识别"): "无法判断"}
 UNCERTAIN = {"无", "无法确定", "无法判断"}
 SEEDS = tuple(range(42, 142))
 
@@ -91,7 +93,7 @@ def _ids(value, name, allow_empty=False):
 
 
 def normalize_row(row):
-    """Check model semantics; normalize only the two documented legacy aliases."""
+    """Check model semantics; normalize only the documented legacy aliases."""
     result = dict(row)
     video_id = row.get("id")
     if not isinstance(video_id, str) or not video_id.strip() or video_id != video_id.strip():
@@ -115,7 +117,7 @@ def normalize_row(row):
     if state == "未断裂" and result["现象_断后脱夹"] == "是":
         raise SplitError(f"{video_id}: 未断裂 conflicts with 断后脱夹")
     expected_status = {"未断裂": "已标注·无断裂", "发生断裂": "已标注·有断裂",
-                       "已断裂": "已标注·有断裂", "无法确定": "无法判读"}[state]
+                       "已断裂": "已标注·有断裂", "无法判断": "无法判读"}[state]
     if row.get("标注状态") != expected_status:
         raise SplitError(f"{video_id}: incomplete/conflicting 标注状态")
     if result["异常_未夹紧"] == "是" and row.get("断裂时间点", "无") != "无":

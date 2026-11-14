@@ -21,7 +21,7 @@ def write_example(output):
                    for i, s in enumerate(samples) if i != 3]
     predictions[2]["input_review_id"] = "input-review-2"
     actual = {k: predictions[2][k] for k in ("candidate_id", "clip_sha256", "run_id", "model_id", "prompt_id", "input_id", "request_id", "input_review_id")}
-    actual.update(review_status="confirmed", fields={"断裂状态": {"evidence": "insufficient", "label": "无法确定"},
+    actual.update(review_status="confirmed", fields={"断裂状态": {"evidence": "insufficient", "label": "无法判断"},
                                                     "断裂现象": {"伸长": {"evidence": "insufficient", "label": "无法判断"}}})
     (root / "manifest.json").write_text(json.dumps({"manifest_version": "invented/1", "samples": samples}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     for name, rows in (("reviews", reviews), ("predictions", predictions), ("input_reviews", [actual])):

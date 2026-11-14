@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from script.five_label_eval.score import FIELDS, InputError, extract, main, report, score
+from script.five_label_eval.score import FIELDS, SINGLES, InputError, extract, main, report, score, truth_cell
 
 
 def labels():
@@ -45,7 +45,7 @@ class ScoreTests(unittest.TestCase):
             else:
                 output["断裂现象"]["伸长"] = value
             if i == 3:
-                output["断裂状态"] = "无法确定"
+                output["断裂状态"] = "无法判断"
             p[i]["raw_output"] = json.dumps(output)
         p[6]["status"] = "request_failed"
         p[9]["status"] = "unprocessed"
@@ -74,13 +74,13 @@ class ScoreTests(unittest.TestCase):
         m, r, p = fixture()
         uncertain = labels()
         for field in ("断裂状态", "断裂模式", "断裂位置"):
-            uncertain[field] = "无法确定"
+            uncertain[field] = "无法判断"
         r[0]["labels"] = uncertain
         p[0]["raw_output"] = json.dumps(uncertain)
         group = score(m, r, p)["groups"]["real"]["full_clip"]
         self.assertEqual(group["all_five_correct_supplement"]["value"], 1)
         for field in ("断裂状态", "断裂模式", "断裂位置"):
-            precision = group["fields"][field]["classes"]["无法确定"]["precision"]
+            precision = group["fields"][field]["classes"]["无法判断"]["precision"]
             self.assertEqual((precision["numerator"], precision["denominator"]), (1, 1))
 
     def test_hand_calculated_multilabel_failures_uncertainty_and_sources(self):
@@ -119,9 +119,9 @@ class ScoreTests(unittest.TestCase):
         m, r, p = fixture(4)
         r[0]["labels"]["断裂现象"]["伸长"] = "无法判断"
         r[1]["labels"]["断裂现象"]["伸长"] = ""
-        r[2]["labels"]["断裂状态"] = "无法确定"
+        r[2]["labels"]["断裂状态"] = "无法判断"
         obj = labels()
-        obj["断裂状态"] = "无法确定"
+        obj["断裂状态"] = "无法判断"
         p[2]["raw_output"] = json.dumps(obj)
         obj = labels()
         del obj["断裂现象"]["伸长"]
@@ -132,8 +132,46 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(f["recall"]["value"], .5)
         self.assertEqual(f["FN"], 0)
         self.assertEqual(f["failures_or_uncertain_by_truth"], {"是:missing": 1})
-        self.assertEqual(a["fields"]["断裂状态"]["classes"]["无法确定"]["recall"]["value"], 1)
+        self.assertEqual(a["fields"]["断裂状态"]["classes"]["无法判断"]["recall"]["value"], 1)
+        # A single-choice 无法判断 matched by the model is a comparable class, not
+        # an explicit-uncertain failure.
+        self.assertEqual(a["fields"]["断裂状态"]["failures_or_uncertain_by_truth"], {})
+        self.assertEqual((a["fields"]["断裂状态"]["accuracy"]["numerator"],
+                          a["fields"]["断裂状态"]["accuracy"]["denominator"]), (4, 4))
         self.assertEqual(a["all_five_correct_supplement"]["denominator"], 2)
+
+    def test_explicit_uncertain_failure_only_applies_to_multi_item_fields(self):
+        # One prediction value 无法判断: an ordinary correct class on a single-choice
+        # field, an explicit_uncertain failure on a multi-item field.
+        m, r, p = fixture(1)
+        r[0]["labels"]["断裂状态"] = "无法判断"
+        obj = labels()
+        obj["断裂状态"] = "无法判断"
+        obj["断裂现象"]["伸长"] = "无法判断"
+        p[0]["raw_output"] = json.dumps(obj)
+        a = score(m, r, p)["groups"]["real"]["full_clip"]
+        state, elongation = a["fields"]["断裂状态"], a["fields"]["断裂现象.伸长"]
+        self.assertEqual((state["accuracy"]["numerator"], state["accuracy"]["denominator"]), (1, 1))
+        self.assertEqual(state["failures_or_uncertain_by_truth"], {})
+        self.assertEqual((elongation["accuracy"]["numerator"],
+                          elongation["accuracy"]["denominator"]), (0, 1))
+        self.assertEqual(elongation["failures_or_uncertain_by_truth"], {"是:explicit_uncertain": 1})
+
+    def test_single_choice_labels_use_unified_uncertain_term(self):
+        # Single-choice and multi-item uncertainty share one term 无法判断, but
+        # only the single-choice one is a valid comparable class.
+        for field in ("断裂状态", "断裂模式", "断裂位置"):
+            with self.subTest(field=field):
+                self.assertIn("无法判断", SINGLES[field])
+                self.assertNotIn("无法确定", SINGLES[field])
+        for field in ("断裂状态", "断裂模式", "断裂位置"):
+            with self.subTest(field=field):
+                self.assertEqual(truth_cell(field, "无法判断"), {"status": "valid", "value": "无法判断"})
+        for field in ("异常情况.未夹紧", "异常情况.视频异常", "异常情况.爆炸性断裂",
+                      "断裂现象.伸长", "断裂现象.颈缩", "断裂现象.开裂",
+                      "断裂现象.界面分离", "断裂现象.断后脱夹"):
+            with self.subTest(field=field):
+                self.assertEqual(truth_cell(field, "无法判断"), {"status": "unknown", "value": "无法判断"})
 
     def test_extraction_duplicates_partial_empty_lists_fence_and_conflicts(self):
         raw = json.dumps(labels(), ensure_ascii=False)
@@ -238,7 +276,7 @@ class ScoreTests(unittest.TestCase):
     def test_actual_input_review_is_independent_and_exactly_bound(self):
         m, r, p = fixture()
         p[0]["input_review_id"] = "ir1"
-        fields = {"断裂状态": {"evidence": "insufficient", "label": "无法确定"},
+        fields = {"断裂状态": {"evidence": "insufficient", "label": "无法判断"},
                   "断裂现象": {"伸长": {"evidence": "insufficient", "label": "无法判断"},
                                "颈缩": {"evidence": "sufficient", "label": "是"}}}
         ir = {**{k: v for k, v in p[0].items() if k not in ("raw_output", "status")},

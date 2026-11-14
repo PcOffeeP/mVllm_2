@@ -263,7 +263,7 @@ def test_actual_input_review_is_bound_to_request_and_does_not_replace_full_clip_
     for group in ("异常情况", "断裂现象"):
         fields[group] = {key: {"label": value, "evidence": "sufficient"}
                          for key, value in LABELS[group].items()}
-    fields["断裂状态"] = {"label": "无法确定", "evidence": "insufficient"}
+    fields["断裂状态"] = {"label": "无法判断", "evidence": "insufficient"}
     input_review = {key: pred[key] for key in ("candidate_id", "clip_sha256", "run_id", "model_id", "prompt_id", "input_id", "request_id", "input_review_id")}
     input_review.update(review_status="confirmed", fields=fields)
     result = score(manifest, rows, [pred], [input_review])

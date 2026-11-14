@@ -64,7 +64,7 @@ class ReviewTests(unittest.TestCase):
             (directory / f"fold_{fold}_{part}.json").write_text(json.dumps({"video_ids": members}), encoding="utf-8")
 
     def labels(self):
-        labels = {name: ({item: "无法判断" for item in options} if isinstance(options, dict) else "无法确定") for name, options in OPTIONS.items()}
+        labels = {name: ({item: "无法判断" for item in options} if isinstance(options, dict) else "无法判断") for name, options in OPTIONS.items()}
         return labels
 
     def payload(self, status="draft", **values):
@@ -118,6 +118,16 @@ class ReviewTests(unittest.TestCase):
         labels["断裂现象"]["伸长"] = "无法判断"
         row = self.app.save(self.payload("confirmed", labels=labels))
         self.assertEqual(row["labels"]["断裂现象"]["伸长"], "无法判断")
+
+    def test_superseded_uncertain_term_is_rejected_for_single_fields(self):
+        # 「无法确定」已统一为「无法判断」；工作台只接受新术语，旧词在保存时即被拒绝。
+        for field in ("断裂状态", "断裂模式", "断裂位置"):
+            labels = self.labels()
+            labels[field] = "无法确定"
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(ReviewError, f"{field} 取值无效"):
+                    self.app.save(self.payload("confirmed", labels=labels))
+        self.assertFalse(self.app.records_path.exists())
 
     def test_fixed_combinations_and_invalid_fields(self):
         labels = self.labels()

@@ -6,6 +6,13 @@
   const statusNames = {unreviewed: "未审核", draft: "草稿", confirmed: "已确认", returned: "已退回", question: "有疑问"};
   const state = {data: null, selected: null, latest: null, dirty: false, loading: false, sequence: 0, activeScope: "", exporting: false};
   const controls = new Map();
+  /* 历史标注/旧清单里的旧词只在显示层统一为「无法判断」；已存记录与源标注字节均不改写。 */
+  const legacyUncertain = new Map([["无法确定", "无法判断"], ["无法识别", "无法判断"]]);
+  const unifiedTerm = (value) => {
+    if (typeof value !== "string") return value;
+    const term = value.trim();
+    return legacyUncertain.get(term) || value;
+  };
   const setVideoState = (value) => {
     const frame = byId("video-player").closest(".video-frame");
     if (!frame) return;
@@ -126,7 +133,9 @@
         const term = document.createElement("dt");
         const detail = document.createElement("dd");
         term.textContent = key;
-        detail.textContent = typeof value === "object" ? JSON.stringify(value) : String(value);
+        const mapped = unifiedTerm(value);
+        detail.textContent = typeof value === "object" ? JSON.stringify(value)
+          : (mapped === value ? String(value) : `${mapped}（原值：${value}）`);
         list.append(term, detail);
       });
       content.append(list);
@@ -172,7 +181,7 @@
     names.forEach((name) => {
       const parts = name.split(".");
       const value = parts.length === 1 ? labels[name] : labels[parts[0]]?.[parts[1]];
-      controls.get(name).value = value || "";
+      controls.get(name).value = unifiedTerm(value) || "";
     });
   }
   function renderHistory(review) {
@@ -283,7 +292,7 @@
     if (!state.selected || state.loading) return;
     const labels = labelsFromControls();
     if (status === "confirmed" && names.some((name) => !controls.get(name).value)) {
-      message("确认须完成全部 11 项；无法确定或无法判断可明确选择。留空请保存草稿或疑问。", true);
+      message("确认须完成全部 11 项；无法判断可明确选择。留空请保存草稿或疑问。", true);
       return;
     }
     const reason = byId("decision-reason").value;

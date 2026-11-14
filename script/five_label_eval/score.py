@@ -11,9 +11,9 @@ import sys
 
 VERSION = "five-label-score/1"
 SINGLES = {
-    "断裂状态": ("未断裂", "发生断裂", "已断裂", "无法确定"),
-    "断裂模式": ("脆性断裂", "韧性断裂", "半脆半韧断裂", "无法确定", "无"),
-    "断裂位置": ("标距内", "标距外非根部", "夹持根部", "无法确定", "无"),
+    "断裂状态": ("未断裂", "发生断裂", "已断裂", "无法判断"),
+    "断裂模式": ("脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断", "无"),
+    "断裂位置": ("标距内", "标距外非根部", "夹持根部", "无法判断", "无"),
 }
 MULTIS = {"异常情况": ("未夹紧", "视频异常", "爆炸性断裂"),
           "断裂现象": ("伸长", "颈缩", "开裂", "界面分离", "断后脱夹")}
@@ -118,7 +118,7 @@ def truth_cell(field, value):
         return {"status": "unlabeled", "value": value}
     if not isinstance(value, str) or value not in allowed(field):
         return {"status": "invalid", "value": value}
-    return {"status": "unknown" if value == "无法判断" else "valid", "value": value}
+    return {"status": "unknown" if value == "无法判断" and field not in SINGLES else "valid", "value": value}
 
 
 def human_truth(labels):
@@ -381,7 +381,7 @@ def field_metrics(rows, field, truth_key):
         correct += pstatus == "valid" and h == p
         category = p if pstatus == "valid" else f"<{pstatus}>"
         confusion[(h, category)] += 1
-        if pstatus != "valid" or p == "无法判断":
+        if pstatus != "valid" or (p == "无法判断" and field not in SINGLES):
             failures[f"{h}:{pstatus if pstatus != 'valid' else 'explicit_uncertain'}"] += 1
         if field not in SINGLES:
             positives += h == "是"

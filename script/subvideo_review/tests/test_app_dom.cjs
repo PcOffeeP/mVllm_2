@@ -119,13 +119,13 @@ test("pending title survives, playback end keeps current candidate, explicit nex
   const {elements, selects, requests, videoFrame, summary, details, pendingList} = harness;
   assert.equal(elements.get("clip-title").textContent, "candidate_one");
   assert.ok(selects.every((select) => select.value === ""));
-  selects[0].value = "无法确定";
+  selects[0].value = "无法判断";
   selects[0].listeners.change();
   elements.get("scope-filter").value = "test";
   await elements.get("scope-filter").listeners.change();
   assert.equal(elements.get("scope-filter").value, "development");
   assert.equal(elements.get("clip-title").textContent, "candidate_one");
-  assert.equal(selects[0].value, "无法确定");
+  assert.equal(selects[0].value, "无法判断");
   harness.allowDiscard(true);
   assert.equal(videoFrame.dataset.state, "loading");
   elements.get("video-player").listeners.loadeddata();
@@ -160,6 +160,9 @@ test("pending title survives, playback end keeps current candidate, explicit nex
   elements.get("video-player").listeners.error();
   assert.equal(videoFrame.dataset.state, "error");
   assert.match(elements.get("app-message").textContent, /媒体无法播放/);
+  /* 待处理来源的源标注仍是旧词「无法确定」：只读展示时映射为统一术语并保留原值，存储不动。 */
+  assert.match(textOf(elements.get("source-reference")), /无法判断（原值：无法确定）/,
+    `源标注里的历史旧值应显示为「无法判断（原值：无法确定）」，实际为「${textOf(elements.get("source-reference"))}」`);
   assert.equal(elements.get("review-status").textContent, "原视频只读查看");
   assert.equal(elements.get("confirm-review").disabled, true);
   assert.ok(selects.every((select) => select.disabled && select.value === ""));
@@ -193,6 +196,10 @@ test("coverage null references and focus keep all eleven human answers blank thr
   await elements.get("confirm-review").listeners.click();
   assert.ok(!requests.some(({options}) => options.method === "POST"));
   assert.match(elements.get("app-message").textContent, /11/);
+  /* 确认前的提示只能提统一术语「无法判断」；出现旧词「无法确定」会让用户以为页面上有该选项。 */
+  assert.doesNotMatch(elements.get("app-message").textContent, /无法确定/,
+    `确认提示不应再出现旧词「无法确定」，实际为「${elements.get("app-message").textContent}」`);
+  assert.match(elements.get("app-message").textContent, /无法判断/);
   await elements.get("save-draft").listeners.click();
   const saved = JSON.parse(requests.find(({options}) => options.method === "POST").options.body);
   assert.equal(saved.candidate_id, "coverage");
@@ -212,7 +219,9 @@ test("source and automatic labels are visible references while only current huma
   const {elements, selects} = await createHarness({candidates: [candidate("clip")], reviews: {
     clip: {latest, history: [latest], isolated_history: [old]},
   }});
-  assert.equal(selects[0].value, "无法确定");
+  /* latest.labels 是历史修订里的旧词「无法确定」：表单上必须映射为统一术语「无法判断」。 */
+  assert.equal(selects[0].value, "无法判断",
+    `历史修订的旧值「无法确定」应映射为表单值「无法判断」，实际为「${selects[0].value}」`);
   assert.ok(selects.slice(1).every((node) => node.value === ""));
   assert.equal(elements.get("review-note").value, "human note");
   const reference = textOf(elements.get("source-reference"));
@@ -224,6 +233,17 @@ test("source and automatic labels are visible references while only current huma
     clip: {latest: null, history: [], isolated_history: [old]},
   }});
   assert.ok(isolated.selects.every((node) => node.value === ""));
+  /* 旧标注/旧清单里的参考值只作显示：统一为「无法判断（原值：旧词）」，不预填表单也不改存储值。 */
+  const legacy = await createHarness({candidates: [candidate("legacy", {
+    source_reference: {"断裂状态": "无法确定"}, candidate_reference: {"断裂模式": "无法识别"},
+  })]});
+  const legacyReference = textOf(legacy.elements.get("source-reference"));
+  assert.match(legacyReference, /源视频标注.*无法判断（原值：无法确定）/,
+    `源标注里的旧值应显示为「无法判断（原值：无法确定）」，实际为「${legacyReference}」`);
+  assert.match(legacyReference, /候选标签初值.*无法判断（原值：无法识别）/,
+    `候选初值里的旧值应显示为「无法判断（原值：无法识别）」，实际为「${legacyReference}」`);
+  assert.ok(legacy.selects.every((node) => node.value === ""),
+    "参考值只读：源标注/候选初值不得预填为人的表单答案");
 });
 
 test("three fold filters inherit membership and compose with scope, source, status, attention and search", async () => {
@@ -287,11 +307,11 @@ test("save conflict leaves human input available and never advances to another c
     candidates: [candidate("first"), candidate("second")],
     saveResponse: {ok: false, status: 409, json: async () => ({error: "存在其他修订；请重载后核对"})},
   });
-  selects[0].value = "无法确定";
+  selects[0].value = "无法判断";
   selects[0].listeners.change();
   await elements.get("save-draft").listeners.click();
   assert.equal(elements.get("clip-title").textContent, "first");
-  assert.equal(selects[0].value, "无法确定");
+  assert.equal(selects[0].value, "无法判断");
   assert.match(elements.get("app-message").textContent, /其他修订/);
   assert.equal(elements.get("app-message").attributes.role, "alert");
   assert.ok(!requests.some(({url}) => url.includes("candidate_id=second")));

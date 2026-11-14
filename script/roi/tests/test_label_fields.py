@@ -30,12 +30,15 @@ def test_annotation_values_are_preserved_verbatim_instead_of_becoming_defaults(v
         assert actual[field.column] != "否"
 
 
-@pytest.mark.parametrize("column,value", [("断裂状态", "无法判断"), ("断裂模式", "无法识别")])
+@pytest.mark.parametrize("column,value", [("断裂状态", "无法确定"), ("断裂位置", "无法确定"),
+                                         ("断裂模式", "无法识别")])
 def test_legacy_uncertainty_is_displayed_with_its_original_value(column, value):
     field = fields.FIELDS_BY_COLUMN[column]
+    label = fields.option_label(field, value)
     assert fields.field_value({column: value}, column) == value
     assert value in fields.options_for(field, value)
-    assert value in fields.option_label(field, value)
+    assert label.startswith("无法判断")
+    assert value in label
 
 
 def test_values_for_another_video_are_independent_and_do_not_leak_previous_labels():
@@ -61,8 +64,8 @@ def test_missing_cells_stay_unannotated_and_extra_source_information_remains_ava
 
 
 def test_known_options_match_the_annotation_tool_and_keep_absence_distinct():
-    assert set(fields.FIELDS_BY_COLUMN["断裂状态"].options) == {"", "未断裂", "发生断裂", "已断裂", "无法确定"}
-    assert set(fields.FIELDS_BY_COLUMN["断裂模式"].options) == {"", "脆性断裂", "韧性断裂", "半脆半韧断裂", "无法确定", "无"}
-    assert set(fields.FIELDS_BY_COLUMN["断裂位置"].options) == {"", "标距内", "标距外非根部", "夹持根部", "无法确定", "无"}
+    assert set(fields.FIELDS_BY_COLUMN["断裂状态"].options) == {"", "未断裂", "发生断裂", "已断裂", "无法判断"}
+    assert set(fields.FIELDS_BY_COLUMN["断裂模式"].options) == {"", "脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断", "无"}
+    assert set(fields.FIELDS_BY_COLUMN["断裂位置"].options) == {"", "标距内", "标距外非根部", "夹持根部", "无法判断", "无"}
     for column in ("异常_未夹紧", "异常_视频异常", "异常_爆炸性断裂", "现象_伸长", "现象_颈缩", "现象_开裂", "现象_界面分离", "现象_断后脱夹"):
         assert set(fields.FIELDS_BY_COLUMN[column].options) == {"", "是", "否", "无法判断"}

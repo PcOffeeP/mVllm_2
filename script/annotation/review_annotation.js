@@ -91,7 +91,8 @@
   const annotationOptions = new Map([...fields]
     .filter(([control, name]) => control.tagName === "SELECT" && name !== annotationStatusColumn)
     .map(([control, name]) => [name, new Set([...control.options].map((option) => option.value).filter(Boolean))]));
-  const legacyUncertainLabels = new Map([[stateColumn, "无法判断"], [mechanismColumn, "无法识别"]]);
+  const legacyUncertainLabels = new Map([[stateColumn, ["无法确定"]], [siteColumn, ["无法确定"]],
+    [mechanismColumn, ["无法确定", "无法识别"]]]);
 
   let table = null;
   let rowIndex = 0;
@@ -426,7 +427,7 @@
   }
 
   function annotationLabel(column, current) {
-    return legacyUncertainLabels.get(column) === current ? "无法确定" : current;
+    return legacyUncertainLabels.get(column)?.includes(current) ? "无法判断" : current;
   }
 
   function setControl(control, current) {
@@ -619,13 +620,13 @@
     if (invalid.length) issues.push(`请按现行选项修正：${invalid.join("、")}。`);
 
     const state = annotationLabel(stateColumn, read(stateColumn));
-    if (state === "无法确定") issues.push("断裂状态为“无法确定”时，请将标注状态设为“无法判读”。");
+    if (state === "无法判断") issues.push("断裂状态为“无法判断”时，请将标注状态设为“无法判读”。");
     const fixed = status === markedUnbroken ? wholeVideoColumns : targets;
     const wrongFixed = fixed.filter((name) => read(name) !== "无");
     if (wrongFixed.length) issues.push(`按固定规则，${wrongFixed.join("、")}应填写“无”。`);
     if (isFractureState(state) && read(gripColumn) !== "是") {
-      if (read(mechanismColumn) === "无") issues.push("已确认断裂，模式证据不足时请选择“无法确定”。");
-      if (read(siteColumn) === "无") issues.push("已确认断裂，位置证据不足时请选择“无法确定”。");
+      if (read(mechanismColumn) === "无") issues.push("已确认断裂，模式证据不足时请选择“无法判断”。");
+      if (read(siteColumn) === "无") issues.push("已确认断裂，位置证据不足时请选择“无法判断”。");
     }
     if (state === "发生断裂" && frameIndexValue(read(frameColumns[1])) === 0) {
       issues.push("首帧已经分离时，请复核断裂状态是否应为“已断裂”。");

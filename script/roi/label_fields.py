@@ -2,8 +2,8 @@
 
 Values come from the existing annotation row.  This module neither infers
 labels nor normalizes legacy values, and it performs no file I/O.  In
-particular, an empty cell remains distinct from ``否``, ``无`` and either
-uncertainty label.
+particular, an empty cell remains distinct from ``否``, ``无`` and the unified
+uncertainty label ``无法判断``.
 """
 from __future__ import annotations
 
@@ -30,9 +30,9 @@ _YES_NO_UNKNOWN = ("", "是", "否", "无法判断")
 
 LABEL_GROUPS = (
     FieldGroup("断裂结论", (
-        FieldSpec("断裂状态", "断裂状态", options=("", "未断裂", "发生断裂", "已断裂", "无法确定")),
-        FieldSpec("断裂模式", "断裂模式", options=("", "脆性断裂", "韧性断裂", "半脆半韧断裂", "无法确定", "无")),
-        FieldSpec("断裂位置", "断裂位置", options=("", "标距内", "标距外非根部", "夹持根部", "无法确定", "无")),
+        FieldSpec("断裂状态", "断裂状态", options=("", "未断裂", "发生断裂", "已断裂", "无法判断")),
+        FieldSpec("断裂模式", "断裂模式", options=("", "脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断", "无")),
+        FieldSpec("断裂位置", "断裂位置", options=("", "标距内", "标距外非根部", "夹持根部", "无法判断", "无")),
     )),
     FieldGroup("异常情况", (
         FieldSpec("异常_未夹紧", "未夹紧", options=_YES_NO_UNKNOWN),
@@ -63,8 +63,10 @@ LABEL_FIELDS = tuple(field for group in LABEL_GROUPS for field in group.fields)
 FIELDS_BY_COLUMN = {field.column: field for field in LABEL_FIELDS}
 
 _LEGACY_DISPLAY = {
-    ("断裂状态", "无法判断"): "无法确定（原值：无法判断）",
-    ("断裂模式", "无法识别"): "无法确定（原值：无法识别）",
+    ("断裂状态", "无法确定"): "无法判断（原值：无法确定）",
+    ("断裂模式", "无法确定"): "无法判断（原值：无法确定）",
+    ("断裂位置", "无法确定"): "无法判断（原值：无法确定）",
+    ("断裂模式", "无法识别"): "无法判断（原值：无法识别）",
 }
 
 

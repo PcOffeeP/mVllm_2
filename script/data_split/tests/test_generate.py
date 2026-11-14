@@ -115,9 +115,9 @@ def test_unknown_multiselect_does_not_supply_negative_evidence():
 
 def test_unknown_and_fixed_none_do_not_create_determined_coverage_targets():
     rows = [row(f"v{i}", **{
-        "断裂状态": "未断裂" if i < 3 else "无法确定",
-        "断裂模式": "无" if i < 3 else "无法确定",
-        "断裂位置": "无" if i < 3 else "无法确定",
+        "断裂状态": "未断裂" if i < 3 else "无法判断",
+        "断裂模式": "无" if i < 3 else "无法判断",
+        "断裂位置": "无" if i < 3 else "无法判断",
         "标注状态": "已标注·无断裂" if i < 3 else "无法判读",
     }) for i in range(6)]
     candidate = problem(rows, [group(f"g{i}", f"v{i}") for i in range(6)])
@@ -144,6 +144,17 @@ def test_incomplete_or_invalid_labels_fail_closed(damage):
         rows[0]["标注状态"] = "已标注·无断裂"
     with pytest.raises(ValueError):
         labels_for(rows)
+
+
+@pytest.mark.parametrize("column,legacy", [
+    ("断裂状态", "无法确定"), ("断裂模式", "无法确定"),
+    ("断裂位置", "无法确定"), ("断裂模式", "无法识别"),
+])
+def test_legacy_uncertainty_is_normalized_to_the_unified_term(column, legacy):
+    value = row("a", **{"断裂状态": "无法判断", "断裂模式": "无法判断", "断裂位置": "无法判断"})
+    value.update({"标注状态": "无法判读", column: legacy})
+
+    assert splitter.normalize_row(value)[column] == "无法判断"
 
 
 @pytest.mark.parametrize("groups,test_ids", [
@@ -180,7 +191,8 @@ def write_inputs(directory, *, reverse=False):
     directory.mkdir(parents=True)
     rows = [row(f"video_{i+1:04d}") for i in range(110)]
     rows[0].update({"断裂状态": "未断裂", "断裂模式": "无", "断裂位置": "无", "标注状态": "已标注·无断裂"})
-    rows[1].update({"断裂状态": "无法判断", "断裂模式": "无法识别", "断裂位置": "无法确定", "标注状态": "无法判读"})
+    # Historical wording is kept as input: normalization must map it to 无法判断.
+    rows[1].update({"断裂状态": "无法确定", "断裂模式": "无法识别", "断裂位置": "无法确定", "标注状态": "无法判读"})
     rows[2]["现象_伸长"] = "无法判断"
     for index, entry in enumerate(rows):
         entry["标注备注"] = '合成备注，保留逗号,"引号"\n以及换行' if index in (1, 90) else ""
@@ -253,8 +265,8 @@ def test_test_labels_cannot_change_the_development_score_or_assignment():
     groups = [group(f"g{i}", f"v{i}") for i in range(6)]
     first_labels = labels_for(dev + [row("test")])
     second_labels = labels_for(dev + [row("test", **{
-        "断裂状态": "无法确定", "断裂模式": "无法确定",
-        "断裂位置": "无法确定", "标注状态": "无法判读",
+        "断裂状态": "无法判断", "断裂模式": "无法判断",
+        "断裂位置": "无法判断", "标注状态": "无法判读",
         "现象_开裂": "是", "现象_伸长": "无法判断",
     })])
     first = splitter.Problem(first_labels, groups)
