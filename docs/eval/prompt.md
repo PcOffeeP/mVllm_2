@@ -1,13 +1,13 @@
 # prompt：正文位置 · 约束项与评分器行为 · 版本与冻结
 
-**失效条件：** v1 正文文件被改动或换版本号；`prompt_id` 形态改变；术语统一分支合并后 v1 正文未同步；`script/five_label_eval/score.py` 的 `_extract()`／`allowed()`／`truth_cell()` 判定行改变；冻结入口 `versioning/prompts.py` 落地本仓库或改变产物形态。以上任一发生，本文的约束项对照表与版本策略都须重新核对。
+**失效条件：** v1 正文文件被改动或换版本号；`prompt_id` 形态改变；v1 正文取值字面量与 `script/five_label_eval/score.py` 的 `SINGLES`／`MULTIS` 不一致（现时一致：单值三类的不确定值写 `无法判断`）；`script/five_label_eval/score.py` 的 `_extract()`／`allowed()`／`truth_cell()` 判定行改变；冻结入口 `versioning/prompts.py` 落地本仓库或改变产物形态。以上任一发生，本文的约束项对照表与版本策略都须重新核对。
 
 ## 1. v1 正文的位置
 
 | 项 | 值 |
 | --- | --- |
 | 路径 | `script/five_label_eval/prompts/five_label_v1.txt` |
-| 本分支落地状态 | **未落地**。本分支 `feat/eval-input-contract` 无该文件；正文只存在于分支 `feat/eval-fake-slice`（提交 `89b3624`） |
+| 本分支落地状态 | **已落地**。正文与 `prompt_id.py` 均随提交 `2baf363` 合入本分支 `feat/tensileagent-finetune`，本文以该分支文件为准 |
 | 规模 | 19 行 |
 | 现行版本号 | v1 |
 | 身份 | `prompt_id = prompt@sha256:<文件字节的 sha256>` |
@@ -32,7 +32,7 @@
 ## 3. 版本策略
 
 - **改一个字即新版本号**：不改字面量、只改措辞也换版本，因为身份按文件字节计算，任何字节变化都会改变 `prompt_id`。
-- **身份形态**：`prompt@sha256:<摘要>`，前缀常量 `PROMPT_ID_PREFIX = "prompt@sha256:"`，函数 `prompt_id_for_bytes`（见 `feat/eval-fake-slice:script/five_label_eval/prompt_id.py`）。该分支的 `load_prompt` 返回「原文（不 strip）+ 身份」，即送模型的文本与算摘要的字节是同一份。
+- **身份形态**：`prompt@sha256:<摘要>`，前缀常量 `PROMPT_ID_PREFIX = "prompt@sha256:"`，函数 `prompt_id_for_bytes`（见 `script/five_label_eval/prompt_id.py`）。`load_prompt` 返回「原文（不 strip）+ 身份」，即送模型的文本与算摘要的字节是同一份。
 - **版本号与摘要双记**：批次记录里既写人可读版本 `v1`，也写 `prompt_id`；`score.py` 只校验一批内 `prompt_id` 唯一（288–291 行），不解析版本语义。
 - **不允许同名改动**：已用于批次的版本号不得再改内容，只能新增 `v2` 并留下两版正文文件。
 
@@ -48,9 +48,13 @@
 
 本机只能做到「文本 + 摘要」两件事（`prompt_id.py` 侧），冻结登记与校验须在训练机侧接入后才有产物。在本机声称「已冻结」不成立。
 
-## 5. 跨分支待办
+## 5. 术语同步现状与版本标签处置
 
-**术语同步（第一条实例）**：v1 正文当前仍把单值不确定值写成旧字面量 `无法确定`（该文本位于 `feat/eval-fake-slice`，属历史文本，**非本契约现行取值**）。术语统一分支合并后，v1 正文须把该字面量同步改为 `无法判断`，并按上一节改一个字即升版本号（改为 v2）；同时更新 `prompt@sha256:` 身份与所有引用 v1 的评测记录说明。
+**术语同步（第一条实例，现已完成）**：v1 正文已随评测切片合入本分支，单值三类的不确定值现为 `无法判断`，与 `score.SINGLES`（13–17 行）一致。按当前字节重算的 `prompt_id` 为 `prompt@sha256:4066d161c757131d9398db76e8a4eef0399fc73a73480b20dace53d9bc2ee794`（由 `script/five_label_eval/prompt_id.py` 的 `load_prompt` 算出，与 `shasum -a 256 script/five_label_eval/prompts/five_label_v1.txt` 一致）。
+
+**版本标签处置**：文件名与批次记录里人可读版本标签**仍为 `v1`**。旧字面量 `无法确定` 的字节从未在本分支落地，也没有任何批次或评测记录引用过它，因此不存在需要区分的「旧 v1」。此后正文任何字节变化都换新 `prompt_id`，且须同步更新引用 v1 的评测记录说明。
+
+**显式待确认**：若用户要求按「改一个字即升版本号」把正文升为 v2（文件改名并批量更新引用），本文与 `docs/eval/README.md` 的版本说明须同步改；当前未获该授权，故保持 v1。
 
 ## 6. 不在 v1 范围、列为待决
 

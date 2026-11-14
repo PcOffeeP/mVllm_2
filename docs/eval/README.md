@@ -36,7 +36,7 @@
 | 文件 | 失效条件 |
 | --- | --- |
 | `output-contract.md` | 评分器常量或判定行改变；后续若再次变更取值字面量而未同步 `output-contract` 的代码同步状态 |
-| `prompt.md` | v1 正文改动；`prompt_id` 形态或冻结入口改变；后续若再次变更取值字面量而未同步 v1 正文。**现时即成立**：v1 正文落地时其不确定值须为 `无法判断`；`docs/eval/prompt.md:53` 记录的跨分支待办未完成前不得视为已同步 |
+| `prompt.md` | v1 正文改动；`prompt_id` 形态或冻结入口改变；后续若再次变更取值字面量而未同步 v1 正文。**现时已同步**：v1 正文已合入本分支，其单值三类不确定值为 `无法判断`，`prompt_id` 已按当前字节重算并记录于 `docs/eval/prompt.md` §5 |
 | `inference-entry.md` | CLI 参数增删；`http` backend 落地；身份字段口径或三态触发条件改变 |
 | `input-record.md` | 清单新增／移除 `frame_mapping.anchors`、`frame_preserving_replay`；媒体目录结构改变；同序性证据被推翻 |
 | `eval-subset.md` | `max_pixels` 或预处理策略改变；画幅分布改变；分档规则改变 |
