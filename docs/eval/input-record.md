@@ -2,16 +2,31 @@
 
 **失效条件：** `data/sub_video/manifest.json` 移除或改变 `output.frame_mapping`／`output.frame_preserving_replay`／`output.media`／`sources[].roi_media` 的语义；媒体目录结构改变（含 `data/videos`、`data/roi/videos`、`data/sub_video/videos` 的层级或命名）；源→ROI 同序性证据被推翻或出现反例；`ffprobe`／`ffmpeg` 取帧语义改变；`script/five_label_eval/score.py` 的 `input_review_id` 校验行改变。以上任一发生，本文的四层谱系、推导链与校验判据都须重新核对。
 
+## 0. 实现状态（读正文前先读这张表）
+
+**本文是规格，不等同于当前实现。** 下表逐项给出实现状态，读正文时以该表为准；标「规格要求但实现较宽／较窄」或「未实现」的条目，**不得当作已交付能力引用**——它们说的是「应该做到什么」，不是「现在能拿到什么」。行号为对 `feat/tensileagent-finetune`（`b9d4f57`）实读所得，代码变更后须重核。
+
+| 能力 | 当前状态 | 落地位置或缺口 |
+| --- | --- | --- |
+| 1. 四层谱系与三帧号推导 | `已实现` | L0／L1／L2 层由 `_layer_media` 逐层产出（`script/five_label_eval/frames.py:336-363`），`lineage_media` 装配三层（`:645-651`）；`roi_frame_index = source_start + clip_frame_index`（`:203`）、`original_source_frame_index = roi_frame_index`（`:133`）。L3 只落 `frames[].image` 与 `pts_seconds`（`:670-676`）；逐帧摘要与宽高不在本项，见第 7 项 |
+| 2. 三级同序证据（anchors／来源级／`unverified`） | `已实现` | 三档方法名 `ROI_TO_SOURCE_METHODS`（`:40`）；anchors 档含条目非法／自相矛盾的硬失败（`:211-231`），来源级走 `if c1 and c2`（`:232-241`），都不成立落 `unverified` 并写 `failed_conditions`（`:242-247`） |
+| 3. `lineage_summary` 与 5% 警告 | `已实现` | `SUMMARY_SCHEMA`（`:44`）、`COVERAGE_WARNING_RATIO = 0.05`（`:46`）、`lineage_summary`（`:754-783`，只有**超过** 5% 才置 `warning`，判定在 `:775`）、`_report_coverage` 打印 `!!!` 且不改退出码（`:834-847`） |
+| 4. 四层一致性校验 `verify_lineage` | `规格要求但实现较窄` | **已校**：判据 1 的区间检查（`:442`、`:449`）、判据 2 的加性偏移（`:451-459`）、判据 5 的两组摘要（`:484-501`、`:558-574`）。**较窄**：判据 1「该帧在 L2 解码中实际存在」无独立校验，只查 `0 <= idx < total`，存在性由抽帧成功隐含；判据 4 在 `verify_lineage` 里没有任何 anchors 比对，只有 `method == manifest_anchors` 的门控（`:398-403`），锚点一致性靠 `derive_lineage` 自证（`:218`）加「偏移公式 + 同号」在构造期隐含，记录本身也不含 anchors 列表可供独立比对；`--coverage-scan` 只调 `derive_lineage`（`:819-831`），**不执行** `verify_lineage`；推理模式只 `read_records`、不重验（`script/five_label_eval/infer.py:96`）。**更严**：判据 3 声明为「或」，实现对所有非 `unverified` 记录一律强制 `l0.total_frames == l1.total_frames`（`:425-427`） |
+| 5. 逐层证据导出 `--export-lineage-png` | `已实现` | 默认关（`store_true`，参数 `:858-859`），调用分支在抽帧模式写完 records 之后（`:907-910`）；导出目录 `<out_dir>/lineage/<candidate_id>/`（`:726`），命名 `:738`、L3 复制 `:744-745`，跳过行写 `skips.jsonl`（`:747-750`）。边界：L3 复制用裸 `shutil.copyfile`（`:744-745`），失败不在「不中断」保证内，会落到 `main` 的 `OSError` 分支返回 2（`:912-914`） |
+| 6. 帧号口径（0 基可解码、文件头差异） | `规格要求但实现较宽` | 解码计数走 `ffprobe -count_frames`（命令 `:281-282`，函数 `:274-290`）；`delta = decoded − container_header`（`:354`）、计数失败带 `reason`（`:351-352`）、无不一致为 `null`（`:356`）均与正文一致。差异在粒度：`frame_count_notes` 挂在**每层** `lineage_media.<layer>` 下（`:363`、`:645-651`），记录里没有单一记录级 `frame_count_notes` 字段 |
+| 7. 逐帧 PNG 的宽高 | `规格要求但实现较窄` | `frames[]` 条目字段为 `display_order`／`decode_order`／`clip_frame_index`／`roi_frame_index`／`original_source_frame_index`／`is_anchor`／`anchor_ref`／`media_role`／`image`／`pts_seconds`／`frame_index_mapping`（`:670-680`），**没有** `width`／`height`；宽高只记到 L0／L1／L2 媒体层（`:357-363`、`:699-701`）。「每帧 PNG 宽高即 L2 宽高」是推断：抽帧命令只有 `select`+`showinfo`、无 `scale` 滤镜（`:603-606`），不是记录里的事实 |
+| 8. `unverified` 记录下 L0／L1 缺 `declared_sha256` 时不记 reason | `已实现` | `if layer == "l2" or not unverified:`（`:495-497`）——`l2` 缺省恒判失败，`unverified` 的 L0／L1 缺省只 `continue` 不记 reason。判定为**有意**：L0／L1 的 `declared_sha256` 取自 replay 块的 `source_sha256`／`roi_sha256`（`:646-649`），`unverified` 记录该块可能缺失，不豁免则 §15「仍可出批次」不成立；但代码无注释、无专门测试，只有行为证据 |
+
 ## 1. 四层画面谱系
 
-一条输入记录必须能沿四层回溯到原始素材。四层各记：媒体路径、sha256、fps、总帧数、宽高。
+一条输入记录必须能沿四层回溯到原始素材。四层各记：媒体路径、sha256、fps、总帧数、宽高〔实现见状态表 1 与 7：L3 无独立媒体文件，只记 `frames[].image` 与帧数，sha256／fps／宽高均未入记录〕。
 
 | 层 | 媒体 | 路径 | sha256 来源 | fps | 总帧数 | 宽高 |
 | --- | --- | --- | --- | --- | --- | --- |
 | L0 原始源视频 | `<video_id>.mp4` | `data/videos/<video_id>.mp4` | `sources[].source_sha256`（110/110 有） | 清单未直接给，须 `ffprobe` 实测 | 同上（实测，按解码帧计） | 同上（实测） |
 | L1 ROI 视频 | `<video_id>.mp4` | `data/roi/videos/<video_id>.mp4` | `sources[].roi_sha256`（110/110 有） | `sources[].roi_media.fps`（110/110 有） | `sources[].roi_media.total_frames` | `sources[].roi_media.width/height` |
 | L2 子视频（片段） | `<candidate_id>.mp4` | `data/sub_video/videos/<candidate_id>.mp4` | 候选 `output.sha256`（1621/1621 有，即 `clip_sha256`） | `output.media.fps`（1621/1621 有） | `output.media.total_frames` | `output.media.width/height` |
-| L3 模型输入帧 | 抽出的 N 帧（PNG，无独立媒体文件） | `<out_dir>/<candidate_id>/frame_<nnn>.png`（`--out-dir` 下按候选分目录，落盘命名 `frame_%03d.png`，`frames.py:602-607`） | 记录不含逐帧 PNG 摘要：可核的只有 L2 媒体摘要（`clip_sha256`／`media.sha256`）与 `frames[].image` 这个文件名（`frames.py:676`） | 不适用（先后由 `display_order` 决定） | 送模型的帧数（帧数不是自由参数，见 `docs/eval/inference-entry.md` §7） | 每帧 PNG 的宽高即 L2 片段宽高（抽帧不加缩放滤镜） |
+| L3 模型输入帧 | 抽出的 N 帧（PNG，无独立媒体文件） | `<out_dir>/<candidate_id>/frame_<nnn>.png`（`--out-dir` 下按候选分目录，落盘命名 `frame_%03d.png`，`frames.py:602-607`） | 记录不含逐帧 PNG 摘要：可核的只有 L2 媒体摘要（`clip_sha256`／`media.sha256`）与 `frames[].image` 这个文件名（`frames.py:676`） | 不适用（先后由 `display_order` 决定） | 送模型的帧数（帧数不是自由参数，见 `docs/eval/inference-entry.md` §7） | 每帧 PNG 的宽高即 L2 片段宽高（抽帧不加缩放滤镜）〔实现见状态表 7：记录未记逐帧宽高，此等式只由抽帧无 scale 滤镜推断〕 |
 
 **现状**：本文写作时 `data/videos/`、`data/roi/videos/`、`data/sub_video/videos/` 三个媒体目录未检出；2026-11-14 实测三目录已存在，分别有 110、110、1,621 个 `.mp4`（`ls data/videos | wc -l` 等）。媒体字节被 `.gitignore` 的 `*.mp4` 忽略、不随本文档分发，真实数据处理仍按各阶段授权执行；`data/roi/` 除 `videos/` 外为 `decisions.json` 与 `manifest.json`，`data/sub_video/` 除 `videos/` 外为 `audit.json`、`manifest.json`、`summary.json`。L0 的 fps／总帧数／宽高清单未直接提供，只能实测，不得沿用 L1 或 L2 的值代替。
 
@@ -216,7 +231,7 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 ## 13. 帧号口径
 
 - 一律按**可解码帧序列**计数，0 基。与标注表和 `ffmpeg select` 中 `n` 的语义（解码帧序号）同口径；清单实际用 `select=between(n\,A\,B)` 形式，不限于 `eq`。
-- 文件头帧数与解码帧数不一致时**两者都记**，`delta` 的方向由实现固定为 **`delta = decoded − container_header`**（`frames.py:354`，即实测可解码帧数减文件头声明帧数）。`video_0093` 文件头 `container_header` 771 帧、实际可解码 `decoded` 733 帧，故 **`delta = 733 − 771 = −38`**（可解码帧比文件头少 38 帧）。记录级须给 `{decoded, container_header, delta}`，无不一致时该字段为 `null`（三键在 `frames.py:354` 给出；计数失败时整块另带 `reason`，见 `frames.py:351-352`；无不一致时整块为 `null`，见 `frames.py:356`）。
+- 文件头帧数与解码帧数不一致时**两者都记**，`delta` 的方向由实现固定为 **`delta = decoded − container_header`**（`frames.py:354`，即实测可解码帧数减文件头声明帧数）。`video_0093` 文件头 `container_header` 771 帧、实际可解码 `decoded` 733 帧，故 **`delta = 733 − 771 = −38`**（可解码帧比文件头少 38 帧）。记录级须给 `{decoded, container_header, delta}`，无不一致时该字段为 `null`（三键在 `frames.py:354` 给出；计数失败时整块另带 `reason`，见 `frames.py:351-352`；无不一致时整块为 `null`，见 `frames.py:356`）。〔实现见状态表 6：该块在每层 `lineage_media.<layer>` 下各一份，无记录级单一字段〕
 - **不得用文件头计数参与取帧**，也不得用平均 fps 与时长反推帧号。
 
 ## 14. `size_bucket` 三档
@@ -233,17 +248,17 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 
 ## 15. 四层一致性自动校验
 
-每次跑完自动执行，验不过即报错退出（非 0），**不静默、不出 `predictions.jsonl`**。
+抽帧模式每产出一条记录即执行一次（`frames.py:703`），验不过即报错退出（非 0），**不静默、不出 `predictions.jsonl`**〔实现见状态表 4：`--coverage-scan` 不执行 `verify_lineage`，推理模式只 `read_records` 不重验〕。
 
 | # | 判据形式 | 失败含义 |
 | --- | --- | --- |
-| 1 | L3 ⊆ L2：每个 `clip_frame_index` ∈ `[0, L2.total_frames)`，且该帧在 L2 解码中实际存在 | 抽帧越界或片段帧数记错 |
+| 1 | L3 ⊆ L2：每个 `clip_frame_index` ∈ `[0, L2.total_frames)`，且该帧在 L2 解码中实际存在〔实现见状态表 4：记录态只校区间，逐帧存在性由抽帧成功隐含〕 | 抽帧越界或片段帧数记错 |
 | 2 | L2 ⊆ L1：逐帧 `roi_frame_index == clip_frame_index + source_to_media.offset`（`offset = source_start_frame`，`frames.py:451-459`），且每个 `roi_frame_index` ∈ `[0, L1.total_frames)`（`frames.py:445-450`） | 片段不是 L1 的一段，或起点空间搞错 |
 | 3 | L1 ↔ L0 同序：`L0.total_frames == L1.total_frames`（解码帧计）；或该候选 `anchors` 三元组满足 `roi_frame == source_frame`；或 `verification` 已绑定并声明同序 | L1 与 L0 不同序，或同序尚未绑定证据 |
-| 4 | 锚点一致：命中锚点的帧，三个索引与锚点三元组逐项相等 | 锚点与推导冲突，须以锚点为准并记 issue（带候选 ID、帧号与两套取值） |
+| 4 | 锚点一致：命中锚点的帧，三个索引与锚点三元组逐项相等〔实现见状态表 4：`verify_lineage` 无锚点比对，只由 `derive_lineage` 自证加偏移公式隐含〕 | 锚点与推导冲突，须以锚点为准并记 issue（带候选 ID、帧号与两套取值） |
 | 5 | L2 摘要一致：`record.clip_sha256` 与 `record.media.sha256` 都必须等于 `lineage_media.l2.sha256`（实测值，`_digest_identity_reasons`，`frames.py:558-574`），且每层 `lineage_media` 的实测 `sha256` 必须等于其 `declared_sha256`（`frames.py:488-501`）；`l2` 的 `declared_sha256` 缺失或空串恒判失败，而 `unverified` 记录的 L0／L1 缺 `declared_sha256` 时不记 reason（`frames.py:494-498`） | 记录摘要与实测媒体字节不一致，或实测字节与清单声明不一致 |
 
-判据 3 的三个分支是「或」关系，任一成立即通过；三者都不成立时记录级 `verification.method` 为 `unverified`（`verification` 块必定存在：`verify_lineage` 缺块即判失败，`frames.py:389-392`），所有帧的 `original_source_frame_index` 与 `roi_frame_index` 都是 `null`，**仍可出批次**（评分不受影响），但依赖源帧号的证据选择实验不得在该批次上做。
+判据 3 的三个分支是「或」关系，任一成立即通过〔实现见状态表 4：非 `unverified` 记录一律另加强制 `l0.total_frames == l1.total_frames`，比「或」更严〕；三者都不成立时记录级 `verification.method` 为 `unverified`（`verification` 块必定存在：`verify_lineage` 缺块即判失败，`frames.py:389-392`），所有帧的 `original_source_frame_index` 与 `roi_frame_index` 都是 `null`，**仍可出批次**（评分不受影响），但依赖源帧号的证据选择实验不得在该批次上做。
 
 **`candidate_id` 与 `manifest_sha256` 不在 `verify_lineage` 的校验范围内**：两者都在 `extract_record` 构造记录时确定——`candidate_id` 直接取自清单候选（`frames.py:623-624`），`manifest_sha256` 由清单文件字节实算（正常路径在 `main()`，`frames.py:876`；`extract_record` 内的兜底分支在 `frames.py:638-639`）；`verify_lineage` 只校帧号范围、映射节点形态与摘要，不回头比对清单，故「记录与清单逐项相等」不是它给出的保证。
 
@@ -272,7 +287,7 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 | 数据构建期记录 `frame_artifacts`（含 path／sha256／size） | `mVllm_2/versioning/data_pipeline.py:1432` | 旧实现把帧证据留在旁路；本轮并入主链路，进输入记录 |
 | 离线诊断脚本 `export_review_frames.py` 产出 `review_frames_manifest.json` | `mVllm_2/pipeline/scripts/diagnostics/SCRIPTS.md:26` | 同上：导出不再是独立离线动作，加 `--export-lineage-png` 即随主链路产出（默认不产，见 §16） |
 
-两条旁路共同的缺口是**帧号、实际像素尺寸、视频内容摘要**三样缺失，本轮必须补齐（见 `docs/eval/inference-entry.md` §7）。
+两条旁路共同的缺口是**帧号、实际像素尺寸、视频内容摘要**三样缺失，本轮必须补齐（见 `docs/eval/inference-entry.md` §7）〔实现见状态表 7：逐帧 PNG 宽高尚未入记录，像素尺寸只到 L0／L1／L2 媒体层〕。
 
 ## 18. 与 `input_review_id` 的绑定
 
