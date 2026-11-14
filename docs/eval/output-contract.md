@@ -1,8 +1,8 @@
 # 输出契约：11 个叶字段 · 5 个顶层键 · 边界样例
 
-**失效条件：** `script/five_label_eval/score.py` 的 `VERSION`／`SINGLES`／`MULTIS`／`FIELDS`／`STATUS` 常量或 `allowed()`／`truth_cell()`／`_extract()`／`prepare()`／`field_metrics()` 的判定行改变（本文末「代码同步状态」已按合并后代码核对，上述常量或判定行一旦改动须重新核对）；`predictions.jsonl` 必填项改变；`docs/label.md` 的标签定义或 `docs/design-test.md` 的评分口径改变。以上任一发生，本文须重新核对后才能用于新批次。
+**失效条件：** `script/five_label_eval/score.py` 的 `VERSION`／`SINGLES`／`MULTIS`／`FIELDS`／`STATUS` 常量或 `allowed()`／`truth_cell()`／`_extract()`／`prepare()`／`field_metrics()` 的判定行改变（本文末「代码同步状态」已按 `VERSION = "five-label-score/2"` 核对，上述常量或判定行一旦改动须重新核对）；`predictions.jsonl` 必填项改变；`docs/label.md` 的标签定义或 `docs/design-test.md` 的评分口径改变。以上任一发生，本文须重新核对后才能用于新批次。
 
-行号一律指 `script/five_label_eval/score.py`（下称 `score.py`，本分支 530 行）。评分口径（分母定义、精确率口径）不在本文，见 `docs/design-test.md`。
+行号一律指 `script/five_label_eval/score.py`（下称 `score.py`，`VERSION = "five-label-score/2"` 时 540 行）。评分口径（分母定义、精确率口径）不在本文，见 `docs/design-test.md`。
 
 ## 1. 字段与取值
 
@@ -32,7 +32,7 @@
 | `异常情况` | 对象，必须恰好给 3 个叶项 | `MULTIS` 18 |
 | `断裂现象` | 对象，必须恰好给 5 个叶项 | `MULTIS` 19 |
 
-其余常量：`VERSION` 12；`REQUEST_KEYS` 21 = `run_id/model_id/prompt_id/input_id/request_id`；`IDENTITY` 22 = `manifest_sha256/candidate_id/clip_sha256/source_id/source_type`；`STATUS` 23 = `success/request_failed/timeout/unprocessed`；`EVIDENCE` 24 = `sufficient/insufficient/unknown`。字段数是 11 叶字段／5 顶层键，与 `docs/design-test.md:206` 的「13 项」不是同一计数，勿混读。
+其余常量：`VERSION` 12；`REQUEST_KEYS` 21 = `run_id/model_id/prompt_id/input_id/request_id`；`IDENTITY` 22 = `manifest_sha256/candidate_id/clip_sha256/source_id/source_type`；`STATUS` 23 = `success/request_failed/timeout/unprocessed`；`EVIDENCE` 24 = `sufficient/insufficient/unknown`。字段数是 11 叶字段／5 顶层键，与 `docs/design-test.md:210` 的「13 项」不是同一计数，勿混读。
 
 **三条取值纪律**
 
@@ -46,7 +46,7 @@
 | --- | --- | --- |
 | (a) 缺项 | 省略 `断裂位置` 与 `断裂现象.开裂` | 两项 `missing`（211–212、213–214 行）；`断裂现象` 叶项集合不全另记 issue（201 行）；`strict_format_valid=False`（220 行）；其余字段照常评分 |
 | (b) 字面量错 | `断裂状态` 写自造值（如 `断裂`），或某多选叶项写 `无` | 该字段 `invalid`（215–216 行，`allowed()` 112–113 不含该值）；不波及其它字段；`strict_format_valid=False` |
-| (c) 跨字段冲突 | `断裂状态=未断裂` 且 `断裂模式=韧性断裂` | 两字段各自 `valid` 并照常计分；`combinations()`（137 行）记冲突，聚合键 `prediction_combination_conflicts`（423 行）每行 +1；原文不改写、不纠正 |
+| (c) 跨字段冲突 | `断裂状态=未断裂` 且 `断裂模式=韧性断裂` | 两字段各自 `valid` 并照常计分；`combinations()`（137 行）记冲突，聚合键 `prediction_combination_conflicts`（430 行）每行 +1；原文不改写、不纠正 |
 | (d) 围栏包裹 | 整个 JSON 外有 Markdown 代码围栏或前后说明文字 | 仍能提取；issue `surrounding_text_or_fence`（191 行）；`strict_format_valid=False`（220 行）；字段判 `valid` |
 
 **提取失败与 issue 全集**：`not exactly one extractable JSON object`（189 行，无对象或多于一个并列对象）、`top level is not object`（195 行）、`top_level_keys_mismatch`（198 行，顶层键集合不等于 5 键）、`<组名>: expected explicit per-item object`（201 行）。上述任一与 189／195 行同属「整份无法解析」时，11 个叶字段全记 `extraction_failed`；`strict_format_valid` 要求严格解析成功、无任何 issue、且 11 个字段全 `valid`（220 行）。`combinations()` 只对 `valid` 字段生效。
@@ -70,29 +70,43 @@
 
 **硬约束：`raw_output` 是唯一样本载体，禁止在 predictions 行里旁挂结构化标签字段**（如 `labels`／`fields`／`parsed`）。理由：评分器只读 `raw_output` 并自行用 `extract()`／`_extract()`（152、162 行）重新解析，旁挂字段完全惰性——不报错、不参与任何指标；一旦解析器口径与旁挂字段不同，指标看着正常但测的不是模型真正输出的那份数据，且无法事后判定差异来源。
 
-## 4. `无法判断` 的两个含义
+## 4. `无法判断`：同一字面量、同一语义
 
-| 出现位置 | 判定 | 行号 | 指标后果 |
-| --- | --- | --- | --- |
-| 单值字段（`断裂状态`／`断裂模式`／`断裂位置`） | **合法类别**：`truth_cell` 的 `and field not in SINGLES` 守卫**已存在**，真值侧记 `valid` | `truth_cell` 121 | 计入 accuracy 分母（377–378 行），并作为 `SINGLES` 的一个标签参与逐类 recall／precision（399–404 行） |
-| 多选叶项（8 项） | **未知标记**：真值侧记 `unknown` | `truth_cell` 121 | 因 377–378 行「真值非 `valid` 即跳过」被排除出 accuracy 分母；预测侧写 `无法判断` 在 384 行计入失败／不确定计数 |
+`无法判断` 在真值侧只有一个语义：**11 个叶字段（3 个单值 + 8 个多选叶项）的人工「无法判断」一律判 `valid`**，与其它合法字面量同权。`truth_cell()`（116 行）只保留三条分支：空串／`None` → `unlabeled`（117–118 行）、非字符串或不在 `allowed(field)` → `invalid`（119–120 行）、其余 → `valid`（121 行）；`five-label-score/2` 起已无 ``"unknown" if value == "无法判断" and field not in SINGLES `` 守卫，真值侧不再产生 `unknown` 状态。
 
-两侧都不做换算：同一个字面量在两个位置得到两种语义，取决于字段属于 `SINGLES` 还是 `MULTIS`，与书写形式无关。349 行与 375–376 行**性质不同，不要混读**：349 行是输入审核侧守卫 `cell["label"] not in (None, "", "无法确定", "无法判断")`——证据为 `insufficient`／`unknown` 时不允许断言确定标签，否则抛 `InputError`；它**不把 `无法确定` 变成显式不确定**，该 label 通过本行校验后仍由 `truth_cell`（119–120 行）判 `invalid`。375–376 行才是真正的 `explicit_uncertain` 计数（`pstatus == "valid"` 且 `pred["value"] in ("无法确定", "无法判断")` 时 `pred_counts["explicit_uncertain"] += 1`）。两处的旧字面量均为历史兼容残留，不属于本契约现行取值；两行都由本分支提交 `8cf19b4` 引入，术语统一提交 `045536c` 未改动。
-
-## 5. 代码同步状态（已按合并后代码核对）
-
-本节按 `feat/tensileagent-finetune` 分支提交 `6377cdb` 的 `score.py`（530 行）逐行核对，逐项列出现行口径与对应判定行。
-
-| 项 | 现行状态（提交 `6377cdb`） | 对评分的影响 |
+| 环节 | 现行口径（`VERSION = "five-label-score/2"`） | 行号 |
 | --- | --- | --- |
-| `SINGLES`（13–17 行）字面量 | 单值三类的不确定值 = `无法判断`；`allowed()`（112–113 行）只返回 `SINGLES[field]` 或 `("是","否","无法判断")`，**不接受**旧值 `无法确定` | 单值字段写 `无法确定` 直接判 `invalid`（`truth_cell` 119–120 行的 `value not in allowed(field)` 分支），既不算不确定也不算未标 |
-| `truth_cell`（116 行，守卫在 121 行） | `"unknown" if value == "无法判断" and field not in SINGLES else "valid"` 守卫**已存在** | 单值 `无法判断` 记 `valid`：进 accuracy 分母（377–378 行）并作为 `SINGLES` 的一个标签参与逐类 recall／precision；只有 8 个多选叶项的 `无法判断` 记 `unknown` |
-| `field_metrics`（359 行，守卫在 384 行） | `if pstatus != "valid" or (p == "无法判断" and field not in SINGLES):` 守卫**已存在** | 单值 `无法判断` 不进 `failures` 失败／不确定计数，只进 375–376 行的 `pred_counts["explicit_uncertain"]`；多选叶项的 `无法判断` 仍计失败／不确定 |
-| 349 行（输入审核侧） | `cell["label"] not in (None, "", "无法确定", "无法判断")`：证据为 `insufficient`／`unknown` 时**不允许断言确定标签**，否则抛 `InputError` | 这是断言禁令，**不是显式不确定计数**；`无法确定` 通过本行校验后仍由 `truth_cell`（119–120 行）判 `invalid` |
-| 375–376 行（预测侧） | `if pstatus == "valid" and pred["value"] in ("无法确定", "无法判断"): pred_counts["explicit_uncertain"] += 1` —— 真正的显式不确定计数 | 保留 `无法确定` 字面量，但 `allowed()` 已不含该值，**现行值域下该分支不可达**（写 `无法确定` 会先判 `invalid`）；只有 `无法判断` 能命中 |
-| 377–378 行 | `prediction_status == "unprocessed"` 或真值非 `valid` 即 `continue` | accuracy 分母只取真值 `valid`；单值 `无法判断` 因记 `valid` 留在分母内 |
+| 真值侧（11 个叶字段完全相同） | `无法判断` → `valid`，不是 `unknown`、也不是未标 | `truth_cell` 121 |
+| 准确率分母 | 真值 `valid` 且请求已尝试即入分母，含人工「无法判断」；未处理与真值非 `valid` 才跳过 | 377–379 |
+| 逐类召回 `classes[L].recall` | 每个字段都产出；标签集 = `allowed(field)`（单值用 `SINGLES[field]`，多选用是／否／无法判断），「无法判断」类同样有召回 | 398–402（标签集取自 `allowed()` 112–113） |
+| 逐类精确率 `classes[L].precision` | 同上，每个标签（含「无法判断」）都给；分母**不按人工取值筛选** | 398–402 |
+| 模型侧：多选叶项答 `无法判断`、人工为「是」或「否」 | 额外计入 `failures_or_uncertain_by_truth` 的 `explicit_uncertain` 单列，并在准确率与召回分母内计为不正确 | 384–385 |
+| 模型侧：多选叶项答 `无法判断`、人工同为 `无法判断` | 属答对，**不**计入上述失败／不确定单列 | 384（条件 `h != "无法判断"`） |
+| 过度不确定率 `over_uncertain_rate`（仅 8 个多选叶项） | 模型答 `无法判断` 而人工为「是」或「否」数 ÷ 人工为「是」或「否」数；单列，不进任何综合分 | 406–413（分母 407、分子 408、比值 413） |
+| 无法判断率 `uncertain_rate` | 每个字段都产出 `{"human": 人工「无法判断」比例, "model": 模型答「无法判断」比例}`，两者分母相同 = 已尝试且真值 `valid` 的行数 | 403–404 |
 
-**结论：现行不确定取值只有一个字面量 `无法判断`**（单值三类与 8 个多选叶项相同）。两个历史写法在评分器里的处境不同：`无法确定` 在 349 行（输入审核侧断言禁令）与 375–376 行（预测侧 `explicit_uncertain` 计数）作为历史兼容字面量出现；`无法识别` 评分器**完全不识别**（`grep -c 无法识别 script/five_label_eval/score.py` = 0），写进任一字段即 `invalid`。评分器之外的上游兼优点见 §5.1（数据切分、标注页面、归档生成旧路径、审核工作台显示层），本文不穷举。
+模型的「无法判断」与人工的「无法判断」是两件事，勿混读：**真值侧没有语义分叉**（上表第一行，11 个字段同一规则）；模型侧仍有一条只对多选叶项生效的失败归类——人工为「是」或「否」时，模型答 `无法判断` 计入 `explicit_uncertain` 单列（384–385 行）。这是**模型侧口径**，不是把真值侧的多选「无法判断」降级为未知；人工同为「无法判断」时它是正确回答，不入该单列。为防止「一律答无法判断」刷准确率，8 个多选叶项另出 `over_uncertain_rate`（406–413 行），与下面保留的顶层指标并存但含义不同。
+
+349 行与 375–376 行**性质不同，不要混读**：349 行是输入审核侧守卫 `cell["label"] not in (None, "", "无法确定", "无法判断")`——证据为 `insufficient`／`unknown` 时不允许断言确定标签，否则抛 `InputError`；它**不把 `无法确定` 变成显式不确定**，该 label 通过本行校验后仍由 `truth_cell`（119–120 行）判 `invalid`。375–376 行才是真正的 `explicit_uncertain` 计数（`pstatus == "valid"` 且 `pred["value"] in ("无法确定", "无法判断")` 时 `pred_counts["explicit_uncertain"] += 1`），覆盖全部 11 个叶字段、计在 `prediction_counts` 里；它的分母是**全部行**（含人工未标的行；未处理与提取失败因 `pstatus != "valid"` 不会命中），与 `uncertain_rate.model`（分母 = 已尝试且真值 `valid`）不同。两处的旧字面量均为历史兼容残留，不属于本契约现行取值：`无法确定` 在 375 行受 `pstatus == "valid"` 约束、而 `allowed()` 已不含该值，故**现行值域下该分支的 `无法确定` 一侧不可达**，只有 `无法判断` 能命中；`无法识别` 评分器**完全不识别**（`grep -c 无法识别 script/five_label_eval/score.py` = 0），写进任一字段即 `invalid`。两处的旧字面量由本分支提交 `8cf19b4` 引入，术语统一提交 `045536c` 未改动。
+
+多选的顶层指标口径本轮未变，与新加的 `classes` 并存：`TP/FN/FP/TN` 只由人工明确「是」／「否」和模型明确「是」／「否」产生（389–393、409 行）；`recall`（识别比例）= TP ÷ 人工为「是」的已尝试数（411 行）；`precision` = TP ÷ (TP + FP)（411 行）；`false_positive_rate_explicit_only` = FP ÷ (FP + TN)（412 行）。因此同一场景下 `classes.是.precision` 与 `precision` **不相等是正常的**：前者分母含「人工为无法判断、模型报是」的样本，后者只含模型明确报「是」相对人工明确「否」的 FP。报告层同时打印两组值，不得相互替代。
+
+## 5. 代码同步状态（已按 `five-label-score/2` 核对）
+
+本节按工作区中 `VERSION = "five-label-score/2"`（12 行）的 `score.py`（540 行）逐行核对，逐项列出现行口径与对应判定行；行号以该版本为准，`score.py` 再次改动后须重新核对。
+
+| 项 | 现行状态（`VERSION = "five-label-score/2"`） | 对评分的影响 |
+| --- | --- | --- |
+| `SINGLES`（13–17 行）字面量 | 单值三类的不确定值 = `无法判断`；`allowed()`（112–113 行）只返回 `SINGLES[field]` 或 `("是","否","无法判断")`，**不接受**旧值 `无法确定` | 任一叶字段写 `无法确定` 直接判 `invalid`（`truth_cell` 119–120 行的 `value not in allowed(field)` 分支），既不算不确定也不算未标 |
+| `truth_cell`（116 行） | 只有三条分支：`unlabeled`（117–118 行）、`invalid`（119–120 行）、`valid`（121 行）。`` "unknown" if value == "无法判断" and field not in SINGLES `` 守卫**已删除** | 11 个叶字段的人工 `无法判断` 一律记 `valid`：进 accuracy 分母（377–379 行）并参与逐类 recall／precision（398–402 行）。真值侧 `unknown` 状态**不复存在**，`truth_counts` 只会出现 `valid`／`unlabeled`／`invalid` |
+| `field_metrics`（359–414 行） | 每个字段都产出 `classes`（398–402 行）与 `uncertain_rate`（403–404 行）；8 个多选叶项另产出 `over_uncertain_rate`（406–413 行）。保留的顶层 `TP/FN/FP/TN`、`recall`、`precision`、`false_positive_rate_explicit_only` 口径未变（389–393、409–412 行） | `classes` 与顶层 `precision` 并存但含义不同：「人工为无法判断、模型报是」会计入 `classes.是.precision` 的分母，不进 `precision` = TP÷(TP+FP)；`classes` 的标签集取自 `allowed()`（112–113 行），所以单值字段会为 `SINGLES[field]` 的每个字面量（含「无」「无法判断」）各出一行 |
+| 384–385 行（失败／不确定单列，已收窄） | `if pstatus != "valid" or (p == "无法判断" and field not in SINGLES and h != "无法判断"):` | 只有「多选叶项、模型答 `无法判断`、人工为是或否」才额外计入失败／不确定；人工同为 `无法判断` 时属答对，不入该单列。单值字段从不因模型 `无法判断` 进入该单列（它们只进 375–376 行的 `pred_counts["explicit_uncertain"]`） |
+| 349 行（输入审核侧） | `cell["label"] not in (None, "", "无法确定", "无法判断")`：证据为 `insufficient`／`unknown` 时**不允许断言确定标签**，否则抛 `InputError` | 这是断言禁令，**不是显式不确定计数**；`无法确定` 通过本行校验后仍由 `truth_cell`（119–120 行）判 `invalid` |
+| 375–376 行（预测侧） | `if pstatus == "valid" and pred["value"] in ("无法确定", "无法判断"): pred_counts["explicit_uncertain"] += 1` —— 真正的显式不确定计数，覆盖全部 11 个叶字段、计在 `prediction_counts` 里 | 保留 `无法确定` 字面量，但 `allowed()` 已不含该值，**现行值域下该分支不可达**（写 `无法确定` 会先判 `invalid`）；只有 `无法判断` 能命中。分母是**全部行**（含人工未标的行；未处理与提取失败因 `pstatus != "valid"` 不会命中），与 `uncertain_rate.model`（分母 = 已尝试且真值 `valid`）不同，勿混读 |
+| 377–379 行 | `prediction_status == "unprocessed"` 或真值非 `valid` 即 `continue`，随后 `attempted += 1` | accuracy 分母只取真值 `valid` 且已尝试；人工 `无法判断` 因记 `valid` 留在分母内，未处理不经分母 |
+| `aggregate`（417–433 行）与 `all_five_correct_supplement`（432 行） | 计算逻辑未改：`eligible`（418–419 行）= 已尝试且 11 个叶字段真值全 `valid`；`joint`（423–424 行）= 其中 11 项全对的片段数 | **派生变更**：因 `truth_cell` 一律判 `valid`，含「多选人工无法判断」的片段现进入本比率分母（420–422 行为该说明的代码注释）；旧口径下这类片段被排除 |
+
+**结论：现行不确定取值只有一个字面量 `无法判断`**（单值三类与 8 个多选叶项相同），且真值侧 11 个叶字段同语义、一律 `valid`。两个历史写法在评分器里的处境不同：`无法确定` 在 349 行（输入审核侧断言禁令）与 375–376 行（预测侧 `explicit_uncertain` 计数）作为历史兼容字面量出现；`无法识别` 评分器**完全不识别**（`grep -c 无法识别 script/five_label_eval/score.py` = 0），写进任一字段即 `invalid`。评分器之外的上游兼优点见 §5.1（数据切分、标注页面、归档生成旧路径、审核工作台显示层），本文不穷举。
 
 ### 5.1 需要历史兼容时怎么做
 

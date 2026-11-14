@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import sys
 
-VERSION = "five-label-score/1"
+VERSION = "five-label-score/2"
 SINGLES = {
     "断裂状态": ("未断裂", "发生断裂", "已断裂", "无法判断"),
     "断裂模式": ("脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断", "无"),
@@ -118,7 +118,7 @@ def truth_cell(field, value):
         return {"status": "unlabeled", "value": value}
     if not isinstance(value, str) or value not in allowed(field):
         return {"status": "invalid", "value": value}
-    return {"status": "unknown" if value == "无法判断" and field not in SINGLES else "valid", "value": value}
+    return {"status": "valid", "value": value}
 
 
 def human_truth(labels):
@@ -381,7 +381,7 @@ def field_metrics(rows, field, truth_key):
         correct += pstatus == "valid" and h == p
         category = p if pstatus == "valid" else f"<{pstatus}>"
         confusion[(h, category)] += 1
-        if pstatus != "valid" or (p == "无法判断" and field not in SINGLES):
+        if pstatus != "valid" or (p == "无法判断" and field not in SINGLES and h != "无法判断"):
             failures[f"{h}:{pstatus if pstatus != 'valid' else 'explicit_uncertain'}"] += 1
         if field not in SINGLES:
             positives += h == "是"
@@ -395,24 +395,31 @@ def field_metrics(rows, field, truth_key):
               "prediction_by_truth": {k: dict(v) for k, v in prediction_by_truth.items()}, "prediction_counts": dict(pred_counts),
               "truth_source_counts": {k: len(v) for k, v in source_sets.items()},
               "accuracy": ratio(correct, attempted), "failures_or_uncertain_by_truth": dict(failures),
+              "classes": {label: {"recall": ratio(confusion[(label, label)],
+                                                  sum(n for (h, _), n in confusion.items() if h == label)),
+                                   "precision": ratio(confusion[(label, label)],
+                                                      sum(n for (_, p), n in confusion.items() if p == label))}
+                          for label in allowed(field)},
+              "uncertain_rate": {"human": ratio(sum(n for (h, _), n in confusion.items() if h == "无法判断"), attempted),
+                                 "model": ratio(sum(n for (_, p), n in confusion.items() if p == "无法判断"), attempted)},
               "confusion": [{"truth": h, "prediction": p, "count": n} for (h, p), n in sorted(confusion.items())]}
-    if field in SINGLES:
-        result["classes"] = {}
-        for label in SINGLES[field]:
-            hit = confusion[(label, label)]
-            result["classes"][label] = {"recall": ratio(hit, sum(n for (h, _), n in confusion.items() if h == label)),
-                                         "precision": ratio(hit, sum(n for (_, p), n in confusion.items() if p == label))}
-    else:
+    if field not in SINGLES:
+        certain = [n for (h, _), n in confusion.items() if h in ("是", "否")]
+        uncertain = [n for (h, p), n in confusion.items() if h in ("是", "否") and p == "无法判断"]
         result.update({"TP": tp, "FN": fn, "FP": fp, "TN": tn,
                        "positive_attempted": positives, "negative_attempted": negatives,
                        "recall": ratio(tp, positives), "precision": ratio(tp, tp + fp),
-                       "false_positive_rate_explicit_only": ratio(fp, fp + tn)})
+                       "false_positive_rate_explicit_only": ratio(fp, fp + tn),
+                       "over_uncertain_rate": ratio(sum(uncertain), sum(certain))})
     return result
 
 
 def aggregate(rows, truth_key):
     eligible = [r for r in rows if r["prediction_status"] != "unprocessed"
                 and all(c["status"] == "valid" for c in r[truth_key].values())]
+    # 派生变更（随 truth_cell 口径「无法判断 一律 valid」）：人工为「无法判断」的多选叶项
+    # 不再使片段失去资格，含多选人工无法判断的片段自 five-label-score/2 起进入本比率分母。
+    # 计算逻辑本身未改：分母仍是「11 个叶字段真值全 valid 且请求已尝试」。
     joint = sum(all(r["extraction"]["fields"][f]["status"] == "valid" and
                         r["extraction"]["fields"][f]["value"] == r[truth_key][f]["value"] for f in FIELDS) for r in eligible)
     attempted = sum(r["prediction_status"] != "unprocessed" for r in rows)
@@ -469,7 +476,10 @@ def report(result):
                 if "classes" in metrics:
                     for label, values in metrics["classes"].items():
                         lines.append(f"- {label}：精确率（precision）{display_ratio(values['precision'])}；召回 {display_ratio(values['recall'])}")
-                else:
+                lines.append(f"无法判断率（uncertain_rate）：人工 {display_ratio(metrics['uncertain_rate']['human'])}；模型 {display_ratio(metrics['uncertain_rate']['model'])}。")
+                if "over_uncertain_rate" in metrics:
+                    lines.append(f"过度不确定率（over_uncertain_rate）：预测无法判断而人工为是或否 {display_ratio(metrics['over_uncertain_rate'])}。")
+                if "TP" in metrics:
                     lines.append(f"TP={metrics['TP']} FN={metrics['FN']} FP={metrics['FP']} TN={metrics['TN']}；识别比例 {display_ratio(metrics['recall'])}；精确率 {display_ratio(metrics['precision'])}；仅显式可判断负例误报率 {display_ratio(metrics['false_positive_rate_explicit_only'])}。")
                 lines.append(f"混淆：`{json.dumps(metrics['confusion'], ensure_ascii=False)}`")
                 if basis == "actual_input":
