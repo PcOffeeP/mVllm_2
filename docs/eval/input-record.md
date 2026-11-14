@@ -225,7 +225,7 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 | `w_200_400` | 200 < 宽 < 400 | `width < 400` |
 | `w_gt_400` | 宽 ≥ 400 | 其余 |
 
-- 规则标识 `SIZE_BUCKET_SOURCE = "width_rule_le200_lt400"`，记录里 `size_bucket_source` 取该标识（`script/five_label_eval/frames.py:22`，判定在 34–35 行）。即 **200 归 `w_le_200`、400 归 `w_gt_400`**。
+- 规则标识 `SIZE_BUCKET_SOURCE = "width_rule_le200_lt400"`，记录里 `size_bucket_source` 取该标识（常量在 `script/five_label_eval/frames.py:36`，三档判定在 `size_bucket()` 函数体 `script/five_label_eval/frames.py:60-61`）。即 **200 归 `w_le_200`、400 归 `w_gt_400`**。
 - **旧版边界表述已被实现取代**：旧文档写的「含下界不含上界」（把 200 归 `w_200_400`）与实现不符，不得再引用。
 - `size_bucket` 必须由 `width` 机械推导，不允许人工指定；档名只是标签，归属一律以区间式为准。
 
