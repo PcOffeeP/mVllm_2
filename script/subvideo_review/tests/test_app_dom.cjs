@@ -1513,6 +1513,86 @@ test("index.html keeps all eleven labelled controls inside the label section aft
   }
 });
 
+/* 第三轮（UI 结构调整）：决定依据块从页底 .notes-section 移进 .media-column（#clip-sha 之前），
+   .notes-section 只留审核备注；两个字段补就地填写提示（label span + rows + aria-describedby）。
+   本轮只断言结构与属性关键字，不对 placeholder 与 .field-guidance 的措辞全文设限。 */
+test("index.html moves the decision reason block into the media column ahead of the SHA details", async () => {
+  const mediaColumn = firstIndex(/<div[^>]*class="[^"]*\bmedia-column\b/, " .media-column 区块");
+  const decisionReason = firstIndex('id="decision-reason"', " #decision-reason 字段");
+  const clipSha = firstIndex('id="clip-sha"', " #clip-sha 折叠块");
+  const labelSection = firstIndex(/<section[^>]*class="[^"]*\blabel-section\b/, " .label-section 区块");
+
+  assert.ok(mediaColumn < decisionReason && decisionReason < labelSection,
+    `#decision-reason 应位于 .media-column 内（.media-column 索引 ${mediaColumn} < #decision-reason 索引 ${decisionReason} < .label-section 索引 ${labelSection}）`);
+  assert.ok(decisionReason < clipSha,
+    `#decision-reason 应排在 #clip-sha 之前（#decision-reason 索引 ${decisionReason}，#clip-sha 索引 ${clipSha}，顺序反了）`);
+});
+
+test("index.html leaves only the review note inside the notes section", async () => {
+  const notesSection = firstIndex(/<section[^>]*class="[^"]*\bnotes-section\b/, " .notes-section 区块");
+  const reviewNote = firstIndex('id="review-note"', " #review-note 字段");
+  const historySection = firstIndex(/<section[^>]*class="[^"]*\bhistory-section\b/, " .history-section 区块");
+  const decisionReason = firstIndex('id="decision-reason"', " #decision-reason 字段");
+
+  assert.ok(notesSection < reviewNote && reviewNote < historySection,
+    `#review-note 应留在 .notes-section 内（.notes-section 索引 ${notesSection} < #review-note 索引 ${reviewNote} < .history-section 索引 ${historySection}）`);
+  assert.ok(decisionReason < notesSection,
+    `#decision-reason 不应再留在 .notes-section 内（#decision-reason 索引 ${decisionReason} 应小于 .notes-section 索引 ${notesSection}）`);
+
+  /* 只剩一个 .field-block：字段块数 > 1 说明决定依据没搬走。 */
+  const sectionEnd = htmlText.indexOf("</section>", notesSection);
+  assert.ok(sectionEnd > notesSection,
+    `.notes-section 起始索引 ${notesSection} 之后应出现 </section>，实际索引 ${sectionEnd}`);
+  const region = htmlText.slice(notesSection, sectionEnd);
+  const fieldBlocks = region.split('<div class="field-block').length - 1;
+  assert.equal(fieldBlocks, 1,
+    `.notes-section 内应只剩 1 个 .field-block（决定依据已移出），实际 ${fieldBlocks} 个；区块内容为「${region.slice(0, 200)}…」`);
+});
+
+test("index.html labels carry the inline fill hints for the decision reason and the review note", async () => {
+  const decisionLabel = innerTextOf('for="decision-reason"', "</label>");
+  assert.ok(decisionLabel.startsWith("决定依据"),
+    `#decision-reason 的 <label> 文案应以「决定依据」开头（id/label 未改名），实际为「${decisionLabel}」`);
+  for (const keyword of ["退回", "必填", "留空"]) {
+    assert.ok(decisionLabel.includes(keyword),
+      `#decision-reason 的 <label> 提示应包含「${keyword}」（说明何时必填、何时可留空），实际为「${decisionLabel}」`);
+  }
+
+  const noteLabel = innerTextOf('for="review-note"', "</label>");
+  assert.ok(noteLabel.startsWith("审核备注"),
+    `#review-note 的 <label> 文案应以「审核备注」开头（id/label 未改名），实际为「${noteLabel}」`);
+  assert.ok(noteLabel.includes("可选"),
+    `#review-note 的 <label> 提示应包含「可选」，实际为「${noteLabel}」`);
+});
+
+test("index.html sizes both note textareas and points aria-describedby at declared hint ids", async () => {
+  const declared = new Set([...htmlText.matchAll(/\sid="([^"]+)"/g)].map(([, id]) => id));
+  const describedBy = (tag) => {
+    const match = /\saria-describedby="([^"]*)"/.exec(tag);
+    assert.ok(match, `标签应带 aria-describedby="…" 指向就地提示，实际为「${tag}」`);
+    return match[1].trim().split(/\s+/).filter(Boolean);
+  };
+
+  const decisionReason = tagContaining('id="decision-reason"');
+  assert.match(decisionReason.tag, /\srows="2"/,
+    `#decision-reason 的 <textarea> 应有 rows="2"，实际为「${decisionReason.tag}」`);
+  const decisionIds = describedBy(decisionReason.tag);
+  assert.deepEqual(decisionIds, ["decision-reason-hint"],
+    `#decision-reason 的 aria-describedby 应恰为 "decision-reason-hint"，实际为 "${decisionIds.join(" ")}"（标签为「${decisionReason.tag}」）`);
+
+  const reviewNote = tagContaining('id="review-note"');
+  assert.match(reviewNote.tag, /\srows="3"/,
+    `#review-note 的 <textarea> 应有 rows="3"，实际为「${reviewNote.tag}」`);
+  const noteIds = describedBy(reviewNote.tag);
+  assert.deepEqual(noteIds, ["review-note-hint"],
+    `#review-note 的 aria-describedby 应恰为 "review-note-hint"，实际为 "${noteIds.join(" ")}"（标签为「${reviewNote.tag}」）`);
+
+  /* aria-describedby 指向的 id 必须在页面里真实存在，否则读屏器读到空引用。 */
+  const dangling = [...decisionIds, ...noteIds].filter((id) => !declared.has(id));
+  assert.deepEqual(dangling, [],
+    `aria-describedby 引用了 index.html 未声明的 id（悬空引用）：${dangling.join("、")}`);
+});
+
 test("index.html exposes a 0-1000 range slider as the clip progress bar", async () => {
   const progress = tagContaining('id="clip-progress"');
   assert.match(progress.tag, /type="range"/, `#clip-progress 应是 type="range" 的滑块，实际为「${progress.tag}」`);

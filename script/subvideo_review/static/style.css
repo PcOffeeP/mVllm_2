@@ -105,9 +105,11 @@ input::placeholder, textarea::placeholder { color: #748394; opacity: 1; }
 .multi-fieldset { margin: 0; padding: .85rem .9rem .95rem; border: 0; border-top: 1px solid var(--line); }
 .multi-fieldset legend { padding: 0; color: #293f4d; font-size: .88rem; font-weight: 800; }
 .multi-fieldset legend span { color: var(--muted); font-weight: 400; }
-.notes-section { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.notes-section { display: grid; grid-template-columns: 1fr; gap: 1rem; }
 .field-block { display: grid; gap: .35rem; }
 .field-block label span { color: var(--muted); font-weight: 400; }
+.decision-reason-block { margin-top: .6rem; padding: .3rem .45rem; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-muted); gap: .2rem; }
+.decision-reason-block textarea { min-height: 0; padding: .3rem .45rem; font-size: .84rem; line-height: 1.3; }
 .app-message { display: flex; gap: .5rem; margin: 1rem 1.2rem 0; padding: .65rem .75rem; border-left: 4px solid var(--primary); color: #31515a; background: var(--primary-soft); font-size: .86rem; scroll-margin-top: 4.5rem; }
 .app-message strong { color: var(--primary-dark); }
 .app-message[data-kind="error"] { border-left-color: var(--danger); color: #5f1c1c; background: #fdeaea; }
