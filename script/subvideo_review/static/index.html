@@ -20,7 +20,7 @@
       </div>
       <div class="header-note" aria-label="审核原则">
         <strong>默认按候选标签预填</strong>
-        <span>预填值只是草稿，决定仍由你本人作出</span>
+        <span>每个标签下方注明源视频标注；预填只是草稿，确认后自动进入下一个</span>
       </div>
     </header>
 
@@ -31,9 +31,11 @@
             <p class="section-kicker">候选队列</p>
             <h2 id="candidate-heading">选择待审核子视频</h2>
           </div>
+          <button id="toggle-candidates" aria-label="收起候选列表" type="button" class="button button-secondary" aria-expanded="true" aria-controls="candidate-panel-body">收起列表</button>
           <span id="candidate-count" class="count-badge" aria-live="polite">等待载入</span>
         </div>
 
+        <div id="candidate-panel-body">
         <div class="filters" aria-label="候选筛选条件">
           <label for="scope-filter">数据划分</label>
           <select id="scope-filter" name="scope-filter">
@@ -82,6 +84,7 @@
             <span>待处理或暂留来源的原因，以及可打开原视频的入口，会在此单独显示。</span>
           </div>
         </details>
+        </div>
       </aside>
 
       <section class="review-panel" aria-labelledby="review-heading">
@@ -103,13 +106,17 @@
             <button id="save-draft" type="button" class="button button-secondary">保存草稿</button>
             <button id="question-review" type="button" class="button button-question">记录疑问</button>
             <button id="return-review" type="button" class="button button-return">退回</button>
-            <button id="confirm-review" type="button" class="button button-primary">一次确认全部</button>
+            <button id="confirm-review" type="button" class="button button-primary">确认完成，进入下一个</button>
           </div>
           <div class="export-actions" aria-label="导出审核记录">
             <button id="export-reviews" type="button" class="button button-secondary">导出审核记录</button>
             <button id="export-all-revisions" type="button" class="button button-secondary">导出全部修订</button>
           </div>
         </footer>
+
+        <div id="app-message" class="app-message" role="status" aria-live="polite" aria-atomic="true">
+          <strong>准备就绪</strong><span>选择候选后开始人工审核。</span>
+        </div>
 
         <section class="media-and-reference" aria-label="画面和参考信息">
           <div class="media-column">
@@ -123,25 +130,20 @@
                 <span>选择候选后可连续播放；播放失败时将在此处显示说明。</span>
               </div>
             </div>
+            <div class="clip-controls">
+              <input id="clip-progress" type="range" min="0" max="1000" step="1" value="0" aria-label="片段播放进度" />
+              <p id="clip-time" class="clip-time">0.00s / 0.00s</p>
+              <button id="step-back" type="button" class="button button-secondary">−1 帧</button>
+              <button id="step-forward" type="button" class="button button-secondary">+1 帧</button>
+            </div>
             <div id="timeline-info" class="timeline-info" aria-live="polite">
               <strong>事件线索</strong>
-              <span>尚未提供事件线索。请以实际画面为准。</span>
+              <dl id="timeline-list"></dl>
             </div>
-          </div>
-
-          <aside id="source-reference" class="source-reference" aria-labelledby="reference-heading">
-            <div class="reference-heading">
-              <p class="reference-flag">仅供参考</p>
-              <h3 id="reference-heading">源标签与事件线索</h3>
-            </div>
-            <p class="reference-warning">源标签只供参考，不写入审核值；候选初值已预填为草稿，可逐项修改。</p>
+            <details id="clip-sha"><summary>媒体摘要（SHA256）</summary><p id="clip-sha-value"></p></details>
             <button id="view-source" type="button" class="button button-secondary" disabled>查看原视频</button>
-            <div class="reference-empty" role="status">
-              <strong>尚无来源参考信息</strong>
-              <span>载入候选后，来源标签会单独列在这里。</span>
-            </div>
-          </aside>
-        </section>
+            <details id="source-reference" class="source-extras"><summary>其余源标注信息（非五类标签）</summary><div id="source-extras-body" class="reference-extras"></div></details>
+          </div>
 
         <section class="label-section" aria-labelledby="review-heading">
           <div class="section-heading-row">
@@ -151,9 +153,9 @@
             </div>
             <p class="field-guidance">已按候选标签预填，确认前为草稿；未判断时请保持空白。</p>
           </div>
-          <p id="prefill-notice" class="prefill-notice" hidden>已按生成标签预填，确认前为草稿；请逐项核对修改，空白表示未判断。</p>
+          <p id="prefill-notice" class="prefill-notice" hidden>已按生成标签预填为草稿；每项下方注明源视频标注，仅供参考。空白表示未判断。</p>
           <div id="label-fields" class="label-fields" aria-live="polite">
-            <p class="fields-intro">各项已按候选标签预填，确认前为草稿；请按画面核对并逐项修改。</p>
+            <p class="fields-intro">每项下方注明源视频对应标注（仅供参考，不会写入审核值）。确认需填满 11 项。</p>
             <div class="label-grid label-grid-single" aria-label="单选审核字段">
               <div class="label-control">
                 <label for="fracture-status">断裂状态</label>
@@ -163,7 +165,7 @@
                   <option value="发生断裂">发生断裂</option>
                   <option value="已断裂">已断裂</option>
                   <option value="无法判断">无法判断</option>
-                </select>
+                </select><p class="source-hint" data-source-hint="断裂状态">源视频：未标注</p>
               </div>
               <div class="label-control">
                 <label for="fracture-mode">断裂模式</label>
@@ -174,7 +176,7 @@
                   <option value="半脆半韧断裂">半脆半韧断裂</option>
                   <option value="无法判断">无法判断</option>
                   <option value="无">无</option>
-                </select>
+                </select><p class="source-hint" data-source-hint="断裂模式">源视频：未标注</p>
               </div>
               <div class="label-control">
                 <label for="fracture-location">断裂位置</label>
@@ -185,28 +187,30 @@
                   <option value="夹持根部">夹持根部</option>
                   <option value="无法判断">无法判断</option>
                   <option value="无">无</option>
-                </select>
+                </select><p class="source-hint" data-source-hint="断裂位置">源视频：未标注</p>
               </div>
             </div>
             <fieldset class="multi-fieldset">
               <legend>异常情况 <span>（逐项判断）</span></legend>
               <div class="label-grid label-grid-multi">
-                <div class="label-control"><label for="abnormal-unclamped">未夹紧</label><select id="abnormal-unclamped" name="异常情况.未夹紧"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
-                <div class="label-control"><label for="abnormal-video">视频异常</label><select id="abnormal-video" name="异常情况.视频异常"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
-                <div class="label-control"><label for="abnormal-explosive">爆炸性断裂</label><select id="abnormal-explosive" name="异常情况.爆炸性断裂"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+                <div class="label-control"><label for="abnormal-unclamped">未夹紧</label><select id="abnormal-unclamped" name="异常情况.未夹紧"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select><p class="source-hint" data-source-hint="异常情况.未夹紧">源视频：未标注</p></div>
+                <div class="label-control"><label for="abnormal-video">视频异常</label><select id="abnormal-video" name="异常情况.视频异常"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select><p class="source-hint" data-source-hint="异常情况.视频异常">源视频：未标注</p></div>
+                <div class="label-control"><label for="abnormal-explosive">爆炸性断裂</label><select id="abnormal-explosive" name="异常情况.爆炸性断裂"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select><p class="source-hint" data-source-hint="异常情况.爆炸性断裂">源视频：未标注</p></div>
               </div>
             </fieldset>
             <fieldset class="multi-fieldset">
               <legend>断裂现象 <span>（逐项判断）</span></legend>
               <div class="label-grid label-grid-multi">
-                <div class="label-control"><label for="phenomenon-elongation">伸长</label><select id="phenomenon-elongation" name="断裂现象.伸长"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
-                <div class="label-control"><label for="phenomenon-necking">颈缩</label><select id="phenomenon-necking" name="断裂现象.颈缩"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
-                <div class="label-control"><label for="phenomenon-cracking">开裂</label><select id="phenomenon-cracking" name="断裂现象.开裂"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
-                <div class="label-control"><label for="phenomenon-interface-separation">界面分离</label><select id="phenomenon-interface-separation" name="断裂现象.界面分离"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
-                <div class="label-control"><label for="phenomenon-post-fracture-release">断后脱夹</label><select id="phenomenon-post-fracture-release" name="断裂现象.断后脱夹"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select></div>
+                <div class="label-control"><label for="phenomenon-elongation">伸长</label><select id="phenomenon-elongation" name="断裂现象.伸长"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select><p class="source-hint" data-source-hint="断裂现象.伸长">源视频：未标注</p></div>
+                <div class="label-control"><label for="phenomenon-necking">颈缩</label><select id="phenomenon-necking" name="断裂现象.颈缩"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select><p class="source-hint" data-source-hint="断裂现象.颈缩">源视频：未标注</p></div>
+                <div class="label-control"><label for="phenomenon-cracking">开裂</label><select id="phenomenon-cracking" name="断裂现象.开裂"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select><p class="source-hint" data-source-hint="断裂现象.开裂">源视频：未标注</p></div>
+                <div class="label-control"><label for="phenomenon-interface-separation">界面分离</label><select id="phenomenon-interface-separation" name="断裂现象.界面分离"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select><p class="source-hint" data-source-hint="断裂现象.界面分离">源视频：未标注</p></div>
+                <div class="label-control"><label for="phenomenon-post-fracture-release">断后脱夹</label><select id="phenomenon-post-fracture-release" name="断裂现象.断后脱夹"><option value="" selected>未选择</option><option value="是">是</option><option value="否">否</option><option value="无法判断">无法判断</option></select><p class="source-hint" data-source-hint="断裂现象.断后脱夹">源视频：未标注</p></div>
               </div>
             </fieldset>
           </div>
+        </section>
+
         </section>
 
         <section class="notes-section" aria-labelledby="notes-heading">
@@ -220,10 +224,6 @@
             <textarea id="decision-reason" name="decision-reason" rows="3" placeholder="说明本次决定的原因；不会替你自动生成判断。"></textarea>
           </div>
         </section>
-
-        <div id="app-message" class="app-message" role="status" aria-live="polite" aria-atomic="true">
-          <strong>准备就绪</strong><span>选择候选后开始人工审核。</span>
-        </div>
 
         <section class="history-section" aria-labelledby="history-heading">
           <div class="history-heading">

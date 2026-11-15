@@ -4,7 +4,7 @@
   const byId = (id) => document.getElementById(id);
   const names = ["断裂状态", "断裂模式", "断裂位置", "异常情况.未夹紧", "异常情况.视频异常", "异常情况.爆炸性断裂", "断裂现象.伸长", "断裂现象.颈缩", "断裂现象.开裂", "断裂现象.界面分离", "断裂现象.断后脱夹"];
   const statusNames = {unreviewed: "未审核", draft: "草稿", confirmed: "已确认", returned: "已退回", question: "有疑问"};
-  const state = {data: null, selected: null, latest: null, dirty: false, loading: false, sequence: 0, activeScope: "", exporting: false};
+  const state = {data: null, selected: null, latest: null, dirty: false, loading: false, sequence: 0, activeScope: "", exporting: false, lastSaveAt: 0};
   const controls = new Map();
   /* 历史标注/旧清单里的旧词只在显示层统一为「无法判断」；已存记录与源标注字节均不改写。 */
   const legacyUncertain = new Map([["无法确定", "无法判断"], ["无法识别", "无法判断"]]);
@@ -25,6 +25,7 @@
     node.textContent = text;
     node.setAttribute("role", error ? "alert" : "status");
     node.dataset.kind = error ? "error" : "info";
+    if (error && typeof node.scrollIntoView === "function") node.scrollIntoView({block: "nearest"});
   };
   async function request(path, options) {
     const response = await fetch(path, {cache: "no-store", ...options});
@@ -76,7 +77,19 @@
       button.className = "candidate-item";
       button.dataset.candidateId = candidate.candidate_id;
       button.setAttribute("aria-current", String(candidate.candidate_id === state.selected?.candidate_id));
-      button.textContent = `${candidate.candidate_id} · ${statusNames[candidate.review_status] || candidate.review_status}`;
+      if (candidate.review_status === "confirmed") button.classList.add("is-confirmed");
+      const title = document.createElement("span");
+      title.className = "candidate-item__title";
+      title.textContent = candidate.candidate_id;
+      const meta = document.createElement("span");
+      meta.className = "candidate-item__meta";
+      const status = statusNames[candidate.review_status] || candidate.review_status;
+      meta.textContent = `来源 ${candidate.source_id} · ${status}`;
+      const badge = document.createElement("span");
+      badge.className = "candidate-item__status";
+      badge.textContent = status;
+      button.append(title, meta, badge);
+      if (candidate.candidate_id === state.selected?.candidate_id && typeof button.scrollIntoView === "function") button.scrollIntoView({block: "nearest"});
       button.addEventListener("click", () => selectCandidate(candidate));
       list.append(button);
     });
@@ -117,31 +130,63 @@
       node.append(item);
     });
   }
-  function renderReference(reference, candidateReference = {}) {
-    const aside = byId("source-reference");
-    let content = aside.querySelector(".reference-empty");
-    if (!content) { content = document.createElement("div"); content.className = "reference-empty"; aside.append(content); }
+  const sourceKeys = {
+    "断裂状态": "断裂状态", "断裂模式": "断裂模式", "断裂位置": "断裂位置",
+    "异常情况.未夹紧": "异常_未夹紧", "异常情况.视频异常": "异常_视频异常", "异常情况.爆炸性断裂": "异常_爆炸性断裂",
+    "断裂现象.伸长": "现象_伸长", "断裂现象.颈缩": "现象_颈缩", "断裂现象.开裂": "现象_开裂", "断裂现象.界面分离": "现象_界面分离", "断裂现象.断后脱夹": "现象_断后脱夹"
+  };
+  const extraKeys = ["id", "video_path", "断裂时间点", "材料类型", "清晰度", "断裂帧数", "视频时长", "视频帧率", "视频总帧数", "has_fracture", "is_abnormal", "标注状态", "断裂帧_前", "断裂帧_后", "标注备注", "断裂时间范围_下界", "断裂时间范围_上界"];
+  function renderReference(reference = {}) {
+    reference = reference || {};
+    const hints = new Map([...document.querySelectorAll("[data-source-hint]")].map((node) => [node.dataset.sourceHint, node]));
+    Object.entries(sourceKeys).forEach(([name, key]) => {
+      const value = reference[key];
+      const mapped = unifiedTerm(value);
+      const text = value == null || value === "" ? "未标注" : mapped === value ? String(value) : `${mapped}（原值：${value}）`;
+      if (hints.has(name)) hints.get(name).textContent = `源视频：${text}`;
+    });
+    const content = byId("source-extras-body");
     content.replaceChildren();
-    const appendReference = (title, values) => {
-      const heading = document.createElement("strong");
-      heading.textContent = title;
-      content.append(heading);
-      if (!values || !Object.keys(values).length) { const empty = document.createElement("p"); empty.textContent = "未记录"; content.append(empty); return; }
-      const list = document.createElement("dl");
-      Object.entries(values).forEach(([key, value]) => {
-        if (value === "" || value === null || value === undefined) return;
-        const term = document.createElement("dt");
-        const detail = document.createElement("dd");
-        term.textContent = key;
-        const mapped = unifiedTerm(value);
-        detail.textContent = typeof value === "object" ? JSON.stringify(value)
-          : (mapped === value ? String(value) : `${mapped}（原值：${value}）`);
-        list.append(term, detail);
-      });
-      content.append(list);
-    };
-    appendReference("源视频标注", reference);
-    if (candidateReference && Object.keys(candidateReference).length) appendReference("候选标签初值", candidateReference);
+    const list = document.createElement("dl");
+    extraKeys.forEach((key) => {
+      const term = document.createElement("dt"), detail = document.createElement("dd");
+      term.textContent = key;
+      const value = reference[key];
+      detail.textContent = value == null || value === "" ? "未记录" : typeof value === "object" ? JSON.stringify(value) : String(value);
+      list.append(term, detail);
+    });
+    content.append(list);
+  }
+  function renderTimeline(candidate = {}) {
+    const w = candidate.window || {};
+    const range = (start, end) => start == null && end == null ? "未记录" : `${start ?? "未记录"} – ${end ?? "未记录"}`;
+    const rows = [["窗口角色", w.window_role || "未记录"], ["源帧区间", range(w.start_frame, w.end_frame)], ["源时间", range(w.source_start_pts ?? w.start_time, w.source_end_pts ?? w.end_time)], ["时长", w.duration ?? "未记录"], ["生成时建议关注", candidate.review_focus?.length ? candidate.review_focus.join("、") : "未记录"], ["标签组合待复核", candidate.audit_issues?.length ? candidate.audit_issues.join("；") : "未记录"]];
+    const list = byId("timeline-list");
+    list.replaceChildren();
+    rows.forEach(([label, value]) => { const dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = label; dd.textContent = String(value); list.append(dt, dd); });
+    if (candidate.frame_mapping && Object.keys(candidate.frame_mapping).length) {
+      const details = document.createElement("details"), summary = document.createElement("summary"), content = document.createElement("pre");
+      summary.textContent = "帧映射";
+      content.textContent = JSON.stringify(candidate.frame_mapping, null, 2);
+      details.append(summary, content);
+      list.append(details);
+    }
+  }
+  const fps = () => { const value = state.selected?.output?.media?.fps; return Number.isFinite(value) && value > 0 ? value : null; };
+  function resetProgress() {
+    const video = byId("video-player");
+    video.currentTime = 0;
+    byId("clip-progress").value = "0";
+    byId("clip-time").textContent = "0.00s / 0.00s";
+    ["step-back", "step-forward"].forEach((id) => { byId(id).title = fps() ? "按素材帧率逐帧步进" : "无帧率信息，按 1/30 秒步进"; });
+  }
+  function syncProgress() {
+    const video = byId("video-player"), duration = video.duration;
+    if (!Number.isFinite(duration) || duration <= 0) { byId("clip-progress").value = "0"; byId("clip-time").textContent = "0.00s / 0.00s"; return; }
+    const time = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    byId("clip-progress").value = String(Math.round(time / duration * 1000));
+    const rate = fps();
+    byId("clip-time").textContent = `${time.toFixed(2)}s / ${duration.toFixed(2)}s` + (rate ? ` · 帧 ${Math.round(time * rate)} / ${Math.round(duration * rate)}` : "");
   }
   function previewSource(source) {
     if (state.loading) return;
@@ -156,7 +201,8 @@
     byId("decision-reason").value = "";
     byId("clip-title").textContent = `原视频 · ${source.source_id}`;
     byId("clip-meta").textContent = source.status === "pending" || source.status === "held" ? `待处理来源 · ${source.reason || "原因未记录"}` : "来源画面复看";
-    byId("timeline-info").textContent = "当前播放完整源视频，仅供人工复看；不会修改源标注、生成候选或保存片段审核。";
+    renderTimeline();
+    byId("clip-sha-value").textContent = "";
     renderReference(source.source_reference);
     byId("review-status").textContent = "原视频只读查看";
     byId("revision-history").textContent = "请从候选列表选择片段后填写审核。";
@@ -165,6 +211,7 @@
     setVideoState("loading");
     video.src = `/source-media?source_id=${encodeURIComponent(source.source_id)}`;
     video.load();
+    resetProgress();
     setBusy(false);
     renderList();
     message("仅查看当前来源。源标注显示为参考，不会写入候选审核。" );
@@ -227,14 +274,16 @@
     setControls();
     const prefill = prefillSource(candidate);
     setControls(prefill);
-    byId("prefill-notice").textContent = "已按生成标签预填，确认前为草稿；请逐项核对修改，空白表示未判断。";
+
+    byId("prefill-notice").textContent = "已按生成标签预填为草稿；每项下方注明源视频标注，仅供参考。空白表示未判断。";
     byId("prefill-notice").hidden = !hasAnyPrefill(prefill);
     byId("review-note").value = "";
     byId("decision-reason").value = "";
     byId("clip-title").textContent = candidate.candidate_id;
-    byId("clip-meta").textContent = `${candidate.source_id} · ${candidate.scope === "test" ? "测试集" : "开发集"} · ${candidate.source_type === "virtual" ? "虚拟" : "真实"} · 三折 ${JSON.stringify(candidate.folds)} · SHA256 ${candidate.clip_sha256}`;
-    const w = candidate.window;
-    byId("timeline-info").textContent = `窗口 ${w.window_role || "未记录"} · 源帧 [${w.start_frame ?? "?"}, ${w.end_frame ?? "?"}) · 源时间 ${w.source_start_pts ?? w.start_time ?? "?"}–${w.source_end_pts ?? w.end_time ?? "?"} 秒 · 时长 ${w.duration ?? "?"} 秒\n帧映射：${JSON.stringify(candidate.frame_mapping)}\n生成时建议关注：${candidate.review_focus?.length ? candidate.review_focus.join("、") : "无指定重点"}${candidate.audit_issues?.length ? `\n标签组合待复核：${candidate.audit_issues.join("；")}` : ""}`;
+    const folds = Object.entries(candidate.folds || {}).map(([key, value]) => `第${key}折=${({val: "验证", train: "训练", test: "测试"})[value] || value}`).join(" / ") || "未记录";
+    byId("clip-meta").textContent = `来源 ${candidate.source_id} · ${candidate.scope === "test" ? "测试集" : "开发集"} · ${candidate.source_type === "virtual" ? "虚拟来源" : "真实来源"} · 三折：${folds}`;
+    byId("clip-sha-value").textContent = candidate.clip_sha256 || "";
+    renderTimeline(candidate);
     byId("view-source").disabled = !candidate.source_preview_available;
     renderReference(candidate.source_reference, candidate.candidate_reference);
     byId("review-status").textContent = "正在读取人工修订…";
@@ -243,8 +292,10 @@
     setVideoState("loading");
     video.src = `/media?candidate_id=${encodeURIComponent(candidate.candidate_id)}`;
     video.load();
+    resetProgress();
     setBusy(true);
     renderList();
+    let historyFailed = false;
     try {
       const review = await request(`/api/reviews?candidate_id=${encodeURIComponent(candidate.candidate_id)}`);
       if (sequence !== state.sequence) return;
@@ -258,12 +309,14 @@
       byId("review-status").textContent = statusNames[review.latest?.review_status || "unreviewed"];
       renderHistory(review);
       message(review.isolated_history.length ? `发现 ${review.isolated_history.length} 条其他身份的旧修订，已隔离且未继承。` : "依据当前片段逐项填写；源标签只作参考。", Boolean(review.isolated_history.length));
-      if (autoplay) video.play().catch(() => message("浏览器暂停了自动播放，请点击播放器继续。"));
     } catch (error) {
+      historyFailed = true;
       message(error.message, true);
     } finally {
+      if (autoplay && sequence === state.sequence && state.selected === candidate) video.play().catch(() => message("浏览器暂停了自动播放，请点击播放器继续。"));
       setBusy(false);
     }
+    return {historyFailed};
   }
   async function move(offset, autoplay = false) {
     const candidates = filtered();
@@ -295,6 +348,10 @@
     byId("video-player").pause();
     byId("video-player").removeAttribute("src");
     byId("video-player").load();
+    resetProgress();
+    renderTimeline();
+    renderReference();
+    byId("clip-sha-value").textContent = "";
     byId("clip-title").textContent = "当前划分没有符合筛选条件的候选";
     byId("clip-meta").textContent = "请调整筛选条件。";
     byId("review-status").textContent = "未选择候选";
@@ -328,9 +385,16 @@
       state.dirty = false;
       byId("prefill-notice").hidden = true;
       byId("review-status").textContent = statusNames[row.review_status];
-      renderHistory(await request(`/api/reviews?candidate_id=${encodeURIComponent(state.selected.candidate_id)}`));
+      let historyFailed = false;
+      try {
+        renderHistory(await request(`/api/reviews?candidate_id=${encodeURIComponent(state.selected.candidate_id)}`));
+      } catch {
+        historyFailed = true;
+      }
       renderList();
-      message(`已保存${statusNames[row.review_status]}；新修订 ${row.review_id}。这不是数据发布。`);
+      state.lastSaveAt = Date.now();
+      message(`已保存${statusNames[row.review_status]}；新修订 ${row.review_id}。${historyFailed ? "历史记录未能刷新，可重载页面核对。" : "这不是数据发布。"}`);
+      return {historyFailed};
     } catch (error) {
       message(error.message, true);
     } finally {
@@ -378,13 +442,33 @@
     }
   }
   async function start() {
-    const required = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "prefill-notice", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history", "export-reviews", "export-all-revisions"];
+    const required = ["scope-filter", "fold-filter", "source-filter", "status-filter", "attention-filter", "audit-info", "candidate-search", "candidate-list", "candidate-count", "pending-sources", "pending-list", "video-player", "clip-title", "clip-meta", "timeline-info", "source-reference", "view-source", "prefill-notice", "label-fields", "review-note", "decision-reason", "save-draft", "confirm-review", "return-review", "question-review", "previous-candidate", "next-candidate", "review-status", "app-message", "revision-history", "export-reviews", "export-all-revisions", "main-content", "toggle-candidates", "candidate-panel-body", "clip-progress", "clip-time", "step-back", "step-forward", "timeline-list", "source-extras-body", "clip-sha", "clip-sha-value"];
     const missing = required.filter((id) => !byId(id));
     names.forEach((name) => {
       const node = [...document.querySelectorAll("#label-fields select[name]")].find((item) => item.name === name);
       if (node) controls.set(name, node); else missing.push(`select[name="${name}"]`);
     });
     if (missing.length) throw new Error(`页面缺少必要控件：${missing.join("、")}`);
+    const applyCollapse = (collapsed) => {
+      byId("main-content").classList.toggle("is-collapsed", collapsed);
+      byId("candidate-panel-body").hidden = collapsed;
+      byId("toggle-candidates").setAttribute("aria-expanded", String(!collapsed));
+      byId("toggle-candidates").setAttribute("aria-label", collapsed ? "展开候选列表" : "收起候选列表");
+      byId("toggle-candidates").textContent = collapsed ? "展开列表" : "收起列表";
+    };
+    let collapsed = false;
+    try { collapsed = window.localStorage.getItem("subvideo-review:collapsed") === "true"; } catch {}
+    applyCollapse(collapsed);
+    byId("toggle-candidates").addEventListener("click", () => { collapsed = !collapsed; applyCollapse(collapsed); try { window.localStorage.setItem("subvideo-review:collapsed", String(collapsed)); } catch {} });
+    const video = byId("video-player");
+    ["timeupdate", "seeking", "seeked", "loadedmetadata", "emptied"].forEach((event) => video.addEventListener(event, syncProgress));
+    byId("clip-progress").addEventListener("input", () => { if (Number.isFinite(video.duration)) video.currentTime = video.duration ? Number(byId("clip-progress").value) / 1000 * video.duration : 0; });
+    [["step-back", -1], ["step-forward", 1]].forEach(([id, direction]) => byId(id).addEventListener("click", () => {
+      if (Number.isFinite(video.duration) && video.duration >= 0) {
+        const base = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+        video.currentTime = Math.max(0, Math.min(video.duration, base + direction / (fps() || 30)));
+      }
+    }));
     state.data = await request("/api/bootstrap");
     state.activeScope = byId("scope-filter").value;
     byId("attention-filter").disabled = !state.data.audit_current;
@@ -395,7 +479,18 @@
     byId("scope-filter").addEventListener("change", changeScope);
     ["fold-filter", "source-filter", "status-filter", "attention-filter"].forEach((id) => byId(id).addEventListener("change", renderList));
     byId("candidate-search").addEventListener("input", renderList);
-    ["save-draft", "confirm-review", "return-review", "question-review"].forEach((id, index) => byId(id).addEventListener("click", () => save(["draft", "confirmed", "returned", "question"][index])));
+    ["save-draft", "return-review", "question-review"].forEach((id, index) => byId(id).addEventListener("click", () => save(["draft", "returned", "question"][index])));
+    byId("confirm-review").addEventListener("click", async () => {
+      const candidates = filtered();
+      const index = candidates.findIndex((candidate) => candidate.candidate_id === state.selected?.candidate_id);
+      const next = index >= 0 ? candidates[index + 1] : null;
+      const result = await save("confirmed");
+      if (!result) return;
+      const selection = next ? await selectCandidate(next, {force: true, autoplay: true}) : null;
+      const warning = result.historyFailed || selection?.historyFailed ? "历史记录未能刷新，可重载页面核对。" : "";
+      if (next) message(`已保存已确认；已进入下一个候选。${warning}`);
+      else message(`已保存已确认；已是当前筛选的最后一个候选；可切换筛选继续。${warning}`);
+    });
     byId("previous-candidate").addEventListener("click", () => move(-1));
     byId("next-candidate").addEventListener("click", () => move(1, true));
     byId("view-source").addEventListener("click", () => {
@@ -404,8 +499,9 @@
     controls.forEach((node) => node.addEventListener("change", () => { state.dirty = true; }));
     ["review-note", "decision-reason"].forEach((id) => byId(id).addEventListener("input", () => { state.dirty = true; }));
     byId("video-player").addEventListener("ended", () => {
+      if (Date.now() - state.lastSaveAt < 3000) return;
       if (!state.selected) message("源原视频播放结束；可重播或从列表选择候选。" );
-      else message(state.dirty ? "当前片段播放结束，输入尚未保存。请保存或明确切换；可重播核对。" : "当前片段播放结束。请填写并确认、记录疑问或退回；可重播核对，或主动选择下一候选。" );
+      else message(state.dirty ? "当前片段播放结束，输入尚未保存。请保存或明确切换；可重播核对。" : "片段播放结束。核对后点『确认完成，进入下一个』，或保存草稿／记录疑问。" );
     });
     byId("video-player").addEventListener("error", () => { setVideoState("error"); message("媒体无法播放；请核对当前工作区路径及片段身份。不会自动生成或修复媒体。", true); });
     window.addEventListener("beforeunload", (event) => { if (state.dirty) { event.preventDefault(); event.returnValue = ""; } });
