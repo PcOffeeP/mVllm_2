@@ -2,7 +2,7 @@
 # active 表示条目在写明的适用范围内有效，不表示旧契约、旧实验或待落地裁决可直接用于本轮标注。
 # 本轮人工标注以 docs/label.md 为准；新旧边界见 DF-018，执行阶段见 docs/TODO.md。
 # 校验：历史 `scripts/verify_design_facts.py` 已随 `scripts/` 目录按用户要求删除（生成与审查脚本在 `script/`，不受影响），当前无自动校验器；evidence 的行号、路径存在性与 expect 匹配须人工核对。
-# evidence 行号复核：2026-11-14 本轮再次按当前工作树逐条复核了全部 evidence 的行号与 `expect`。本次受影响的被引文件类别：`script/five_label_eval/score.py`（`five-label-score/2` 改动后 `truth_cell` 116–121、`field_metrics` 359–414、`def score` 436，全文 540 行）；`docs/design-test.md`（新增第 8 节、§6 测试规模数字改写、§1 措辞调整、§7.3 要点条目调整后全篇行号漂移）；两份已删文档 `docs/label-position-calibration.md` 与 `docs/migration-review-outline.md`（均于提交 `a5dd578` 删除）的引用改指现存替代；`docs/eval/input-record.md` 与 `docs/eval/output-contract.md`；`docs/TODO.md`、`docs/subvideo-current-logic.md` 与 `script/subvideo_generation/` 的规则登记和生成入口。另有个别行号因更早的上游提交（如 `045536c`）顺移。无法在本仓核对的条目见下方 `evidence_location` 说明。
+# evidence 行号复核：2026-11-14 本轮再次按当前工作树逐条复核了全部 evidence 的行号与 `expect`。本次受影响的被引文件类别：`script/five_label_eval/score.py`（当前 `five-label-score/3` 的 `truth_cell` 116–121、`combinations` 137、`field_metrics` 354–428、`def score` 450，全文 557 行）；`docs/design-test.md`（新增第 8 节、§6 测试规模数字改写、§1 措辞调整、§7.3 要点条目调整后全篇行号漂移）；两份已删文档 `docs/label-position-calibration.md` 与 `docs/migration-review-outline.md`（均于提交 `a5dd578` 删除）的引用改指现存替代；`docs/eval/input-record.md` 与 `docs/eval/output-contract.md`；`docs/TODO.md`、`docs/subvideo-current-logic.md` 与 `script/subvideo_generation/` 的规则登记和生成入口。另有个别行号因更早的上游提交（如 `045536c`）顺移。无法在本仓核对的条目见下方 `evidence_location` 说明。2026-11-16 本次片段层规则变更后已再次按当前工作树核对该段评分器行号。
 # evidence_location: 取值为 `original_worktree` 时表示该条**含**指向本工作区未检出路径的 evidence（`pipeline/`、`finetune/`、`versioning/`、`docs/results/` 等，本仓为 sparse-checkout，这些目录未检出），这部分的 evidence 无法在本仓核对行号与内容，同一 entry 的其余 evidence 仍可在本仓核对；出现原因即这批 evidence 取自原工作区/训练机的代码与结果记录。条目的结论仍有效，但不可在本仓核对的那部分须在原工作区/训练机核对后才可引用，不得当作本仓已核实的行号。
 # `misreadings` 段的 evidence 同样指向本仓未检出的路径，但该段结构没有 `evidence_location` 字段，其证据同样须在原工作区/训练机核对，且不计入任何自动核对覆盖范围。
 version: 1
@@ -239,13 +239,13 @@ facts:
     claim: >
       本轮人工标注以「可见分离第一帧」为事件锚点：`断裂帧_前` 记最后一帧仍连通，`断裂帧_后` 记第一帧已分离并作为权威值，时间按后帧号和实测 fps 派生；首帧已可见分离时可记后帧 0 和观测时间 0，不代表物理断裂发生在视频起点。变帧率视频按单一 fps 算出的时间为估算。确认完整视频未发生断裂时，两帧及断裂时间点填「无」。此前已记录的历史时间数值在覆盖前须经用户确认；旧列处置的原始裁决依据已删除。已确认断裂但一侧边界不可辨时，该侧帧填「无」；无法确定精确时刻时可单独记录时间范围上下界，普通视频默认留空，未夹紧但确有断裂也可记录范围，原时间点仍为「无」。旧的 `visible_separation_time` 列方案已被前后帧号方案取代，不再作为实施要求。整源帧号记录与片段状态记录分别判断；时间标注可用于子视频生成，但当前不构建模型时间预测任务训练集，也不评价模型预测时间类标签的表现；见 DF-019。
     evidence:
-      - ref: docs/label.md:32
+      - ref: docs/label.md:34
         expect: 第一帧已分离、也是权威值，时刻由实测 fps 派生
-      - ref: docs/label.md:85
-        expect: 确认完整视频未发生断裂时
-      - ref: docs/label.md:94
-        expect: 两列默认留空
       - ref: docs/label.md:96
+        expect: 确认完整视频未发生断裂时
+      - ref: docs/label.md:106
+        expect: 两列默认留空
+      - ref: docs/label.md:108
         expect: 未夹紧的视频若能确认确有断裂
       - ref: docs/TODO.md:283
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
@@ -333,29 +333,29 @@ facts:
     claim: >
       本轮人工标注以 `docs/label.md` 为准，采用断裂状态、断裂模式、断裂位置、异常情况与断裂现象五类；状态为未断裂、发生断裂、已断裂、无法判断，不含临界未断裂。单值三类（状态、模式、位置）的不确定取值现行统一为「无法判断」；历史字面量「无法确定」（状态、模式、位置三列各自的旧值）与「无法识别」（仅断裂模式）除导入兼容与历史语境外，都不作为现行取值。**已同步材料**：断裂位置校准材料（`docs/label-calibration/README.md`、`docs/label-calibration/cases.csv`）与 `docs/research/virtual-video-provenance.md` 中作为标签取值出现的旧词，已于本次文档清理改写为「无法判断」；`docs/label-position-calibration.md` 已于提交 `a5dd578` 删除，`docs/label-calibration/` 为现存唯一材料，按 DEC-003 第 7 条以现存 9 例样例与 `docs/label.md` 第 5 节为准、不再整批重标（删除前的旧词只出现在「断裂位置」维度，当时三份材料 `grep -c 无法识别` 实测为 0／0／0），`docs/research/virtual-video-provenance.md` 的 :23 断裂状态枚举与 :24 的「新 `无法判断`」均按现行取值书写（见 DF-033 同名条目）；「无法确定」今仅在导入兼容代码与历史语境（历史字面量说明、旧清单与审核记录、旧批次记录）中保留。相反，「无法识别」在本仓文档与数据中已无残留位置——文档里只作为历史兼容的引用字面量出现——它只存在于导入兼容代码（`script/data_split/generate.py:46–49` 的 `ALIASES`、`script/annotation/review_annotation.js:94–95`、`script/roi/label_fields.py:69`、`script/subvideo_generation/_legacy/core/generate.py:31` 等）与测试夹具中；完整清单见 DF-033 与 `docs/eval/output-contract.md` §5.1。导入兼容与历史语境的做法是：标注页面登记这些旧写法、按「无法判断」校验并保留原值供追溯，导出与恢复草稿不改写，需要更新时由用户手动改选。旧术语时代生成的**清单与审核记录**保留原字节、不改写（如 `data/sub_video/manifest.json` 内仍有 461 处「无法确定」）；仓库内**标注表已按新术语就地重写字节**（`data/annotation-table-full.csv`，旧字节 SHA-256 `9970d259…` → 当前 `2f046b06…`），旧值仅以 SHA-256 留痕、当前工作树不保留旧文本（旧文本仍可从 Git 历史取回）。位置采用视频相对位置分类，依次判断夹持根部、明显偏向夹持端及其余可判定位置，不表示测得精确工程标距；典型样例校准及已有标注影响核对待完成。现象包括伸长、颈缩、开裂、界面分离、断后脱夹，可多选；断后脱夹不自动判为未夹紧。异常和现象逐项记录「是」「否」「无法判断」或未标注空白；三项异常均为「否」表示无可见异常。未断裂或未夹紧时，模式和位置均填写固定文字值「无」，与未标注及不确定取值分开；未夹紧时 CSV 的「断裂时间点」也填「无」；该字段用于人工标注，不作为模型微调的预测标签。该基准仅规定人工标注；冻结 v4.1 的四字段、五状态和 null 规则仅适用于旧链路，新训练／业务契约及数据接入尚未实施。本轮五类评分的 JSON 编码及部分统计口径已确认，见 DF-030。本机源视频标注页面支持按上述固定组合填写并导出多列 CSV；它不发布数据或接入训练。
     evidence:
-      - ref: docs/label.md:54
+      - ref: docs/label.md:63
         expect: 是视频视觉分类，不表示已测得精确工程标距
       - ref: docs/label.md:19
         expect: '伸长、颈缩、开裂、界面分离、断后脱夹'
-      - ref: docs/label.md:66
+      - ref: docs/label.md:77
         expect: 三项异常均填“否”
-      - ref: docs/label.md:85
-        expect: '断裂模式和断裂位置填“无”'
-      - ref: docs/label.md:84
-        expect: '断裂时间和断裂位置填“无”'
+      - ref: docs/label.md:95
+        expect: '断裂模式与断裂位置按第 4 节证据门槛判断'
+      - ref: docs/label.md:95
+        expect: '断裂时间填“无”'
       - ref: docs/label.md:15
         expect: 未断裂、发生断裂、已断裂、无法判断
       - ref: docs/label.md:16
-        expect: 半脆半韧断裂、无法判断、无
+        expect: 半脆半韧断裂、无法判断
       - ref: docs/label.md:17
         expect: 标距外非根部、夹持根部、无法判断
-      - ref: docs/label.md:90
+      - ref: docs/label.md:102
         expect: '现行不确定取值为“无法判断”。标注页面登记四组历史写法，均按“无法判断”校验并保留原值供追溯'
       - ref: docs/label-calibration/README.md:3
         expect: 本目录为现存唯一材料
-      - ref: docs/label.md:45
+      - ref: docs/label.md:54
         expect: '## 5. 断裂位置'
-      - ref: docs/label.md:82
+      - ref: docs/label.md:93
         expect: 不作为模型微调的预测标签
       - ref: docs/TODO.md:11
         expect: 现有 v4.1 评分与旧阈值不直接套用
@@ -368,7 +368,7 @@ facts:
       - ref: docs/split/data-split-result.md:9
         expect: 当前该文件的 SHA-256 为
     established: 2026-11-05
-    established_by: 用户确认的人工标注基准；2026-11-14 按现行统一术语订正不确定取值的描述（历史「无法确定」改为现行「无法判断」）；文档清理时同步订正断裂位置校准图文与 virtual-video-provenance 的正文与样例标签取值，「无法确定」今只在导入兼容代码与历史语境中保留；「无法识别」已无文档与数据残留，只见于导入兼容代码（`ALIASES`、标注与审核页面显示层映射、归档生成旧路径的 `LEGACY_UNCERTAIN` 等，完整清单见 DF-033 与 `docs/eval/output-contract.md` §5.1）与测试夹具。evidence 行号与 expect 已逐条复核。
+    established_by: 用户确认的人工标注基准；2026-11-14 按现行统一术语订正不确定取值的描述（历史「无法确定」改为现行「无法判断」）；文档清理时同步订正断裂位置校准图文与 virtual-video-provenance 的正文与样例标签取值，「无法确定」今只在导入兼容代码与历史语境中保留；「无法识别」已无文档与数据残留，只见于导入兼容代码（`ALIASES`、标注与审核页面显示层映射、归档生成旧路径的 `LEGACY_UNCERTAIN` 等，完整清单见 DF-033 与 `docs/eval/output-contract.md` §5.1）与测试夹具。evidence 行号与 expect 已逐条复核。2026-11-16 按删除片段层「无」后的 label.md 重新对齐该 evidence（claim 未改，其「无」部分由 DF-049 取代）。
     supersedes: null
     affects: [data, eval]
   - id: DF-019
@@ -631,7 +631,7 @@ facts:
         expect: def export(self, *, all_revisions=False)
       - ref: script/subvideo_review/server.py:428
         expect: def matches(row, candidate)
-      - ref: script/five_label_eval/score.py:436
+      - ref: script/five_label_eval/score.py:450
         expect: def score(manifest, reviews, predictions, input_reviews=())
     established: 2026-11-10
     established_by: 用户确认审核和五类评分范围；代码及文档核对
@@ -681,11 +681,11 @@ facts:
     claim: >
       单值三类（断裂状态、断裂模式、断裂位置）与多选两组叶项（异常情况三项、断裂现象五项）的不确定取值统一为「无法判断」。历史字面量「无法确定」（状态、模式、位置三列）与「无法识别」（仅断裂模式）除导入兼容与历史语境外，都不作为现行取值。**已同步材料**：断裂位置校准材料（`docs/label-calibration/README.md`、`docs/label-calibration/cases.csv`）与 `docs/research/virtual-video-provenance.md` 中作为标签取值出现的旧词，已于本次文档清理改写为「无法判断」；`docs/label-position-calibration.md` 已于提交 `a5dd578` 删除，`docs/label-calibration/` 为现存唯一材料，按 DEC-003 第 7 条以现存 9 例样例与 `docs/label.md` 第 5 节为准、不再整批重标（删除前的旧词只出现在「断裂位置」维度，当时三份材料 `grep -c 无法识别` 实测为 0／0／0），`docs/research/virtual-video-provenance.md` 的 :23 断裂状态枚举与 :24 的「新 `无法判断`」均按现行取值书写；「无法确定」今仅在导入兼容代码与历史语境（历史字面量说明、旧清单与审核记录、旧批次记录）中保留。相反，「无法识别」在本仓文档与数据中已无残留位置——文档里只作为历史兼容的引用字面量出现——它只存在于导入兼容代码与测试夹具中。导入兼容与历史语境的做法是：split 管线把两者归一为「无法判断」（`ALIASES` 见 `script/data_split/generate.py:46–49`；同文件第 50 行 `UNCERTAIN` 也仍含「无法确定」），标注与审核页面的旧词只在显示层映射、已存字节不改写（`script/roi/label_fields.py:65` 起的 `_LEGACY_DISPLAY`、`script/subvideo_generation/_legacy/core/generate.py:31` 的 `LEGACY_UNCERTAIN = ("无法确定", "无法识别")`）。其余兼优点不在此穷举，见 `docs/eval/output-contract.md` §5.1。旧术语时代生成的**清单与审核记录**保留原字节、不改写（如 `data/sub_video/manifest.json` 内仍有 461 处「无法确定」）；仓库内**标注表已按新术语就地重写字节**（`data/annotation-table-full.csv`，旧字节 SHA-256 `9970d259…` → 当前 `2f046b06…`），旧值仅以 SHA-256 留痕、当前工作树不保留旧文本（旧文本仍可从 Git 历史取回）。评分器不做历史字面量归一化：`allowed()` 只接受「无法判断」，历史值作人工标签时由 `truth_cell()` 判 `invalid`；代码里仍有两处写着旧词——349 行是断言禁令：`cell["evidence"]` 为 insufficient／unknown 时，`cell["label"]` 只放过 `None`／空串／「无法确定」／「无法判断」，写出其余确定值一律抛 `InputError`；被放过的「无法确定」仍由 `truth_cell()`（348 行）判 `invalid`。另一处是预测侧 `explicit_uncertain` 统计（375–376 行）在判断里把「无法确定」与「无法判断」并列。但 375 行受 `pstatus == "valid"` 约束，而 `allowed()` 已不含「无法确定」，写旧词的预测先被判 `invalid`（`pstatus != "valid"`），故**现行值域下该分支的「无法确定」一半不可达，实际只有「无法判断」计入 `explicit_uncertain`**（`docs/eval/output-contract.md` 第 105 行已写明「现行值域下该分支不可达」）。这两处都不把旧词转成合法取值。消费方须与新术语同步，否则取值被判 `invalid`。
     evidence:
-      - ref: docs/label.md:90
+      - ref: docs/label.md:102
         expect: '现行不确定取值为“无法判断”'
       - ref: docs/label-calibration/README.md:3
         expect: 本目录为现存唯一材料
-      - ref: docs/label.md:45
+      - ref: docs/label.md:54
         expect: '## 5. 断裂位置'
       - ref: script/five_label_eval/score.py:14
         expect: '"断裂状态": ("未断裂", "发生断裂", "已断裂", "无法判断")'
@@ -693,9 +693,9 @@ facts:
         expect: 'return SINGLES[field] if field in SINGLES else ("是", "否", "无法判断")'
       - ref: script/five_label_eval/score.py:120
         expect: 'return {"status": "invalid", "value": value}'
-      - ref: script/five_label_eval/score.py:349
+      - ref: script/five_label_eval/score.py:344
         expect: 'cell["evidence"] in ("insufficient", "unknown") and cell["label"] not in (None, "", "无法确定", "无法判断")'
-      - ref: script/five_label_eval/score.py:375
+      - ref: script/five_label_eval/score.py:373
         expect: 'if pstatus == "valid" and pred["value"] in ("无法确定", "无法判断")'
       - ref: docs/eval/output-contract.md:105
         expect: 现行值域下该分支不可达
@@ -927,9 +927,9 @@ facts:
         expect: 过度不确定率 `over_uncertain_rate`
       - ref: script/five_label_eval/score.py:113
         expect: 'return SINGLES[field] if field in SINGLES else ("是", "否", "无法判断")'
-      - ref: script/five_label_eval/score.py:413
+      - ref: script/five_label_eval/score.py:427
         expect: '"over_uncertain_rate": ratio(sum(uncertain), sum(certain))})'
-      - ref: script/five_label_eval/score.py:432
+      - ref: script/five_label_eval/score.py:446
         expect: '"all_five_correct_supplement": ratio(joint, len(eligible)),'
     established: 2026-11-14
     established_by: 用户确认本轮评价口径（DEC-003 第 1–8 条）；决议正文、设计文档第 3 节与评分器实现核对
@@ -1057,6 +1057,35 @@ facts:
     established_by: 只读核查（哈希比对）：逐条对 `data/sub_video/videos/*.mp4` 取 sha256 与清单各候选 `output.sha256` 比对；训练机同目录同法比对；本次未改动任何文件。
     supersedes: null
     affects: [data, ops]
+
+  - id: DF-049
+    state: active
+    topic: 片段层删除断裂模式与位置的无并按可见证据作答与分层评分
+    claim: >
+      片段层断裂模式允许脆性断裂、韧性断裂、半脆半韧断裂、无法判断；断裂位置允许标距内、标距外非根部、夹持根部、无法判断。未断裂或未夹紧时按可见证据作答，证据不足答无法判断。四条证据门槛为说出具体所见、短窗口未拍出变形不构成脆性证据、允许参考同源其他片段但须在审核备注写明片段与现象且不得冒充本片段所见、未夹紧与未断裂同规则。帧号与时间列的「无」保留，源标注层不动。835 条旧清单初值仅展示／预填映射为无法判断并提示，不进入任何摘要输入，清单字节不变；此前估算 18 条，当前工作树 `reviews.json` 实测 10 个候选最新修订含旧值、历史合计 11 条修订含旧值（共 19 条修订，最新时间 2026-11-16T06:21:36.318808+00:00）；相关旧值作废，最新含旧值的候选须重审，记录字节不改写、摘要不重算。模式与位置的准确率、逐类召回／精确率和混淆矩阵只计人工状态为发生断裂或已断裂、该字段人工有效且已尝试的片段，其余排除片段单列人工取值分布不计比例；uncertain_rate 口径不变。只取代 DF-018 中「未断裂或未夹紧时模式和位置均填写固定文字值『无』」部分，DF-018 其余内容仍有效。本次评分口径变更已将 `VERSION` 升为 `five-label-score/3`。
+    evidence:
+      - ref: docs/label.md:16
+        expect: 脆性断裂、韧性断裂、半脆半韧断裂、无法判断
+      - ref: docs/label.md:17
+        expect: 标距内、标距外非根部、夹持根部、无法判断
+      - ref: docs/label.md:47
+        expect: 填具体模式或位置前，先过以下四条证据门槛
+      - ref: docs/label.md:100
+        expect: 帧号与时间列的“无”与模式／位置的取值无关
+      - ref: docs/decisions/0004-fragment-label-no-value-removal.md:1
+        expect: DEC-004
+      - ref: script/five_label_eval/score.py:417
+        expect: 'result["layered"] = {"fracture_states": ["发生断裂", "已断裂"]'
+      - ref: script/subvideo_review/server.py:30
+        expect: '"断裂模式": ["脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断"]'
+      - ref: script/subvideo_review/server.py:445
+        expect: "if display.get(name) == '无':"
+      - ref: script/subvideo_review/server.py:449
+        expect: 初值为旧规则固定组合值
+    established: 2026-11-16
+    established_by: 用户确认并按代码与文档核对
+    supersedes: DF-018
+    affects: [data, code, eval, prompt]
 
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾

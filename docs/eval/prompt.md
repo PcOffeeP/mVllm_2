@@ -1,18 +1,18 @@
 # prompt：正文位置 · 约束项与评分器行为 · 版本与冻结
 
-**失效条件：** v1 正文文件被改动或换版本号；`prompt_id` 形态改变；v1 正文取值字面量与 `script/five_label_eval/score.py` 的 `SINGLES`／`MULTIS` 不一致（现时一致：单值三类的不确定值写 `无法判断`）；`script/five_label_eval/score.py` 的 `_extract()`／`allowed()`／`truth_cell()` 判定行改变；冻结入口 `versioning/prompts.py` 落地本仓库或改变产物形态。以上任一发生，本文的约束项对照表与版本策略都须重新核对。
+**失效条件：** v1 或 v2 正文文件被改动或换版本号；`prompt_id` 形态改变；现行 v2 正文取值字面量与 `script/five_label_eval/score.py` 的 `SINGLES`／`MULTIS` 不一致；`script/five_label_eval/score.py` 的 `_extract()`／`allowed()`／`truth_cell()` 判定行改变；冻结入口 `versioning/prompts.py` 落地本仓库或改变产物形态。以上任一发生，本文的约束项对照表与版本策略都须重新核对。
 
-## 1. v1 正文的位置
+## 1. 现行 v2 正文的位置
 
 | 项 | 值 |
 | --- | --- |
-| 路径 | `script/five_label_eval/prompts/five_label_v1.txt` |
-| 本分支落地状态 | **已落地**。正文与 `prompt_id.py` 均随提交 `2baf363` 合入本分支 `feat/tensileagent-finetune`，本文以该分支文件为准 |
+| 路径 | `script/five_label_eval/prompts/five_label_v2.txt` |
+| 本分支落地状态 | **已落地**。v2 为现行正文；v1 留作历史身份 |
 | 规模 | 19 行 |
-| 现行版本号 | v1 |
+| 现行版本号 | v2 |
 | 身份 | `prompt_id = prompt@sha256:<文件字节的 sha256>` |
 
-正文要点（概括，不复制原文）：禁止依据文件名／路径／元数据／时长／文字线索猜答案；逐项显式回答、不得省略；不得用空列表表示「全部为否」；证据不足用该字段规定的不确定值；给出三单值字段的字面量清单；两个多选组逐项 `是`／`否`／`无法判断`；给出组合规则（未断裂或未夹紧时 `断裂模式`／`断裂位置` 须为 `无`；未断裂时 `爆炸性断裂`、`断后脱夹` 不得为 `是`）；只输出一个 JSON 对象，禁止解释、Markdown 围栏与前缀后缀文字。
+正文要点（概括，不复制原文）：禁止依据文件名／路径／元数据／时长／文字线索猜答案；逐项显式回答、不得省略；不得用空列表表示「全部为否」；证据不足用该字段规定的不确定值；给出三单值字段的字面量清单；两个多选组逐项 `是`／`否`／`无法判断`；给出组合规则（模式／位置取值清单不含 `无`，未断裂或未夹紧时按可见证据作答、证据不足答 `无法判断`；未断裂时 `爆炸性断裂`、`断后脱夹` 不得为 `是`）；只输出一个 JSON 对象，禁止解释、Markdown 围栏与前缀后缀文字。
 
 ## 2. 约束项与评分器行为
 
@@ -24,7 +24,7 @@
 | 取值必须逐字一致，不得自造、改写、翻译 | 非字符串或不在允许值内记 `invalid` | `allowed()` 112–113；`_extract()` 215–216 |
 | 单值字段的不确定值写 `无法判断` | 单值字段的 `无法判断` 是合法类别 | `allowed()` 112–113；`truth_cell` 121 |
 | 多选叶项只用 `是`／`否`／`无法判断` | 写 `无` 或任何其他非允许值记 `invalid` | `allowed()` 113 |
-| 组合规则（未断裂／未夹紧 → `断裂模式`／`断裂位置` = `无`） | 不判 `invalid`；`combinations()` 记冲突，聚合键 `prediction_combination_conflicts` 每行 +1 | 137（`combinations()`）、423（聚合） |
+| 模式／位置不含 `无`；未断裂／未夹紧按可见证据作答，不足答 `无法判断` | `无` 判 `invalid`；`combinations()` 仅记录未断裂与爆炸性断裂／断后脱夹的互斥 | `allowed()`、`combinations()` |
 | 顶层恰好 5 个键 | 顶层键集合不等时记 issue `top_level_keys_mismatch`，`strict_format_valid=False` | 198、220 |
 
 `strict_format_valid` 的完整条件：严格解析成功、无任何 issue、11 个叶字段全 `valid`（220 行）。因此「格式分」与「内容分」分开看，围栏与缺项不影响已有字段的正确性计分。
@@ -33,8 +33,8 @@
 
 - **改一个字即新版本号**：不改字面量、只改措辞也换版本，因为身份按文件字节计算，任何字节变化都会改变 `prompt_id`。
 - **身份形态**：`prompt@sha256:<摘要>`，前缀常量 `PROMPT_ID_PREFIX = "prompt@sha256:"`，函数 `prompt_id_for_bytes`（见 `script/five_label_eval/prompt_id.py`）。`load_prompt` 返回「原文（不 strip）+ 身份」，即送模型的文本与算摘要的字节是同一份。
-- **版本号与摘要双记**：批次记录里既写人可读版本 `v1`，也写 `prompt_id`；`score.py` 只校验一批内 `prompt_id` 唯一（288–291 行），不解析版本语义。
-- **不允许同名改动**：已用于批次的版本号不得再改内容，只能新增 `v2` 并留下两版正文文件。
+- **版本号与摘要双记**：批次记录里既写人可读版本 `v2`（历史批次为 `v1`），也写 `prompt_id`；`score.py` 只校验一批内 `prompt_id` 唯一（288–291 行），不解析版本语义。
+- **不允许同名改动**：已用于批次的版本号不得再改内容，只能新增版本并留下历史正文文件。
 
 ## 4. 冻结机制（训练机侧复用项）
 
@@ -50,11 +50,11 @@
 
 ## 5. 术语同步现状与版本标签处置
 
-**术语同步（第一条实例，现已完成）**：v1 正文已随评测切片合入本分支，单值三类的不确定值现为 `无法判断`，与 `score.SINGLES`（13–17 行）一致。按当前字节重算的 `prompt_id` 为 `prompt@sha256:4066d161c757131d9398db76e8a4eef0399fc73a73480b20dace53d9bc2ee794`（由 `script/five_label_eval/prompt_id.py` 的 `load_prompt` 算出，与 `shasum -a 256 script/five_label_eval/prompts/five_label_v1.txt` 一致）。
+**术语同步（第一条实例，现已完成）**：v1 正文已随评测切片合入本分支，单值三类的不确定值为 `无法判断`；v1 的模式／位置取值清单现已过时。按当前字节重算的 `prompt_id` 为 `prompt@sha256:4066d161c757131d9398db76e8a4eef0399fc73a73480b20dace53d9bc2ee794`（由 `script/five_label_eval/prompt_id.py` 的 `load_prompt` 算出，与 `shasum -a 256 script/five_label_eval/prompts/five_label_v1.txt` 一致）。
 
-**版本标签处置**：文件名与批次记录里人可读版本标签**仍为 `v1`**。旧字面量 `无法确定` 的字节确实进过本分支，但只存在于同一次 squash 合并的中间提交 `2baf363`（该版正文 sha256 `4d01a48ee1fe0015bfdde6dc40ada1549ef5991a70a6afab9592bdd9514ecb27`，`git show 2baf363:script/five_label_eval/prompts/five_label_v1.txt | grep -c 无法确定` 为 5），当日提交 `29a7688` 即订正为现行字面量（`4066d161c757131d9398db76e8a4eef0399fc73a73480b20dace53d9bc2ee794`，见上段）；本分支从未推送（`codeup`／`github` 的 `git ls-remote --heads` 只列出 `main` 与各自一条备份／重构分支，没有 `feat/tensileagent-finetune`），也没有任何批次或评测记录引用过旧摘要（全仓 `grep -rn 4d01a48e` 无命中），因此不存在需要区分的「旧 v1」。保持 `v1` 标签的理由不是「字节从未变过」，而是旧字节无任何引用者、且未获升 v2 的授权（见下「显式待确认」）。此后正文任何字节变化都换新 `prompt_id`，且须同步更新引用 v1 的评测记录说明。
+**版本标签处置**：历史文件名与历史批次人可读版本标签仍为 `v1`，现行为 `v2`。旧字面量 `无法确定` 的字节确实进过本分支，但只存在于同一次 squash 合并的中间提交 `2baf363`（该版正文 sha256 `4d01a48ee1fe0015bfdde6dc40ada1549ef5991a70a6afab9592bdd9514ecb27`，`git show 2baf363:script/five_label_eval/prompts/five_label_v1.txt | grep -c 无法确定` 为 5），当日提交 `29a7688` 即订正为当时的字面量（`4066d161c757131d9398db76e8a4eef0399fc73a73480b20dace53d9bc2ee794`，见上段）；本分支从未推送（`codeup`／`github` 的 `git ls-remote --heads` 只列出 `main` 与各自一条备份／重构分支，没有 `feat/tensileagent-finetune`），也没有任何批次或评测记录引用过旧摘要（全仓 `grep -rn 4d01a48e` 无命中），因此不存在需要区分的「旧 v1」。保持 `v1` 标签的理由不是「字节从未变过」，而是旧字节无任何引用者、当时尚未获升 v2 的授权。此后正文任何字节变化都换新 `prompt_id`，且须同步更新引用 v1 的评测记录说明。
 
-**显式待确认**：若用户要求按「改一个字即升版本号」把正文升为 v2（文件改名并批量更新引用），本文与 `docs/eval/README.md` 的版本说明须同步改；当前未获该授权，故保持 v1。
+**v2 版本记录（2026-11-16）**：用户已授权升 v2。文件 `script/five_label_eval/prompts/five_label_v2.txt` 的 sha256 为 `cf299d672281e12ea5f3964bb08ffbe2d237e1dfad3503861e7e21a5872cc4cf`，`prompt_id` 为 `prompt@sha256:cf299d672281e12ea5f3964bb08ffbe2d237e1dfad3503861e7e21a5872cc4cf`。相对 v1，模式／位置取值清单删除「无」；未断裂／未夹紧时按可见证据作答、证据不足答「无法判断」。v1 文件保留且字节未变，sha256 为 `4066d161c757131d9398db76e8a4eef0399fc73a73480b20dace53d9bc2ee794`。批量评测须在新 prompt 版本下重跑，旧批次 `prompt_id` 不可混用。
 
 ## 6. 不在 v1 范围、列为待决
 
