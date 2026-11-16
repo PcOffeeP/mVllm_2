@@ -1043,7 +1043,7 @@ facts:
     state: active
     topic: 本机媒体副本与 DEC-003 第 10 条实施口径
     claim: >
-      Mac 侧 `data/sub_video/videos` 实有 1,621 个 `.mp4`（186M），逐条 sha256 与 `data/sub_video/manifest.json` 中候选 `output.sha256` 一致（1621/1621，0 缺失、0 不符），与训练机上同目录逐条 sha256 相同，因此本机副本可直接用于人工审查。后续不再新增媒体回传，本机副本经哈希核对后用于本机审查；训练机仍为二次生成与媒体留存场所；清单与审核记录仍回传本机并提交 Git；本条不改变 DEC-003 第 10 条其余内容。DF-046 所记「Mac 侧旧批次作废：`data/sub_video/videos` 待删除」与实测不符：该目录当前内容与当前清单逐条一致，已不具备「旧批次」身份，按本条实施口径落实；DF-046 保留原记录，不就地改写。`data/sub_video/manifest.json` 文件 sha256 = `6112f40df0ee2d50c334f6800cd4988dc2b572185801e9b18e35e7fcd5d746d1`；`data/subvideo-review/reviews.json` sha256 = `23ee490ca67db5fa38c61f404755406536d665043985cf521072199522f58842`。
+      Mac 侧 `data/sub_video/videos` 实有 1,621 个 `.mp4`（186M），逐条 sha256 与 `data/sub_video/manifest.json` 中候选 `output.sha256` 一致（1621/1621，0 缺失、0 不符），与训练机上同目录逐条 sha256 相同，因此本机副本可直接用于人工审查。后续不再新增媒体回传，本机副本经哈希核对后用于本机审查；训练机仍为二次生成与媒体留存场所；清单与审核记录仍回传本机并提交 Git；本条不改变 DEC-003 第 10 条其余内容。DF-046 所记「Mac 侧旧批次作废：`data/sub_video/videos` 待删除」与实测不符：该目录当前内容与当前清单逐条一致，已不具备「旧批次」身份，按本条实施口径落实；DF-046 保留原记录，不就地改写。`data/sub_video/manifest.json` 文件 sha256 = `6112f40df0ee2d50c334f6800cd4988dc2b572185801e9b18e35e7fcd5d746d1`；`data/subvideo-review/reviews.json` sha256 = `23ee490ca67db5fa38c61f404755406536d665043985cf521072199522f58842`。该条「后续不再新增媒体回传」指不再按批次常规回传媒体，媒体默认留在训练机；后续批次需在本机审查时，媒体按 `docs/training-machine-review-runbook.md` §5.1「审查前媒体同步」单向同步（训练机→本机、仅待审批次的媒体目录、逐文件 `rsync` 禁 `--delete`、按清单 `output.sha256` 全量逐条核对、本机只增不删），属按需补充本机副本、不改变「清单与审核记录回传本机并提交 Git」，也不改变 DF-046 的其余内容。
     evidence:
       - ref: data/sub_video/summary.json:2
         expect: '"candidate_count": 1621'
