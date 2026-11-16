@@ -1,11 +1,16 @@
 """Hand-calculated examples; all records and hashes here are synthetic.
 
-Scoring contract under test is version ``five-label-score/2``: human
+Scoring contract under test is version ``five-label-score/3``: human
 "无法判断" is a legal, comparable class on all 11 leaf fields (3 single-choice
 plus 8 multi-item leaves), with per-class precision/recall, an explicit
 human-vs-model uncertainty-rate comparison, and a multi-item-only
 ``over_uncertain_rate``. Requests that failed, timed out, were never processed
 or whose extraction failed are still never treated as "无法判断".
+
+Fragment-label rule change: the single values 断裂模式/断裂位置 no longer contain
+"无". Accuracy, per-class precision/recall and the confusion matrix of exactly
+those two fields are stratified by 断裂状态 (只有「发生断裂」「已断裂」进入分母),
+while ``uncertain_rate`` keeps using every attempted clip.
 """
 import copy
 import json
@@ -14,8 +19,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from script.five_label_eval.score import (FIELDS, SINGLES, VERSION, InputError, extract, main,
-                                          report, score, truth_cell)
+from script.five_label_eval.score import (FIELDS, SINGLES, VERSION, InputError, combinations,
+                                          extract, main, report, score, truth_cell)
 
 MULTI_FIELDS = tuple(f for f in FIELDS if f not in SINGLES)
 MULTI_LABELS = ("是", "否", "无法判断")
@@ -50,6 +55,33 @@ def prediction_with(field, value):
 
 def halves(metric):
     return (metric["numerator"], metric["denominator"])
+
+
+def layered_fixture(humans, models):
+    """One clip per (human, model) pair; both are overrides of ``labels()``."""
+    m, r, p = fixture(len(humans))
+    for i, (human, model) in enumerate(zip(humans, models)):
+        human_labels = labels()
+        human_labels.update(human)
+        r[i]["labels"] = human_labels
+        output = labels()
+        output.update(model)
+        p[i]["raw_output"] = json.dumps(output, ensure_ascii=False)
+    return m, r, p
+
+
+def field_blocks(rendered):
+    """Split ``report()`` into ``{(basis, field): text}`` blocks."""
+    blocks, basis, current = {}, None, None
+    for line in rendered.splitlines():
+        if line.startswith("## "):
+            basis, current = line[3:].strip(), None
+        elif line.startswith("### "):
+            current = (basis, line[4:].strip())
+            blocks[current] = []
+        elif current is not None:
+            blocks[current].append(line)
+    return {key: "\n".join(lines) for key, lines in blocks.items()}
 
 
 class ScoreTests(unittest.TestCase):
@@ -109,8 +141,9 @@ class ScoreTests(unittest.TestCase):
         self.assertIn("用户已确认的补充统计", rendered)
         self.assertNotIn("尚待正式确认", rendered)
 
-        # Single-choice uncertainty is an ordinary comparable class, including
-        # its precision and the all-five supplement; it is not multi-item unknown.
+        # Single-choice 无法判断 仍是合法可比较类别，不是 unknown truth status。
+        # 断裂状态 不分层，精确率照常计分；模式/位置只计断裂状态 ∈ {发生断裂, 已断裂}
+        # 的片段，因此这里的人工片段被排除在分层之外（分母 0），而不是被判成不可比较。
         m, r, p = fixture()
         uncertain = labels()
         for field in ("断裂状态", "断裂模式", "断裂位置"):
@@ -119,10 +152,25 @@ class ScoreTests(unittest.TestCase):
         p[0]["raw_output"] = json.dumps(uncertain)
         group = score(m, r, p)["groups"]["real"]["full_clip"]
         self.assertEqual(group["all_five_correct_supplement"]["value"], 1)
-        for field in ("断裂状态", "断裂模式", "断裂位置"):
-            precision = group["fields"][field]["classes"]["无法判断"]["precision"]
-            self.assertEqual(halves(precision), (1, 1))
-            self.assertEqual(group["fields"][field]["failures_or_uncertain_by_truth"], {})
+        state = group["fields"]["断裂状态"]
+        self.assertEqual(halves(state["classes"]["无法判断"]["precision"]), (1, 1))
+        self.assertEqual(state["failures_or_uncertain_by_truth"], {})
+        self.assertEqual(state["truth_counts"], {"valid": 1})
+        self.assertNotIn("layered", state)
+        for field in ("断裂模式", "断裂位置"):
+            metrics = group["fields"][field]
+            # 无法判断 仍是 valid 真值（不是 unlabeled/invalid），只是该片段不进分层。
+            self.assertEqual(metrics["truth_counts"], {"valid": 1})
+            self.assertEqual(halves(metrics["accuracy"]), (0, 0))
+            self.assertIsNone(metrics["accuracy"]["value"])
+            self.assertEqual(halves(metrics["classes"]["无法判断"]["recall"]), (0, 0))
+            self.assertIsNone(metrics["classes"]["无法判断"]["recall"]["value"])
+            self.assertEqual(halves(metrics["classes"]["无法判断"]["precision"]), (0, 0))
+            self.assertIsNone(metrics["classes"]["无法判断"]["precision"]["value"])
+            self.assertEqual(metrics["failures_or_uncertain_by_truth"], {})
+            self.assertEqual(metrics["layered"]["denominator"], 0)
+            self.assertEqual(metrics["layered"]["excluded_clips"], 1)
+            self.assertEqual(metrics["layered"]["excluded_distribution"]["无法判断"], {"无法判断": 1})
 
     def test_hand_calculated_multilabel_failures_uncertainty_and_sources(self):
         # 8 real: 4 attempted positives (TP,FN,failed,uncertain), 3 negatives
@@ -369,10 +417,10 @@ class ScoreTests(unittest.TestCase):
             r[i]["labels"]["断裂现象"]["伸长"] = human
             p[i]["raw_output"] = prediction_with("断裂现象.伸长", model)
         result = score(m, r, p)
-        self.assertEqual(VERSION, "five-label-score/2")
-        self.assertEqual(result["scoring_version"], "five-label-score/2")
+        self.assertEqual(VERSION, "five-label-score/3")
+        self.assertEqual(result["scoring_version"], "five-label-score/3")
         rendered = report(result)
-        self.assertIn("five-label-score/2", rendered.splitlines()[0])
+        self.assertIn("five-label-score/3", rendered.splitlines()[0])
         # Walk the rendered sections so each field's block is checked on its own.
         blocks, basis, current = {}, None, None
         for line in rendered.splitlines():
@@ -419,7 +467,9 @@ class ScoreTests(unittest.TestCase):
         obj["异常情况"]["爆炸性断裂"] = "是"
         x = extract(json.dumps(obj))
         self.assertTrue(x["strict_format_valid"])
-        self.assertEqual(len(x["conflicts"]), 3)
+        # 未断裂 + 具体模式/位置已不再是冲突，只剩「未断裂 与 爆炸性断裂」一条。
+        self.assertEqual(len(x["conflicts"]), 1, x["conflicts"])
+        self.assertIn("爆炸性断裂", x["conflicts"][0])
         m, r, p = fixture()
         r[0]["labels"] = obj
         p[0]["raw_output"] = json.dumps(obj)
@@ -459,18 +509,135 @@ class ScoreTests(unittest.TestCase):
             with self.assertRaisesRegex(TypeError, "unexpected bug"):
                 extract('{}')
 
-    def test_fixed_none_valid_and_no_positive_negative_evidence(self):
+    def test_no_value_is_rejected_and_unfractured_clips_stay_out_of_stratified_metrics(self):
+        # 「无」不再是断裂模式/断裂位置的合法单值，也不再是可比较类别；
+        # 未断裂片段的这两个字段判对也不进分层统计（accuracy 分母为 0）。
         m, r, p = fixture()
         obj = labels()
-        obj.update({"断裂状态": "未断裂", "断裂模式": "无", "断裂位置": "无"})
+        obj.update({"断裂状态": "未断裂", "断裂模式": "无法判断", "断裂位置": "无法判断"})
         r[0]["labels"] = obj
         p[0]["raw_output"] = json.dumps(obj)
         a = score(m, r, p)["groups"]["real"]["full_clip"]
-        self.assertEqual(a["fields"]["断裂模式"]["classes"]["无"]["recall"]["value"], 1)
+
+        self.assertNotIn("无", SINGLES["断裂模式"])
+        self.assertNotIn("无", SINGLES["断裂位置"])
+        self.assertNotIn("无", a["fields"]["断裂模式"]["classes"])
+        self.assertNotIn("无", a["fields"]["断裂位置"]["classes"])
+        self.assertEqual(truth_cell("断裂模式", "无")["status"], "invalid")
+        self.assertEqual(truth_cell("断裂位置", "无")["status"], "invalid")
+        # 唯一的片段是未断裂：模式/位置的分层分母为空。
+        self.assertEqual(halves(a["fields"]["断裂模式"]["accuracy"]), (0, 0))
+        self.assertIsNone(a["fields"]["断裂模式"]["accuracy"]["value"])
+        mode_layered = a["fields"]["断裂模式"].get("layered")
+        self.assertIsNotNone(mode_layered, "断裂模式 指标必须带 layered 分层说明")
+        self.assertEqual(mode_layered["denominator"], 0)
+        # 断裂状态不受分层影响，仍是全量已尝试片段。
+        self.assertEqual(a["fields"]["断裂状态"]["accuracy"]["value"], 1)
+        # 多选字段仍按原口径报「没有正/负例证据」。
         self.assertIsNone(a["fields"]["异常情况.爆炸性断裂"]["recall"]["value"])
         self.assertIsNone(a["fields"]["断裂现象.伸长"]["false_positive_rate_explicit_only"]["value"])
         self.assertEqual(halves(a["fields"]["异常情况.爆炸性断裂"]["classes"]["是"]["recall"]), (0, 0))
         self.assertIsNone(a["fields"]["异常情况.爆炸性断裂"]["classes"]["是"]["recall"]["value"])
+
+    def test_layered_metrics_drop_unfractured_clip_from_accuracy_and_class_denominators(self):
+        # c0 发生断裂 / c1 已断裂 进分层；c2 未断裂，模式判错也不影响分层指标。
+        m, r, p = layered_fixture(
+            [{"断裂状态": "发生断裂", "断裂模式": "脆性断裂", "断裂位置": "标距内"},
+             {"断裂状态": "已断裂", "断裂模式": "脆性断裂", "断裂位置": "夹持根部"},
+             {"断裂状态": "未断裂", "断裂模式": "韧性断裂", "断裂位置": "标距内"}],
+            [{"断裂状态": "发生断裂", "断裂模式": "脆性断裂", "断裂位置": "标距内"},
+             {"断裂状态": "已断裂", "断裂模式": "脆性断裂", "断裂位置": "标距内"},
+             {"断裂状态": "未断裂", "断裂模式": "脆性断裂", "断裂位置": "标距内"}])
+
+        group = score(m, r, p)["groups"]["real"]["full_clip"]
+        mode, location = group["fields"]["断裂模式"], group["fields"]["断裂位置"]
+
+        # 未断裂片段（模式判错）不得拉低准确率：2/3 → 2/2。
+        self.assertEqual(halves(mode["accuracy"]), (2, 2))
+        self.assertEqual(set(mode["classes"]), set(SINGLES["断裂模式"]))
+        self.assertEqual(halves(mode["classes"]["脆性断裂"]["recall"]), (2, 2))
+        # 人工「韧性断裂」只出现在未断裂片段上：召回与精确率分母均为 0。
+        self.assertEqual(halves(mode["classes"]["韧性断裂"]["recall"]), (0, 0))
+        self.assertEqual(halves(mode["classes"]["韧性断裂"]["precision"]), (0, 0))
+        self.assertEqual(mode["confusion"],
+                         [{"truth": "脆性断裂", "prediction": "脆性断裂", "count": 2}])
+        # 断裂位置同样分层：c1 的位置判错仍计入（两个片段都在分层内）。
+        self.assertEqual(halves(location["accuracy"]), (1, 2))
+        self.assertEqual(halves(location["classes"]["夹持根部"]["recall"]), (0, 1))
+        # 其余 9 个字段不变：断裂状态仍按全部已尝试片段计分。
+        self.assertEqual(halves(group["fields"]["断裂状态"]["accuracy"]), (3, 3))
+        self.assertNotIn("layered", group["fields"]["断裂状态"])
+        self.assertNotIn("layered", group["fields"]["断裂现象.伸长"])
+
+    def test_layered_counts_only_fractured_clips_and_reports_excluded_distribution(self):
+        m, r, p = layered_fixture(
+            [{"断裂状态": "发生断裂", "断裂模式": "脆性断裂", "断裂位置": "标距内"},
+             {"断裂状态": "已断裂", "断裂模式": "半脆半韧断裂", "断裂位置": "标距外非根部"},
+             {"断裂状态": "未断裂", "断裂模式": "韧性断裂", "断裂位置": "夹持根部"}],
+            [{}, {}, {}])
+
+        group = score(m, r, p)["groups"]["real"]["full_clip"]
+        layered = group["fields"]["断裂模式"].get("layered")
+        self.assertIsNotNone(layered, "断裂模式 指标必须带 layered 分层说明")
+
+        self.assertEqual(layered["fracture_states"], ["发生断裂", "已断裂"])
+        # 分母只数断裂状态为发生断裂/已断裂的片段。
+        self.assertEqual(layered["denominator"], 2)
+        self.assertEqual(layered["excluded_clips"], 1)
+        # 排除片段按人工该字段取值进单列分布，不计算比例。
+        self.assertEqual(layered["excluded_distribution"]["未断裂"], {"韧性断裂": 1})
+        self.assertEqual(group["fields"]["断裂位置"]["layered"]["excluded_distribution"]["未断裂"],
+                         {"夹持根部": 1})
+
+    def test_uncertain_rate_keeps_every_attempted_clip_after_layering(self):
+        # c2 未断裂且模型答「无法判断」：它不进模式准确率分母，但仍是无法判断率的分母。
+        m, r, p = layered_fixture(
+            [{"断裂状态": "发生断裂", "断裂模式": "脆性断裂"},
+             {"断裂状态": "已断裂", "断裂模式": "脆性断裂"},
+             {"断裂状态": "未断裂", "断裂模式": "韧性断裂"}],
+            [{"断裂状态": "发生断裂", "断裂模式": "脆性断裂"},
+             {"断裂状态": "已断裂", "断裂模式": "脆性断裂"},
+             {"断裂状态": "未断裂", "断裂模式": "无法判断"}])
+
+        mode = score(m, r, p)["groups"]["real"]["full_clip"]["fields"]["断裂模式"]
+
+        self.assertEqual(halves(mode["accuracy"]), (2, 2))
+        # 分母仍是全部 3 个已尝试片段，不因分层缩成 2。
+        self.assertEqual(halves(mode["uncertain_rate"]["model"]), (1, 3))
+        self.assertEqual(halves(mode["uncertain_rate"]["human"]), (0, 3))
+
+    def test_report_prints_layered_distribution_as_reference_without_ratio(self):
+        m, r, p = layered_fixture(
+            [{"断裂状态": "发生断裂", "断裂模式": "脆性断裂", "断裂位置": "标距内"},
+             {"断裂状态": "未断裂", "断裂模式": "韧性断裂", "断裂位置": "夹持根部"}],
+            [{}, {}])
+
+        text = field_blocks(report(score(m, r, p)))
+
+        for field in ("断裂模式", "断裂位置"):
+            block = text[("real / full_clip", field)]
+            self.assertIn("不计比例", block, f"{field} 段落必须显式说明分层分布不计比例")
+            # 分布行要能看出被排除的断裂状态与人工取值，避免被当成分数。
+            self.assertIn("未断裂", block, f"{field} 段落应打印被排除的断裂状态")
+        self.assertIn("韧性断裂", text[("real / full_clip", "断裂模式")])
+        self.assertNotIn("不计比例", text[("real / full_clip", "断裂状态")])
+
+    def test_combinations_allow_concrete_mode_and_location_when_unfractured(self):
+        # 新规则：未断裂或未夹紧不再要求「无」/「无法判断」，按可见证据作答即可。
+        unfractured = {"断裂状态": "未断裂", "断裂模式": "脆性断裂", "断裂位置": "标距内",
+                       "异常情况.未夹紧": "否"}
+        self.assertEqual(combinations(unfractured), [])
+        unclamped = {"断裂状态": "无法判断", "断裂模式": "韧性断裂", "断裂位置": "夹持根部",
+                     "异常情况.未夹紧": "是"}
+        self.assertEqual(combinations(unclamped), [])
+        # 保留的互斥仍然生效：未断裂 + 爆炸性断裂=是 / 未断裂 + 断后脱夹=是。
+        explosive = combinations({"断裂状态": "未断裂", "断裂模式": "无法判断", "断裂位置": "无法判断",
+                                  "异常情况.爆炸性断裂": "是"})
+        self.assertEqual(len(explosive), 1, explosive)
+        self.assertIn("爆炸性断裂", explosive[0])
+        release = combinations({"断裂状态": "未断裂", "断裂现象.断后脱夹": "是"})
+        self.assertEqual(len(release), 1, release)
+        self.assertIn("断后脱夹", release[0])
 
     def test_locked_reviews_drafts_and_unreviewed_placeholders(self):
         m, r, p = fixture(2)
@@ -543,13 +710,13 @@ class ScoreTests(unittest.TestCase):
             result = json.loads((root / "out/results.json").read_text())
             self.assertEqual(result["samples"][0]["prediction"]["raw_output"], p[0]["raw_output"])
             self.assertIn("input_files", result)
-            self.assertEqual(result["scoring_version"], "five-label-score/2")
+            self.assertEqual(result["scoring_version"], "five-label-score/3")
             fields = result["groups"]["real"]["full_clip"]["fields"]
             self.assertEqual(halves(fields["断裂现象.伸长"]["over_uncertain_rate"]), (0, 1))
             self.assertEqual(halves(fields["断裂现象.伸长"]["uncertain_rate"]["human"]), (0, 1))
             self.assertEqual(set(fields["断裂现象.伸长"]["classes"]), set(MULTI_LABELS))
             self.assertTrue((root / "out/report.md").exists())
-            self.assertIn("five-label-score/2", (root / "out/report.md").read_text())
+            self.assertIn("five-label-score/3", (root / "out/report.md").read_text())
             self.assertEqual(main(args), 2)  # Never overwrite outputs.
             (root / "manifest.json").write_text('{"manifest_version":"a","manifest_version":"b"}')
             self.assertEqual(main(args[:-1] + [str(root / "other")]), 2)

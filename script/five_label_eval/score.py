@@ -9,11 +9,11 @@ from pathlib import Path
 import re
 import sys
 
-VERSION = "five-label-score/2"
+VERSION = "five-label-score/3"
 SINGLES = {
     "断裂状态": ("未断裂", "发生断裂", "已断裂", "无法判断"),
-    "断裂模式": ("脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断", "无"),
-    "断裂位置": ("标距内", "标距外非根部", "夹持根部", "无法判断", "无"),
+    "断裂模式": ("脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断"),
+    "断裂位置": ("标距内", "标距外非根部", "夹持根部", "无法判断"),
 }
 MULTIS = {"异常情况": ("未夹紧", "视频异常", "爆炸性断裂"),
           "断裂现象": ("伸长", "颈缩", "开裂", "界面分离", "断后脱夹")}
@@ -137,11 +137,6 @@ def human_truth(labels):
 def combinations(flat):
     conflicts = []
     state = flat.get("断裂状态")
-    loose = flat.get("异常情况.未夹紧")
-    if state == "未断裂" or loose == "是":
-        for field in ("断裂模式", "断裂位置"):
-            if flat.get(field) in SINGLES[field] and flat[field] != "无":
-                conflicts.append(f"{field}: 未断裂或未夹紧要求无")
     if state == "未断裂":
         for field in ("异常情况.爆炸性断裂", "断裂现象.断后脱夹"):
             if flat.get(field) == "是":
@@ -362,6 +357,9 @@ def field_metrics(rows, field, truth_key):
     source_sets = {}
     correct = attempted = tp = fn = fp = tn = 0
     positives = negatives = 0
+    layered = field in ("断裂模式", "断裂位置")
+    excluded = {}
+    all_attempted = human_uncertain = model_uncertain = 0
     for row in rows:
         human = row[truth_key][field]
         pred = row["extraction"]["fields"][field]
@@ -374,15 +372,27 @@ def field_metrics(rows, field, truth_key):
         prediction_by_truth.setdefault(str(bucket), Counter())[str(pred["value"]) if pstatus == "valid" else f"<{pstatus}>"] += 1
         if pstatus == "valid" and pred["value"] in ("无法确定", "无法判断"):
             pred_counts["explicit_uncertain"] += 1
-        if row["prediction_status"] == "unprocessed" or human["status"] != "valid":
+        eligible = row["prediction_status"] != "unprocessed" and human["status"] == "valid"
+        state = row[truth_key]["断裂状态"]
+        in_layer = eligible and state["status"] == "valid" and state["value"] in ("发生断裂", "已断裂")
+        if layered and not in_layer:
+            state_key = str(state["value"]) if state["status"] == "valid" else f"<{state['status']}>"
+            value_key = str(human["value"]) if human["status"] == "valid" else f"<{human['status']}>"
+            excluded.setdefault(state_key, Counter())[value_key] += 1
+        if not eligible:
+            continue
+        h, p = human["value"], pred["value"]
+        all_attempted += 1
+        human_uncertain += h == "无法判断"
+        model_uncertain += pstatus == "valid" and p == "无法判断"
+        if pstatus != "valid" or (p == "无法判断" and field not in SINGLES and h != "无法判断"):
+            failures[f"{h}:{pstatus if pstatus != 'valid' else 'explicit_uncertain'}"] += 1
+        if layered and not in_layer:
             continue
         attempted += 1
-        h, p = human["value"], pred["value"]
         correct += pstatus == "valid" and h == p
         category = p if pstatus == "valid" else f"<{pstatus}>"
         confusion[(h, category)] += 1
-        if pstatus != "valid" or (p == "无法判断" and field not in SINGLES and h != "无法判断"):
-            failures[f"{h}:{pstatus if pstatus != 'valid' else 'explicit_uncertain'}"] += 1
         if field not in SINGLES:
             positives += h == "是"
             negatives += h == "否"
@@ -400,9 +410,13 @@ def field_metrics(rows, field, truth_key):
                                    "precision": ratio(confusion[(label, label)],
                                                       sum(n for (_, p), n in confusion.items() if p == label))}
                           for label in allowed(field)},
-              "uncertain_rate": {"human": ratio(sum(n for (h, _), n in confusion.items() if h == "无法判断"), attempted),
-                                 "model": ratio(sum(n for (_, p), n in confusion.items() if p == "无法判断"), attempted)},
+              "uncertain_rate": {"human": ratio(human_uncertain, all_attempted),
+                                 "model": ratio(model_uncertain, all_attempted)},
               "confusion": [{"truth": h, "prediction": p, "count": n} for (h, p), n in sorted(confusion.items())]}
+    if layered:
+        result["layered"] = {"fracture_states": ["发生断裂", "已断裂"], "denominator": attempted,
+                             "excluded_clips": sum(sum(counts.values()) for counts in excluded.values()),
+                             "excluded_distribution": {key: dict(counts) for key, counts in excluded.items()}}
     if field not in SINGLES:
         certain = [n for (h, _), n in confusion.items() if h in ("是", "否")]
         uncertain = [n for (h, p), n in confusion.items() if h in ("是", "否") and p == "无法判断"]
@@ -473,6 +487,9 @@ def report(result):
             for field, metrics in group["fields"].items():
                 lines.extend([f"### {field}", "", f"准确率 {display_ratio(metrics['accuracy'])}；真值状态计数 {json.dumps(metrics['truth_counts'], ensure_ascii=False)}；真值取值计数 {json.dumps(metrics['truth_value_counts'], ensure_ascii=False)}；来源数 {json.dumps(metrics['truth_source_counts'], ensure_ascii=False)}。",
                               f"预测字段状态 {json.dumps(metrics['prediction_counts'], ensure_ascii=False)}；失败／不确定按真值 {json.dumps(metrics['failures_or_uncertain_by_truth'], ensure_ascii=False)}。"])
+                if "layered" in metrics:
+                    layer = metrics["layered"]
+                    lines.append(f"分层：断裂状态 {json.dumps(layer['fracture_states'], ensure_ascii=False)}；分母 {layer['denominator']}；排除 {layer['excluded_clips']}。断裂状态下不计比例（仅参考分布）：{json.dumps(layer['excluded_distribution'], ensure_ascii=False)}。")
                 if "classes" in metrics:
                     for label, values in metrics["classes"].items():
                         lines.append(f"- {label}：精确率（precision）{display_ratio(values['precision'])}；召回 {display_ratio(values['recall'])}")

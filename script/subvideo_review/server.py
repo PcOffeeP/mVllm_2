@@ -27,8 +27,8 @@ HERE = Path(__file__).resolve().parent
 # 显示层映射由前端负责；不得静默改写已存记录。
 OPTIONS = {
     "断裂状态": ["未断裂", "发生断裂", "已断裂", "无法判断"],
-    "断裂模式": ["脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断", "无"],
-    "断裂位置": ["标距内", "标距外非根部", "夹持根部", "无法判断", "无"],
+    "断裂模式": ["脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断"],
+    "断裂位置": ["标距内", "标距外非根部", "夹持根部", "无法判断"],
     "异常情况": {k: ["是", "否", "无法判断"] for k in ("未夹紧", "视频异常", "爆炸性断裂")},
     "断裂现象": {k: ["是", "否", "无法判断"] for k in ("伸长", "颈缩", "开裂", "界面分离", "断后脱夹")},
 }
@@ -74,11 +74,6 @@ def validate_labels(labels, *, complete=False):
     if complete and missing:
         raise ReviewError("确认须完成全部 11 项；未完成请保存草稿或疑问。缺少：" + "、".join(missing))
     anomaly = labels.get("异常情况") or {}
-    forced_none = labels.get("断裂状态") == "未断裂" or anomaly.get("未夹紧") == "是"
-    if forced_none:
-        for name in ("断裂模式", "断裂位置"):
-            if labels.get(name) not in (None, "", "无"):
-                raise ReviewError(f"未断裂或未夹紧时，{name}须手动选择“无”；不会自动修改标签")
     if labels.get("断裂状态") == "未断裂" and anomaly.get("爆炸性断裂") == "是":
         raise ReviewError("未断裂与爆炸性断裂互斥")
     if complete and labels.get("断裂状态") == "未断裂" and (labels.get("断裂现象") or {}).get("断后脱夹") == "是":
@@ -444,7 +439,14 @@ class ReviewApp:
         candidates = []
         for candidate_id, candidate in self.candidates.items():
             review = self._review(candidate, rows)
-            candidates.append({**candidate, "review_status": review["latest"]["review_status"] if review["latest"] else "unreviewed", "review_id": review["latest"]["review_id"] if review["latest"] else None, "isolated_revision_count": len(review["isolated_history"])})
+            display = copy.deepcopy(candidate["candidate_reference"])
+            mapped = False
+            for name in ("断裂模式", "断裂位置"):
+                if display.get(name) == '无':
+                    display[name] = "无法判断"
+                    mapped = True
+            candidates.append({**candidate, "candidate_reference_display": display,
+                               "prefill_note": "初值为旧规则固定组合值『无』，已按新规则映射为无法判断" if mapped else None, "review_status": review["latest"]["review_status"] if review["latest"] else "unreviewed", "review_id": review["latest"]["review_id"] if review["latest"] else None, "isolated_revision_count": len(review["isolated_history"])})
         return {"manifest_sha256": self.manifest_sha256, "token": self.token, "options": OPTIONS, "candidates": candidates,
                 "audit_current": self.audit_current, "audit_status": self.audit_status,
                 "audit_message": self.audit_message,

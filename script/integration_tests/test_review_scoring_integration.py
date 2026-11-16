@@ -253,16 +253,23 @@ def test_conflicting_model_output_keeps_raw_and_scores_individual_fields(workspa
     save(app, "good")
     rows = [r for r in exported(app) if r["candidate_id"] == "good"]
     conflicting = copy.deepcopy(LABELS)
-    conflicting["断裂状态"] = "未断裂"  # Conflicts with the two non-'无' fields.
+    # 「未断裂或未夹紧时要求无」已删除，造冲突改用保留下来的互斥：
+    # 断裂状态=未断裂 与 异常情况.爆炸性断裂=是 不能同时成立。
+    conflicting["断裂状态"] = "未断裂"
+    conflicting["异常情况"]["爆炸性断裂"] = "是"
     pred = prediction(app, "good", conflicting)
     result = score(frozen_manifest(app, rows), rows, [pred])
     sample = result["samples"][0]
     assert sample["prediction"]["raw_output"] == pred["raw_output"]
     assert sample["extraction"]["conflicts"]
+    assert all("爆炸性断裂" in conflict for conflict in sample["extraction"]["conflicts"]), \
+        sample["extraction"]["conflicts"]
     metrics = result["groups"]["real"]["full_clip"]
     assert metrics["prediction_combination_conflicts"] == 1
     assert_ratio(metrics["fields"]["断裂状态"]["accuracy"], 0, 1)
+    # 分层只看人工断裂状态：人工是「发生断裂」，仍在分层集合内，位置照常逐项计分。
     assert_ratio(metrics["fields"]["断裂位置"]["accuracy"], 1, 1)
+    assert metrics["fields"]["断裂位置"]["layered"]["denominator"] == 1
 
 
 def test_actual_input_review_is_bound_to_request_and_does_not_replace_full_clip_truth(workspace):

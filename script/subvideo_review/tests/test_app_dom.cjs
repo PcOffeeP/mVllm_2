@@ -1499,6 +1499,83 @@ test("index.html keeps the source preview button inside the media column", async
     `#view-source 应位于 .media-column 内（.media-column 索引 ${mediaColumn} < #view-source 索引 ${viewSource} < .label-section 索引 ${labelSection}）`);
 });
 
+/* 片段层删除单值「无」（本轮契约）：两个下拉不得再提供 <option value="无">；
+   历史预填里的「无」必须显示为「无法判断」并附映射提示。 */
+test("index.html drops the legacy 无 option from the fracture mode and location selects", async () => {
+  for (const id of ["fracture-mode", "fracture-location"]) {
+    const start = htmlText.indexOf(`id="${id}"`);
+    assert.ok(start >= 0, `static/index.html 应保留 id="${id}" 的审核控件`);
+    const end = htmlText.indexOf("</select>", start);
+    assert.ok(end > start, `id="${id}" 之后应出现 </select>，实际索引 ${end}`);
+    const region = htmlText.slice(start, end);
+    assert.ok(!region.includes('value="无"'),
+      `${id} 不应再提供旧取值「无」（残留：${region.slice(0, 300)}）`);
+    assert.ok(region.includes('value="无法判断"'),
+      `${id} 应保留「无法判断」，实际为「${region.slice(0, 300)}」`);
+  }
+});
+
+test("prefill shows the legacy 无 reference as 无法判断 and surfaces the prefill note", async () => {
+  /* 服务端只为展示提供 candidate_reference_display 与 prefill_note；
+     预填必须用映射后的值，页面上要能看到映射提示。 */
+  const {elements, selects} = await createHarness({candidates: [candidate("legacy_none", {
+    candidate_reference: {"断裂状态": "未断裂", "断裂模式": "无", "断裂位置": "无"},
+    candidate_reference_display: {"断裂状态": "未断裂", "断裂模式": "无法判断", "断裂位置": "无法判断"},
+    prefill_note: "初值为旧规则固定组合值『无』，已按新规则映射为无法判断",
+  })]});
+
+  assertLabels(selects, {
+    "断裂状态": "未断裂", "断裂模式": "无法判断", "断裂位置": "无法判断",
+    "异常情况.未夹紧": "", "异常情况.视频异常": "", "异常情况.爆炸性断裂": "",
+    "断裂现象.伸长": "", "断裂现象.颈缩": "", "断裂现象.开裂": "", "断裂现象.界面分离": "", "断裂现象.断后脱夹": "",
+  }, "历史「无」预填必须显示为「无法判断」，其余字段保持空白");
+  const notice = elements.get("prefill-notice");
+  assert.equal(notice.hidden, false, "预填产生了非空值，#prefill-notice 必须可见");
+  assert.match(notice.textContent, /已按新规则映射为无法判断/,
+    `预填提示应包含服务的 prefill_note 文案，实际为「${notice.textContent}」`);
+});
+
+test("saved legacy 无 labels show as 无法判断 while the source-layer 无 stays verbatim", async () => {
+  /* 已存人工记录（review.latest.labels）里的旧规则固定值「无」只在表单显示层映射为「无法判断」：
+     存储字节与历史修订显示都不改写。源标注层（source_reference）的「无」是合法源层取值，
+     必须原样显示——两层语义不同，不能被同一映射误伤。 */
+  const legacyLabels = fullCandidateLabels();
+  legacyLabels["断裂模式"] = "无";
+  legacyLabels["断裂位置"] = "无";
+  const latest = {review_id: "legacy-none", review_status: "confirmed", labels: legacyLabels, note: "legacy note"};
+  const harness = await createHarness({candidates: [candidate("legacy_review", {
+    source_reference: {"断裂模式": "无", "断裂位置": "标距内"},
+    candidate_reference: null,
+  })], reviews: {legacy_review: {latest, history: [latest], isolated_history: []}}});
+  const {elements, selects, requests} = harness;
+
+  assertLabels(selects, {
+    "断裂状态": "已断裂", "断裂模式": "无法判断", "断裂位置": "无法判断",
+    "异常情况.未夹紧": "是", "异常情况.视频异常": "否", "异常情况.爆炸性断裂": "否",
+    "断裂现象.伸长": "是", "断裂现象.颈缩": "否", "断裂现象.开裂": "否", "断裂现象.界面分离": "否", "断裂现象.断后脱夹": "否",
+  }, "已存记录里的旧值「无」在表单上必须显示为「无法判断」：未映射时只能停在「无」，而真实浏览器里因选项已删除还会退化成空值，审核员就看不到历史取值了");
+  assert.equal(hintFor(harness, "断裂模式"), "源视频：无",
+    `源标注层的「无」是合法源层取值，必须原样显示为「源视频：无」，实际为「${hintFor(harness, "断裂模式")}」`);
+  assert.equal(hintFor(harness, "断裂位置"), "源视频：标距内",
+    `源标注应显示为「源视频：标距内」，实际为「${hintFor(harness, "断裂位置")}」`);
+  /* 历史修订显示不改写：修订里仍然写着原值「无」。 */
+  assert.match(textOf(elements.get("revision-history")), /"断裂模式": "无"/,
+    `历史修订的显示不得被改写，实际为「${textOf(elements.get("revision-history")).slice(0, 300)}」`);
+  assert.equal(elements.get("prefill-notice").hidden, true,
+    "已存修订存在时 #prefill-notice 仍须隐藏（预填提示行为不变）");
+
+  /* 保存草稿：提交体里不得把旧值「无」写回。 */
+  await elements.get("save-draft").listeners.click();
+  const posted = postRequests(requests).map(({options}) => JSON.parse(options.body));
+  assert.equal(posted.length, 1, `点击保存草稿应恰好发出一次 /api/reviews POST，实际 ${posted.length} 次`);
+  assert.equal(posted[0].labels["断裂模式"], "无法判断",
+    `提交体的断裂模式应为「无法判断」，实际为「${posted[0].labels["断裂模式"]}」`);
+  assert.equal(posted[0].labels["断裂位置"], "无法判断",
+    `提交体的断裂位置应为「无法判断」，实际为「${posted[0].labels["断裂位置"]}」`);
+  assert.ok(!JSON.stringify(posted[0].labels).includes('"无"'),
+    `提交体不得再写出旧值「无」，实际 labels 为 ${JSON.stringify(posted[0].labels)}`);
+});
+
 test("index.html keeps all eleven labelled controls inside the label section after the media block", async () => {
   const mediaAndReference = firstIndex(/<section[^>]*class="[^"]*\bmedia-and-reference\b/, " .media-and-reference 区块");
   const labelFields = firstIndex('id="label-fields"', " #label-fields 容器");

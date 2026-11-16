@@ -34,7 +34,9 @@ def fake_raw_output(category: str) -> str | None:
         # 词表外取值：「无法判断」已是 score.SINGLES 的合法单值，这里要造非法字面量。
         labels["断裂状态"] = "部分断裂"
     elif category == "conflict":
-        labels["断裂状态"], labels["断裂模式"], labels["断裂位置"] = "未断裂", "韧性断裂", "无"
+        labels["断裂状态"] = "未断裂"
+        labels["断裂位置"] = "无法判断"
+        labels["异常情况"]["爆炸性断裂"] = "是"
     elif category not in ("complete", "fenced"):
         raise ValueError(f"unknown fake category: {category}")
     text = json.dumps(labels, ensure_ascii=False)

@@ -13,7 +13,16 @@ from urllib.request import Request, build_opener, ProxyHandler
 
 urlopen = build_opener(ProxyHandler({})).open
 
-from script.subvideo_review.server import OPTIONS, ReviewApp, ReviewError, handler_for
+from script.subvideo_review.server import (OPTIONS, ReviewApp, ReviewError, canonical, digest,
+                                           handler_for)
+
+# review_subject_sha256 的输入键元组（顺序与实现一致；分层展示字段不得进入）。
+REVIEW_SUBJECT_KEYS = ("candidate_id", "source_id", "source_type", "clip_sha256", "candidate_record_sha256",
+                       "source_sha256", "roi_sha256", "source_relationships", "source_reference", "scope",
+                       "folds", "generation_batch_id", "generation_schema", "label_rules_sha256",
+                       "source_record_sha256", "generation_identity_sha256", "split_identity_sha256")
+LEGACY_NONE_CANDIDATE_LABELS = {"断裂状态": "未断裂", "断裂模式": "无", "断裂位置": "无"}
+PREFILL_NOTE = "初值为旧规则固定组合值『无』，已按新规则映射为无法判断"
 
 
 class ReviewTests(unittest.TestCase):
@@ -129,18 +138,69 @@ class ReviewTests(unittest.TestCase):
                     self.app.save(self.payload("confirmed", labels=labels))
         self.assertFalse(self.app.records_path.exists())
 
-    def test_fixed_combinations_and_invalid_fields(self):
+    def test_unfractured_state_keeps_concrete_mode_and_location(self):
+        # 新规则：未断裂时按可见证据填具体值，不再强制「无」。
         labels = self.labels()
         labels["断裂状态"] = "未断裂"
-        with self.assertRaises(ReviewError):
-            self.app.save(self.payload("confirmed", labels=labels))
-        labels["断裂模式"] = labels["断裂位置"] = "无"
+        labels["断裂模式"] = "脆性断裂"
+        labels["断裂位置"] = "标距内"
+
+        row = self.app.save(self.payload("confirmed", labels=labels))
+
+        self.assertEqual(row["labels"]["断裂模式"], "脆性断裂")
+        self.assertEqual(row["labels"]["断裂位置"], "标距内")
+        saved = ReviewApp(self.root).review("a")["latest"]
+        self.assertEqual(saved["labels"]["断裂模式"], "脆性断裂")
+        self.assertEqual(saved["labels"]["断裂位置"], "标距内")
+
+    def test_unfractured_state_accepts_uncertain_mode_and_location(self):
+        labels = self.labels()
+        labels["断裂状态"] = "未断裂"
+
+        row = self.app.save(self.payload("confirmed", labels=labels))
+
+        self.assertEqual(row["review_status"], "confirmed")
+        self.assertEqual(row["labels"]["断裂模式"], "无法判断")
+        self.assertEqual(row["labels"]["断裂位置"], "无法判断")
+
+    def test_unclamped_accepts_concrete_mode_and_location(self):
+        # 未夹紧也不再要求「无」：按可见证据作答即可保存。
+        labels = self.labels()
+        labels["异常情况"]["未夹紧"] = "是"
+        labels["断裂模式"] = "韧性断裂"
+        labels["断裂位置"] = "夹持根部"
+
+        row = self.app.save(self.payload("confirmed", labels=labels))
+
+        self.assertEqual(row["labels"]["异常情况"]["未夹紧"], "是")
+        self.assertEqual(row["labels"]["断裂模式"], "韧性断裂")
+        self.assertEqual(row["labels"]["断裂位置"], "夹持根部")
+
+    def test_legacy_none_value_is_rejected_for_mode_and_location(self):
+        # 「无」已从两个下拉的取值清单移除；旧词作为非法枚举值被拒，文案点名字段。
+        for field, candidate_id in (("断裂模式", "a"), ("断裂位置", "b")):
+            labels = self.labels()
+            labels[field] = "无"
+            payload = {**self.payload("confirmed", labels=labels), "candidate_id": candidate_id}
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(ReviewError, f"{field} 取值无效"):
+                    self.app.save(payload)
+        self.assertFalse(self.app.records_path.exists())
+
+    def test_options_drop_none_but_keep_the_other_values_in_order(self):
+        self.assertEqual(OPTIONS["断裂模式"], ["脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断"])
+        self.assertEqual(OPTIONS["断裂位置"], ["标距内", "标距外非根部", "夹持根部", "无法判断"])
+
+    def test_unfractured_state_still_conflicts_with_explosive_and_unknown_fields(self):
+        labels = self.labels()
+        labels["断裂状态"] = "未断裂"
         labels["异常情况"]["爆炸性断裂"] = "是"
-        with self.assertRaises(ReviewError):
+
+        with self.assertRaisesRegex(ReviewError, "未断裂与爆炸性断裂互斥"):
             self.app.save(self.payload("confirmed", labels=labels))
         labels["异常情况"]["爆炸性断裂"] = "否"
         self.assertEqual(self.app.save(self.payload("confirmed", labels=labels))["labels"], labels)
-        with self.assertRaises(ReviewError):
+        with self.assertRaisesRegex(ReviewError, "不能包含其他字段"):
             self.app.save(self.payload(labels={"unknown": "否"}))
 
     def test_reasons_required_and_blank_preserved(self):
@@ -153,7 +213,6 @@ class ReviewTests(unittest.TestCase):
     def test_unfractured_post_fracture_release_cannot_confirm_but_can_save_pending(self):
         labels = self.labels()
         labels["断裂状态"] = "未断裂"
-        labels["断裂模式"] = labels["断裂位置"] = "无"
         labels["断裂现象"]["断后脱夹"] = "是"
         draft = self.app.save(self.payload("draft", labels=labels))
         question = self.app.save(self.payload("question", labels=labels, reason="synthetic conflict for human review", expected_review_id=draft["review_id"]))
@@ -391,6 +450,42 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(self.manifest_path.read_bytes(), original_manifest)
         self.assertEqual((self.manifest_path.parent / "videos/a.mp4").read_bytes(), original_media)
         self.assertNotEqual(self.app.records_path.parent, self.manifest_path.parent)
+
+    def test_bootstrap_maps_legacy_none_for_display_only_without_touching_digests(self):
+        partial = copy.deepcopy(self.manifest["candidates"][0])
+        partial.update(candidate_id="partial", candidate_labels={"断裂状态": "无法判断", "断裂位置": "无"})
+        self.manifest["candidates"][0]["candidate_labels"] = copy.deepcopy(LEGACY_NONE_CANDIDATE_LABELS)
+        self.manifest["candidates"].append(partial)
+        self.write_manifest()
+        manifest_item = copy.deepcopy(self.manifest["candidates"][0])
+
+        app = ReviewApp(self.root)
+        rows = {row["candidate_id"]: row for row in app.bootstrap()["candidates"]}
+
+        # candidate_reference 保持原值（仍含「无」），候选对象不被就地改写。
+        self.assertEqual(app.candidates["a"]["candidate_reference"], LEGACY_NONE_CANDIDATE_LABELS)
+        self.assertEqual(rows["a"]["candidate_reference"], LEGACY_NONE_CANDIDATE_LABELS)
+        # 展示副本只映射两个字段的「无」，其它键值原样。
+        self.assertEqual(rows["a"].get("candidate_reference_display"),
+                         {"断裂状态": "未断裂", "断裂模式": "无法判断", "断裂位置": "无法判断"},
+                         "bootstrap 必须为每个候选提供仅供展示的 candidate_reference_display")
+        self.assertEqual(rows["a"].get("prefill_note"), PREFILL_NOTE,
+                         "发生过「无」映射时必须给出 prefill_note 提示原文")
+        # 只部分相同的候选同样给出提示，未出现「无」的字段保持原值。
+        self.assertEqual(rows["partial"].get("candidate_reference_display"),
+                         {"断裂状态": "无法判断", "断裂位置": "无法判断"},
+                         "映射按字段进行，不含「无」的键不得被改写")
+        self.assertEqual(rows["partial"].get("prefill_note"), PREFILL_NOTE)
+        # 没有「无」的候选不带提示，展示副本与引用完全一致。
+        self.assertIsNone(rows["b"].get("prefill_note"), "未发生映射时 prefill_note 必须为 None")
+        self.assertEqual(rows["b"].get("candidate_reference_display"), rows["b"]["candidate_reference"])
+        # 摘要输入不变：candidate_record_sha256 仍是未改写清单条目的 canonical 摘要。
+        self.assertEqual(rows["a"]["candidate_record_sha256"], digest(canonical(manifest_item)))
+        # review_subject_sha256 可用原键元组重算，展示字段不在输入里。
+        self.assertEqual(rows["a"]["review_subject_sha256"],
+                         digest(canonical({key: rows["a"][key] for key in REVIEW_SUBJECT_KEYS})))
+        self.assertNotIn("candidate_reference_display", REVIEW_SUBJECT_KEYS)
+        self.assertNotIn("prefill_note", REVIEW_SUBJECT_KEYS)
 
     def test_three_distinct_folds_are_inherited_and_exported_without_reassignment(self):
         self.set_fold_members(0, ["source_b", "pending_source"], ["source_a"])

@@ -31,11 +31,11 @@ LEAF_FIELDS = ("断裂状态", "断裂模式", "断裂位置",
                "断裂现象.界面分离", "断裂现象.断后脱夹")
 # Prompt-side expectations are spelled out as literals for the same reason as LEAF_FIELDS:
 # building them from `score.py` would compare the scorer with itself and hide changes.
-PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "five_label_v1.txt"
+PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "five_label_v2.txt"
 PROMPT_SINGLE_VALUES = {
     "断裂状态": ["未断裂", "发生断裂", "已断裂", "无法判断"],
-    "断裂模式": ["脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断", "无"],
-    "断裂位置": ["标距内", "标距外非根部", "夹持根部", "无法判断", "无"],
+    "断裂模式": ["脆性断裂", "韧性断裂", "半脆半韧断裂", "无法判断"],
+    "断裂位置": ["标距内", "标距外非根部", "夹持根部", "无法判断"],
 }
 PROMPT_MULTI_ITEMS = {
     "异常情况": ["未夹紧", "视频异常", "爆炸性断裂"],
@@ -194,7 +194,8 @@ def test_plan_predictions_should_emit_cross_field_conflict_for_fourth_row():
 
     assert obj["断裂状态"] == "未断裂"
     assert obj["断裂模式"] == "韧性断裂"
-    assert obj["断裂位置"] == "无"
+    # 新规则不再把「未断裂 + 具体位置」当冲突，因此这里能填出可见证据值。
+    assert obj["断裂位置"] == "无法判断"
 
 
 def test_plan_predictions_should_fence_complete_json_for_fenced_row():
@@ -319,7 +320,9 @@ def verdict_invalid_literal(extraction):
 
 def verdict_conflict(extraction):
     assert leaf_statuses(extraction) == leaves_with()
-    assert [c for c in extraction["conflicts"] if "断裂模式" in c] != [], extraction["conflicts"]
+    # 「未断裂 + 具体模式/位置」不再是冲突；该类别必须靠保留的互斥仍造出真实冲突。
+    assert extraction["conflicts"], "conflict 类别必须仍然产生至少一条组合冲突"
+    assert [c for c in extraction["conflicts"] if "断裂模式" in c or "断裂位置" in c] == [], extraction["conflicts"]
 
 
 def verdict_fenced(extraction):

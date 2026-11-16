@@ -1,9 +1,12 @@
 """Static consumer contract for the single unified "无法判断" uncertainty term.
 
-Every consumer of the three single-value fracture fields (annotation UI, the
-pure form spec, the split generator and the scorer) must agree on the same
-label set.  This module parses the browser sources as text and reads the real
-annotation CSV read-only: no browser, no network, no writes into the project.
+Two label layers exist and must not silently converge: the **source annotation
+layer** (annotation UI, the pure form spec, the split generator and
+``data/annotation-table-full.csv``) still uses the fixed-combination value
+「无」 for 断裂模式/断裂位置, while the **fragment layer** (the review workbench
+and the scorer, ``score.SINGLES``) no longer offers it.  This module parses the
+browser sources as text and reads the real annotation CSV read-only: no browser,
+no network, no writes into the project.
 """
 from __future__ import annotations
 
@@ -27,6 +30,21 @@ ANNOTATION_CSV = PROJECT_ROOT / "data/annotation-table-full.csv"
 SINGLE_CONTROLS = {"断裂状态": "state", "断裂模式": "mechanism", "断裂位置": "site"}
 UNIFIED = "无法判断"
 SUPERSEDED = "无法确定"
+# 源标注层仍用旧规则固定组合值「无」：它归属标注工具／label_fields／splitter／真 CSV，
+# 不在本轮片段层（审核工作台 + 评分器）的删除范围内。
+SOURCE_LAYER_ONLY = {"断裂模式": "无", "断裂位置": "无"}
+
+
+def source_layer_labels(column):
+    """Return the annotation-layer label set: fragment labels plus its own 「无」.
+
+    Exact set equality (not a subset check) keeps this guard strict: the source
+    layer may neither drop 「无」 nor grow any other value.
+    """
+    labels = set(scorer.SINGLES[column])
+    if column in SOURCE_LAYER_ONLY:
+        labels.add(SOURCE_LAYER_ONLY[column])
+    return labels
 
 
 def html_text():
@@ -155,10 +173,10 @@ def annotation_rows():
 
 
 @pytest.mark.parametrize("column", sorted(SINGLE_CONTROLS))
-def test_review_form_single_select_offers_exactly_the_scorer_label_set(column):
+def test_review_form_single_select_offers_exactly_the_source_layer_label_set(column):
     options = select_option_values(html_text(), SINGLE_CONTROLS[column])
 
-    assert set(options) == set(scorer.SINGLES[column])
+    assert set(options) == source_layer_labels(column)
 
 
 @pytest.mark.parametrize("column", sorted(SINGLE_CONTROLS))
@@ -169,12 +187,12 @@ def test_review_form_single_select_does_not_offer_the_superseded_term(column):
 
 
 @pytest.mark.parametrize("column", sorted(scorer.SINGLES))
-def test_review_form_spec_options_equal_the_scorer_label_set(column):
+def test_review_form_spec_options_equal_the_source_layer_label_set(column):
     spec = fields.FIELDS_BY_COLUMN[column]
     options = [value for value in spec.options if value]
 
-    # HTML == label_fields == score: both consumers anchor on the scorer set.
-    assert set(options) == set(scorer.SINGLES[column])
+    # HTML == label_fields == 源标注层集合：两者都不跟随片段层删除「无」。
+    assert set(options) == source_layer_labels(column)
 
 
 def test_annotation_tool_still_recognizes_historical_uncertain_values():
@@ -294,4 +312,5 @@ def test_real_annotation_table_normalizes_without_a_single_illegal_label():
     splitter.validate_labels(rows)
     for column in scorer.SINGLES:
         observed = {row[column] for row in normalized}
-        assert observed <= set(scorer.SINGLES[column]), (column, sorted(observed))
+        # 源标注 CSV 仍带「无」：合法取值集合是源标注层集合，不是片段层的 scorer.SINGLES。
+        assert observed <= source_layer_labels(column), (column, sorted(observed))

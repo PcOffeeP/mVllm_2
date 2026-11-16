@@ -225,7 +225,7 @@
     });
     return labels;
   }
-  const prefillSource = (candidate) => candidate.candidate_labels || candidate.candidate_reference || {};
+  const prefillSource = (candidate) => candidate.candidate_reference_display || candidate.candidate_labels || candidate.candidate_reference || {};
   const hasAnyPrefill = (labels) => names.some((name) => {
     const parts = name.split(".");
     const value = parts.length === 1 ? labels[name] : labels[parts[0]]?.[parts[1]];
@@ -235,7 +235,7 @@
     names.forEach((name) => {
       const parts = name.split(".");
       const value = parts.length === 1 ? labels[name] : labels[parts[0]]?.[parts[1]];
-      controls.get(name).value = unifiedTerm(value) || "";
+      controls.get(name).value = (value === "无" && (name === "断裂模式" || name === "断裂位置") ? "无法判断" : unifiedTerm(value)) || "";
     });
   }
   function renderHistory(review) {
@@ -275,7 +275,7 @@
     const prefill = prefillSource(candidate);
     setControls(prefill);
 
-    byId("prefill-notice").textContent = "已按生成标签预填为草稿；每项下方注明源视频标注，仅供参考。空白表示未判断。";
+    byId("prefill-notice").textContent = "已按生成标签预填为草稿；每项下方注明源视频标注，仅供参考。空白表示未判断。" + (candidate.prefill_note ? ` ${candidate.prefill_note}` : "");
     byId("prefill-notice").hidden = !hasAnyPrefill(prefill);
     byId("review-note").value = "";
     byId("decision-reason").value = "";
@@ -285,7 +285,7 @@
     byId("clip-sha-value").textContent = candidate.clip_sha256 || "";
     renderTimeline(candidate);
     byId("view-source").disabled = !candidate.source_preview_available;
-    renderReference(candidate.source_reference, candidate.candidate_reference);
+    renderReference(candidate.source_reference, candidate.candidate_reference_display || candidate.candidate_reference);
     byId("review-status").textContent = "正在读取人工修订…";
     const video = byId("video-player");
     video.pause();
