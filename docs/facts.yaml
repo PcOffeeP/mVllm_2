@@ -204,7 +204,7 @@ facts:
     claim: >
       原项目操作约束记录训练机代码目录为 `/home/liuyang/文档/mVllm_2`。这是历史记录的连接配置，不是本次远端现场核验；使用前仍需核对训练机、分支和文件状态。
     evidence:
-      - ref: docs/guide.md:36
+      - ref: docs/guide.md:37
         expect: 训练机代码目录为 `/home/liuyang/文档/mVllm_2`
     established: 2026-10-13
     established_by: 2026-10-13 历史现场记录；原项目操作约束中的路径配置由导航记录追溯
@@ -247,7 +247,7 @@ facts:
         expect: 两列默认留空
       - ref: docs/label.md:108
         expect: 未夹紧的视频若能确认确有断裂
-      - ref: docs/TODO.md:283
+      - ref: docs/TODO.md:285
         expect: 契约升级及代码适配待标签基准、输入和实施授权具备后另行安排
     established: 2026-10-18
     established_by: 现存 label.md 与 TODO 的已确认帧锚点和接入边界
@@ -472,13 +472,13 @@ facts:
     claim: >
       用户确认有精确断裂帧时不将其扩展为时间段，新一轮先沿用旧目标时长 2、3、5、10、20 秒、事件前后各 0.5 秒保护间隔和旧角色数量上限，画面对应通过后才生成；仅有断裂时间范围时，断前窗口截至下界前 0.5 秒，断后窗口不早于上界后 0.5 秒，事件窗口覆盖完整范围，保护间隔后至少还需 2 秒源素材。单片段可短于 2 秒。源标注帧、ROI 和片段的画面对应需要检查，不能仅靠放宽固定帧率时间格阈值判定无漂移；此前三个视频 video_0002、video_0015、video_0050 在旧批次暂留。此前生成的开发集候选及其当前目录已按用户要求删除；19 个来源的历史待处理状态见 DF-024。原分辨率局部证据工具仅辅助分析，不改变生成准入或自动通过待核实画面。
     evidence:
-      - ref: script/subvideo_generation/pilot/aligned.py:129
+      - ref: script/subvideo_generation/pilot/aligned.py:131
         expect: 'def adapt_annotation(row: dict, media: dict)'
-      - ref: script/subvideo_generation/pilot/aligned.py:184
+      - ref: script/subvideo_generation/pilot/aligned.py:186
         expect: 'def plan_windows(record: dict, source_media: dict | None = None)'
-      - ref: script/subvideo_generation/pilot/aligned.py:248
+      - ref: script/subvideo_generation/pilot/aligned.py:250
         expect: def compare_sequences(expected_frames, actual_frames, anchor_indices)
-      - ref: script/subvideo_generation/pilot/aligned.py:330
+      - ref: script/subvideo_generation/pilot/aligned.py:332
         expect: 'def build_crop_command(source: Path, output: Path, candidate: dict)'
       - ref: script/subvideo_generation/pilot/anchor_evidence.py:199
         expect: 'def analyze_project_anchor(project_root: Path, video_id: str, anchor_index: int'
@@ -542,11 +542,11 @@ facts:
 
       上述逐帧核验对应提交 8a2302b 的代码状态；该批次生成时按当时的做法把代码哈希（identity.code、loader_code 及各 receipt 内嵌的 code 摘要）写进了身份记录，这是历史事实，不改写也不追认现行口径。此后批次判据改为输入身份加规则指纹（见 DF-032），因此目录重组（script/sub_video_unified 改名为 script/subvideo_generation，四个旧包迁入 script/subvideo_generation/_legacy/，pilot 底层并入 script/subvideo_generation/pilot/）与虚拟视频入口 --videos-dir 的扩展只移动代码位置，不再使现行批次失效。旧批没有规则指纹，无法按重放层复验：对它跑 --audit-only 会落到内容审计并标出 legacy_batch / rules_unverifiable，逐片核对现存字节；对它跑 --resume 会被明确拒绝。清单与片段本身未改动，1621 / 1307 / 314 等数字仍是该历史批次的记录。
     evidence:
-      - ref: script/subvideo_generation/generate.py:61
+      - ref: script/subvideo_generation/generate.py:97
         expect: 'def load_inputs(root):'
       - ref: script/subvideo_generation/generate.py:472
         expect: 'def run(project_root, output_dir=None, *, plan_only=False, resume=False):'
-      - ref: script/subvideo_generation/generate.py:578
+      - ref: script/subvideo_generation/generate.py:802
         expect: 'def audit_outputs(project_root, output_dir, *, portable=False):'
       - ref: data/sub_video/summary.json:2
         expect: '"candidate_count": 1621'
@@ -588,17 +588,17 @@ facts:
     evidence:
       - ref: script/subvideo_review/server.py:36
         expect: 'STORE_SCHEMA = "tensile-subvideo-human-review/2"'
-      - ref: script/subvideo_review/server.py:243
+      - ref: script/subvideo_review/server.py:238
         expect: 'current["review_subject_sha256"] = digest'
-      - ref: script/subvideo_review/server.py:302
+      - ref: script/subvideo_review/server.py:297
         expect: 'self.audit_current = True'
-      - ref: script/subvideo_review/server.py:492
+      - ref: script/subvideo_review/server.py:494
         expect: 'def save(self, payload):'
-      - ref: script/subvideo_review/static/app.js:226
+      - ref: script/subvideo_review/static/app.js:163
         expect: '生成时建议关注'
       - ref: script/subvideo_review/README.md:3
         expect: '候选标签预填为草稿，须经人工核对并确认'
-      - ref: script/subvideo_review/README.md:29
+      - ref: script/subvideo_review/README.md:31
         expect: 覆盖窗口的候选标签初值已由生成规则写入
       - ref: .gitignore:35
         expect: '/data/subvideo-review/reviews.json.lock'
@@ -627,9 +627,9 @@ facts:
         expect: 五类全部正确比例
       - ref: docs/design-test.md:105
         expect: 保留原回答，逐类按实际输出评分
-      - ref: script/subvideo_review/server.py:550
+      - ref: script/subvideo_review/server.py:552
         expect: def export(self, *, all_revisions=False)
-      - ref: script/subvideo_review/server.py:428
+      - ref: script/subvideo_review/server.py:423
         expect: def matches(row, candidate)
       - ref: script/five_label_eval/score.py:450
         expect: def score(manifest, reviews, predictions, input_reviews=())
@@ -664,9 +664,9 @@ facts:
     evidence:
       - ref: script/subvideo_generation/rules.py:206
         expect: 'def digest() -> str:'
-      - ref: script/subvideo_generation/generate.py:144
+      - ref: script/subvideo_generation/generate.py:180
         expect: 'def _compare_identity(identity):'
-      - ref: script/subvideo_generation/generate.py:597
+      - ref: script/subvideo_generation/generate.py:843
         expect: 'def audit_content(project_root, output_dir=None):'
       - ref: script/subvideo_generation/_legacy/core/verification.py:77
         expect: 'result["equivalent_to_verified_toolchain"] = pinned'
@@ -697,7 +697,7 @@ facts:
         expect: 'cell["evidence"] in ("insufficient", "unknown") and cell["label"] not in (None, "", "无法确定", "无法判断")'
       - ref: script/five_label_eval/score.py:373
         expect: 'if pstatus == "valid" and pred["value"] in ("无法确定", "无法判断")'
-      - ref: docs/eval/output-contract.md:105
+      - ref: docs/eval/output-contract.md:111
         expect: 现行值域下该分支不可达
       - ref: docs/split/data-split-result.md:9
         expect: 当前该文件的 SHA-256 为
@@ -1020,19 +1020,19 @@ facts:
     evidence:
       - ref: docs/subvideo-review-workflow.md:24
         expect: 11 个可编辑字段默认按候选标签预填
-      - ref: script/subvideo_review/README.md:29
+      - ref: script/subvideo_review/README.md:31
         expect: 页面用候选标签初值预填 11 项
-      - ref: script/subvideo_review/README.md:29
+      - ref: script/subvideo_review/README.md:31
         expect: 源标签仍只作参考，已保存修订优先于预填
-      - ref: script/subvideo_review/README.md:29
+      - ref: script/subvideo_review/README.md:31
         expect: 缺项留空，不补“否”
-      - ref: script/subvideo_review/static/app.js:181
+      - ref: script/subvideo_review/static/app.js:228
         expect: candidate.candidate_labels || candidate.candidate_reference
       - ref: script/subvideo_review/static/app.js:230
         expect: 已按生成标签预填，确认前为草稿
       - ref: script/subvideo_review/static/index.html:137
         expect: 源标签只供参考，不写入审核值
-      - ref: script/subvideo_review/tests/test_app_dom.cjs:280
+      - ref: script/subvideo_review/tests/test_app_dom.cjs:634
         expect: saved human revision overrides the candidate prefill
     established: 2026-11-14
     established_by: 按代码与文档核对（提交 `723fafb`、`6b69ef3` 的预填实现）
