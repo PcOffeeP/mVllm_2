@@ -45,10 +45,16 @@
 
 pytest 须通过；facts 校验器的 `gone`／`ambiguous` 不得相对仓库内记录的基线新增，新增即须先修。当前基线为 `gone` 14、`ambiguous` 0；`docs/facts.yaml` 头部注释记录的历史五类分布基线为 `gone` 4、`ambiguous` 0。差额中 6 条因 2026-11-19 退役已作废批次清单、4 条因删除 `docs/eval-migration-plan.md`，目标文件已不存在，均为待处理项；修好后应回落到 `gone` 4。
 
-查看当前五类分布并与上述基线及 `docs/facts.yaml` 头部注释对照：
+默认模式即使 `gone > 0` 也退出 0，退出码不代表准入通过，判据以基线对照为准。查看当前五类分布并与上述基线及 `docs/facts.yaml` 头部注释对照：
 
 ```bash
 .venv/bin/python -m script.checks.facts --json | .venv/bin/python -c 'import json,sys; t=json.load(sys.stdin)["totals"]; print({k: t[k] for k in ("evidence","passed","gone","ambiguous","unverifiable","structure")})'
+```
+
+自动判断当前基线（不满足时退出非零）：
+
+```bash
+.venv/bin/python -m script.checks.facts --json | .venv/bin/python -c 'import json,sys; t=json.load(sys.stdin)["totals"]; print({k: t[k] for k in ("evidence","passed","gone","ambiguous","unverifiable","structure")}); sys.exit(not (t["gone"] <= 14 and t["ambiguous"] == 0))'
 ```
 
 ### 1.5 冲突处置

@@ -52,7 +52,7 @@
 | `clip_sha256` | 清单该候选 `output.sha256` | 清单侧，入口校验一致 |
 | `manifest_sha256` | 评分清单文件字节 sha256；与输入记录里引用的 `data/sub_video/manifest.json` 摘要是两份不同文件，不得混用 | 清单侧 |
 
-`source_type` ∈ `real|virtual`：清单 1621 条候选与 110 条来源**都没有该字段**，审核工作台按 `real` 回退（`script/subvideo_review/server.py:213`），因此清单必须显式补该字段，否则虚拟候选会被静默计入 `real` 组。
+`source_type` ∈ `real|virtual`：已退役的旧批次清单（1,621 条候选与 110 条来源）**都没有该字段**；新批次须重新核对，审核工作台按 `real` 回退（`script/subvideo_review/server.py:213`），因此清单必须显式补该字段，否则虚拟候选会被静默计入 `real` 组。
 
 ## 5. 三态与 `raw_output`
 

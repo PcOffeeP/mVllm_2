@@ -28,7 +28,7 @@
 | L2 子视频（片段） | `<candidate_id>.mp4` | `data/sub_video/videos/<candidate_id>.mp4` | 候选 `output.sha256`（1621/1621 有，即 `clip_sha256`） | `output.media.fps`（1621/1621 有） | `output.media.total_frames` | `output.media.width/height` |
 | L3 模型输入帧 | 抽出的 N 帧（PNG，无独立媒体文件） | `<out_dir>/<candidate_id>/frame_<nnn>.png`（`--out-dir` 下按候选分目录，落盘命名 `frame_%03d.png`，`frames.py:602-607`） | 记录不含逐帧 PNG 摘要：可核的只有 L2 媒体摘要（`clip_sha256`／`media.sha256`）与 `frames[].image` 这个文件名（`frames.py:676`） | 不适用（先后由 `display_order` 决定） | 送模型的帧数（帧数不是自由参数，见 `docs/eval/inference-entry.md` §7） | 每帧 PNG 的宽高即 L2 片段宽高（抽帧不加缩放滤镜）〔实现见状态表 7：记录未记逐帧宽高，此等式只由抽帧无 scale 滤镜推断〕 |
 
-**现状**：本文写作时 `data/videos/`、`data/roi/videos/`、`data/sub_video/videos/` 三个媒体目录未检出；2026-11-14 实测三目录已存在，分别有 110、110、1,621 个 `.mp4`（`ls data/videos | wc -l` 等）。媒体字节被 `.gitignore` 的 `*.mp4` 忽略、不随本文档分发，真实数据处理仍按各阶段授权执行；`data/roi/` 除 `videos/` 外为 `decisions.json` 与 `manifest.json`，`data/sub_video/` 除 `videos/` 外为 `audit.json`、`manifest.json`、`summary.json`。L0 的 fps／总帧数／宽高清单未直接提供，只能实测，不得沿用 L1 或 L2 的值代替。
+**现状**：本文写作时 `data/videos/`、`data/roi/videos/`、`data/sub_video/videos/` 三个媒体目录未检出；2026-11-14 实测三目录已存在，分别有 110、110、1,621 个 `.mp4`（`ls data/videos | wc -l` 等）。上述是历史记录，`data/sub_video/videos/` 当前为空目录；三个 JSON 已于 2026-11-19 删除。本页保留该批次的契约与历史核对，新批次生成后须按第 3 行失效条件重新核对。媒体字节被 `.gitignore` 的 `*.mp4` 忽略、不随本文档分发，真实数据处理仍按各阶段授权执行；`data/roi/` 除 `videos/` 外为 `decisions.json` 与 `manifest.json`。L0 的 fps／总帧数／宽高清单未直接提供，只能实测，不得沿用 L1 或 L2 的值代替。
 
 ## 2. 每帧四个索引
 

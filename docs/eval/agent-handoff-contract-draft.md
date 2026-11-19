@@ -111,7 +111,7 @@
 
 | 评测层级 | 负责仓库 | 评测对象 | 评分口径与关注重点 |
 | --- | --- | --- | --- |
-| 切片级 VLM 单轮能力评测 | `TensileAgent-Finetune` | 1,621 条候选子视频 | 使用 `script/five_label_eval/score.py`（现行 `five-label-score/3`），按来源分层并列报告、不合成加权总分；关注单轮五类 11 叶字段的格式合法性、语义指标、失败三态与跨字段冲突（见 [design-test.md](../design-test.md)） |
+| 切片级 VLM 单轮能力评测 | `TensileAgent-Finetune` | 已退役批次的 1,621 条候选子视频；新批次以当前清单为准 | 使用 `script/five_label_eval/score.py`（现行 `five-label-score/3`），按来源分层并列报告、不合成加权总分；关注单轮五类 11 叶字段的格式合法性、语义指标、失败三态与跨字段冲突（见 [design-test.md](../design-test.md)） |
 | 整片级 Agent 端到端定位评测 | `TensileAgent` | 110 条源视频 | 覆盖迭代采样、方向搜索收敛、断裂时间区间定位误差、`fracture`/`no_fracture`/`unrecognized` 终止判定以及最终五类属性投影汇总 |
 
 ### 4.2 标注表同步口径
