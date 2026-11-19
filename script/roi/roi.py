@@ -38,7 +38,7 @@ def workspace(args) -> Workspace:
             print("发现多个划分版本，未自动选择；需要保留划分时请指定 --splits-dir。",file=sys.stderr)
     return Workspace(resolve(args.videos_dir),resolve(args.output_dir),labels=resolve(args.labels),
         decisions=resolve(args.decisions),existing_manifest=resolve(args.existing_manifest),
-        existing_media_dir=resolve(args.existing_media_dir),splits_dir=splits_dir)
+        existing_media_dir=resolve(args.existing_media_dir),splits_dir=splits_dir,project_root=root)
 
 
 def main(argv=None) -> int:

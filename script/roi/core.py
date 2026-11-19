@@ -48,6 +48,30 @@ class RoiError(ValueError):
     pass
 
 
+def resolve_manifest_path(raw, project_root, *, what="源视频", required=True) -> tuple[Path, str | None]:
+    path=Path(raw)
+    if path.exists():
+        return path, None
+    if path.is_absolute() and project_root is not None:
+        parts=os.fspath(raw).split("/")
+        root=Path(project_root).resolve()
+        candidates=[]
+        for index, part in enumerate(parts):
+            suffix=parts[index:]
+            if part in {"data", "script", "docs"} and all(p not in {"", ".", ".."} for p in suffix):
+                candidate=Path(project_root).joinpath(*suffix)
+                if candidate.exists() and candidate.resolve().is_relative_to(root):
+                    candidates.append(candidate)
+        if len(candidates)==1:
+            candidate=candidates[0]
+            return candidate, f"{what}路径已重定位：{raw} → {candidate}"
+        if len(candidates)>1 and required:
+            raise RoiError(f"{what}路径存在多个候选：{raw}")
+    if required:
+        raise RoiError(f"{what}缺失或发生变化：{raw}")
+    return path, None
+
+
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -410,7 +434,10 @@ def load_splits(directory: Path | None) -> tuple[dict, dict]:
 class Workspace:
     def __init__(self, videos_dir: Path, output_dir: Path, *, labels: Path | None=None,
                  decisions: Path | None=None, existing_manifest: Path | None=None,
-                 existing_media_dir: Path | None=None, splits_dir: Path | None=None):
+                 existing_media_dir: Path | None=None, splits_dir: Path | None=None,
+                 project_root: Path | None=None):
+        self.project_root=project_root.resolve() if project_root is not None else None
+        self.path_notes: list[str]=[]
         self._thread_lock=threading.RLock()
         self._lock_depth=0
         self.splits_dir=splits_dir
@@ -426,6 +453,11 @@ class Workspace:
         self.drafts_path=self.output_dir/"drafts.json"
         self.label_reviews_path=self.output_dir/"label_reviews.json"
         self.organized_videos_dir=self.output_dir/"videos"
+
+    def media_path(self, raw, *, what="源视频", required=True) -> Path:
+        path,note=resolve_manifest_path(raw,self.project_root,what=what,required=required)
+        if note is not None: self.path_notes.append(note)
+        return path
 
     def _load_label_reviews(self) -> dict:
         raw=load_json(self.label_reviews_path,{"schema":"tensile-roi-label-review/1","videos":{}})
@@ -520,8 +552,8 @@ class Workspace:
             return state
         labels_sha=sha256_file(self.labels) if self.labels and self.labels.is_file() else None
         # Recheck identity just before writing; no source/ROI/annotation file is changed.
-        if (sha256_file(Path(current["source"]["path"]))!=expected["source_sha256"]
-                or sha256_file(Path(current["output"]["path"]))!=expected["output_sha256"]
+        if (sha256_file(self.media_path(current["source"]["path"]))!=expected["source_sha256"]
+                or sha256_file(self.media_path(current["output"]["path"],what="ROI 输出"))!=expected["output_sha256"]
                 or digest(labels_by_id(self.labels).get(video_id,{}))!=expected["source_labels_sha256"]):
             raise RoiError("保存期间源视频、ROI 输出或原始标签发生变化，请刷新。")
         revision={"identity":expected,"saved_at":now(),"changes":changes,
@@ -644,7 +676,7 @@ class Workspace:
         return result
 
     def _output_matches(self, media: Mapping, verify: bool=False) -> bool:
-        output=Path(media["path"])
+        output=self.media_path(media["path"],what="ROI 输出",required=False)
         if not output.is_file(): return False
         state={"size":output.stat().st_size,"mtime_ns":output.stat().st_mtime_ns}
         return (not verify and media.get("stat")==state) or sha256_file(output)==media.get("sha256")
@@ -783,7 +815,7 @@ class Workspace:
             expected=output.get("sha256")
             if not isinstance(expected,str) or re.fullmatch(r"[0-9a-f]{64}",expected) is None:
                 raise RoiError(f"{row['video_id']} 缺少完整的当前输出摘要。")
-            source=Path(output.get("path",""))
+            source=self.media_path(output.get("path",""),what="ROI 输出",required=False)
             target=folder/(safe_id(row["video_id"])+".mp4")
             if not source.is_file() or sha256_file(source)!=expected:
                 raise RoiError(f"{row['video_id']} 当前 ROI 文件缺失或摘要不符。")
@@ -886,13 +918,14 @@ class Workspace:
                 if not isinstance(record,dict) or record.get("sha256")!=expected:
                     continue  # A different recipe's bytes remain historical output.
                 old_path=Path(record.get("path",""))
+                checked_path=self.media_path(old_path,what="ROI 输出",required=False)
                 if str(old_path)==str(target):
                     continue
                 if record.get("geometry")!=active.get("geometry"):
                     raise RoiError(f"{video_id} 同摘要历史记录的几何与当前结果不同，保留原记录并先核实。")
-                if old_path.is_symlink():
+                if checked_path.is_symlink():
                     raise RoiError(f"{video_id} 历史引用是符号链接，保留原记录并先核实。")
-                if old_path.exists() and (not old_path.is_file() or sha256_file(old_path)!=expected):
+                if checked_path.exists() and (not checked_path.is_file() or sha256_file(checked_path)!=expected):
                     raise RoiError(f"{video_id} 历史引用内容与记录摘要不同，不能自动重关联。")
                 provenance=list(record.get("historical_locations",[]))
                 origin={"path":str(old_path),"sha256":expected,"role":"historical_provenance"}
@@ -931,7 +964,8 @@ class Workspace:
                     self._organization_identity(current)!=snapshot):
                 raise RoiError("准备期间输入、决定或工作清单发生变化，请重新预览。")
             for item in canonical.values():
-                if item["path"].is_symlink() or sha256_file(item["path"])!=item["sha256"]:
+                path=self.media_path(item["path"],what="ROI 输出")
+                if path.is_symlink() or sha256_file(path)!=item["sha256"]:
                     raise RoiError("接入前统一结果发生变化，请重新核对。")
             if updates:
                 previous["generated_at"]=now()
@@ -942,7 +976,7 @@ class Workspace:
     @serialized
     def save_draft(self, row: Mapping, draft: Mapping):
         source=row["source"]
-        if sha256_file(Path(source["path"]))!=source["sha256"]:
+        if sha256_file(self.media_path(source["path"]))!=source["sha256"]:
             raise RoiError("保存前源视频发生变化，请刷新")
         value=dict(draft)
         value.update(source_video_id=row["video_id"],source_sha256=source["sha256"],
@@ -955,7 +989,7 @@ class Workspace:
 
     @serialized
     def save_decision(self, row: Mapping, decision: Mapping):
-        source=row["source"]; path=Path(source["path"])
+        source=row["source"]; path=self.media_path(source["path"])
         if sha256_file(path)!=source["sha256"]: raise RoiError("保存前源视频发生变化，请刷新")
         drafts=load_json(self.drafts_path,{})
         prior_draft=drafts.get(row["video_id"],{})
@@ -1014,14 +1048,14 @@ class Workspace:
         temporary=folder/(".building-"+next(tempfile._get_candidate_names())+".mp4")
         origin="generated"
         try:
-            result=subprocess.run(build_ffmpeg_command(Path(source["path"]),temporary,d),capture_output=True,text=True)
+            result=subprocess.run(build_ffmpeg_command(self.media_path(source["path"]),temporary,d),capture_output=True,text=True)
             if result.returncode: raise RoiError("ffmpeg 失败："+result.stderr.strip()[-1500:])
             output_probe=verified_media(temporary,probe_video(temporary))
             validate_media(source["media"],output_probe,geometry(d)["output_resolution"])
             # Check full decode in addition to actual frame counting.
             decode=subprocess.run(["ffmpeg","-v","error","-xerror","-i",str(temporary),"-map","0:v:0","-f","null","-"],capture_output=True,text=True)
             if decode.returncode: raise RoiError("输出解码校验失败："+decode.stderr.strip()[-1000:])
-            if sha256_file(Path(source["path"]))!=source["sha256"]: raise RoiError("生成时源视频发生变化")
+            if sha256_file(self.media_path(source["path"]))!=source["sha256"]: raise RoiError("生成时源视频发生变化")
             latest=next(r for r in self.inventory()["videos"] if r["video_id"]==video_id)
             if latest.get("recipe_hash")!=key: raise RoiError("生成时输入或决定发生变化，请刷新重试")
             sha=sha256_file(temporary)
@@ -1094,12 +1128,12 @@ class Workspace:
             temporary=folder/(".importing-"+next(tempfile._get_candidate_names())+".mp4")
             try:
                 shutil.copyfile(staged_path,temporary)
-                if sha256_file(temporary)!=expected_sha256 or sha256_file(Path(source["path"]))!=source["sha256"]:
+                if sha256_file(temporary)!=expected_sha256 or sha256_file(self.media_path(source["path"]))!=source["sha256"]:
                     raise RoiError("导入期间源视频或输出发生变化。")
                 # Hard-link publication is atomic and refuses a concurrent existing target.
                 os.link(temporary,target)
             finally: temporary.unlink(missing_ok=True)
-        if sha256_file(Path(source["path"]))!=source["sha256"]:
+        if sha256_file(self.media_path(source["path"]))!=source["sha256"]:
             raise RoiError("接入记录前源视频发生变化，请重新核对。")
         decisions=load_decisions(self.decisions_path); decisions[video_id]=d
         atomic_json(self.decisions_path,{"schema":SCHEMA,"rule_version":RULE_VERSION,"decisions":list(decisions.values())})
