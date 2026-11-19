@@ -141,7 +141,7 @@ L1→L0（`roi_to_source`）的原始源帧号只在三级证据之一成立时�
 | `unverified`（三级都不成立） | 0 | 0.00% |
 | `frame_index_coverage` | 1.0000 | — |
 
-- 579 + 1,042 + 0 = 1,621，与清单逐条对齐：本次只读核对 `data/sub_video/manifest.json` 得 `anchors` 非空 579 条、空数组 1,042 条、候选 1,621 条、`sources[]` 110 条。
+- 579 + 1,042 + 0 = 1,621，与清单逐条对齐：本次只读核对 `data/sub_video/manifest.json` 得 `anchors` 非空 579 条、空数组 1,042 条、候选 1,621 条、`sources[]` 110 条；该批次已退役，当前以新批次清单为准。
 - 扫描耗时约 11 分钟；开销来自对每个来源的 L0 与 L1 各做一次 `-count_frames`（§7），与候选条数无关。
 - 只读元数据与帧数：扫描不做任何媒体摘要，也不写视频或图片；`--coverage-scan` 分支只产出 summary JSON（`frames.py:878`）。
 - 每候选的判定以 `clip_frame_index = 0` 调用 `derive_lineage`（`_coverage_scan`，`frames.py:819`）。优先级 2 的偏移恒为 0，证据级别与具体帧号无关，故每候选结论代表该候选能拿到哪一级证据，不是逐帧取值的抽样。
@@ -224,7 +224,7 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 - 同一 `verdict_id` 出现在多条候选里，只说明它们共享同一条来源 replay 决策，不说明帧号经过逐候选核对。
 - receipt 不可用时退化形态是 `replay@no-receipt:<status>`，不是合法证据身份。
 
-**来源标注**：106 与 579 由提交 `2baf363` 的实现规则加对 `data/sub_video/manifest.json` 的只读核对得出（1,042 条 `anchors` 为空的候选涉及 106 个不同 `source_video_id`，去重后的来源 receipt 也是 106 个）；1,042 这一分母来自 §8 的全量扫描。
+**来源标注**：106 与 579 由提交 `2baf363` 的实现规则加对 `data/sub_video/manifest.json` 的只读核对得出（1,042 条 `anchors` 为空的候选涉及 106 个不同 `source_video_id`，去重后的来源 receipt 也是 106 个）；1,042 这一分母来自 §8 的全量扫描；该批次已退役，当前以新批次清单为准。
 
 **失效条件：** `_verdict_id` 的前缀或截断长度、receipt 取值优先级变更，或新增级别标记字段即失效。
 
