@@ -809,35 +809,39 @@ def audit_outputs(project_root, output_dir, *, portable=False):
     root = Path(project_root).resolve()
     output = _safe_output(root, output_dir)
     with base._run_lock(output):
-        manifest = base._load(output / "manifest.json")
-        mode = _manifest_mode(manifest)
-        rows, rois, folds, hashes, _loader_code = load_inputs(root)
-        expected_identity = identity(root, hashes)
-        _check_identity(manifest.get("identity") or {}, expected_identity)
-        anchor_records = anchors.load_anchors(root / anchors.DOCUMENT)
-        verified = _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records,
-                                      require_complete=True, portable=portable, verification=mode)
-        if base._load(output / "summary.json") != summarize(manifest):
-            raise base.PilotError("unified summary differs from current manifest")
-        _unchanged(root, expected_identity)
-        toolchain = _toolchain_status()
-        if mode != "full":
-            return {"status": "current_bytes_and_planned_inventory_verified",
-                    "verification_mode": mode, "verification": _verification_note(mode),
-                    "source_count": len(rows), "verified_outputs": verified, "published": False,
-                    "toolchain": toolchain,
-                    "validation_level": ("output_bytes_and_metadata_only" if mode == "basic"
-                                         else "output_bytes_only"),
-                    "limitations": ["no_frame_level_replay", "no_source_timeline_replay",
-                                    "no_clip_frame_correspondence", "not_new_frame_replay",
-                                    "not_human_label_review", "not_data_publication"]
-                        + ([] if not toolchain["degraded"] else ["not_pinned_toolchain"])}
-        return {"status": "current_bytes_and_planned_inventory_verified", "source_count": len(rows),
-                "verified_outputs": verified, "published": False, "toolchain": toolchain,
-                "validation_level": "byte_receipt_and_source_timeline_only" if portable else "full_output_decode_and_current_receipts",
-                "limitations": (["no_current_output_RGB_PTS_decode", "original_toolchain_receipts_preserved"] if portable else [])
-                    + ["not_new_frame_replay", "not_human_label_review", "not_data_publication"]
+        return _audit_outputs_locked(root, output, portable=portable)
+
+
+def _audit_outputs_locked(root, output, *, portable=False):
+    manifest = base._load(output / "manifest.json")
+    mode = _manifest_mode(manifest)
+    rows, rois, folds, hashes, _loader_code = load_inputs(root)
+    expected_identity = identity(root, hashes)
+    _check_identity(manifest.get("identity") or {}, expected_identity)
+    anchor_records = anchors.load_anchors(root / anchors.DOCUMENT)
+    verified = _validate_manifest(root, output, manifest, rows, rois, folds, anchor_records,
+                                  require_complete=True, portable=portable, verification=mode)
+    if base._load(output / "summary.json") != summarize(manifest):
+        raise base.PilotError("unified summary differs from current manifest")
+    _unchanged(root, expected_identity)
+    toolchain = _toolchain_status()
+    if mode != "full":
+        return {"status": "current_bytes_and_planned_inventory_verified",
+                "verification_mode": mode, "verification": _verification_note(mode),
+                "source_count": len(rows), "verified_outputs": verified, "published": False,
+                "toolchain": toolchain,
+                "validation_level": ("output_bytes_and_metadata_only" if mode == "basic"
+                                     else "output_bytes_only"),
+                "limitations": ["no_frame_level_replay", "no_source_timeline_replay",
+                                "no_clip_frame_correspondence", "not_new_frame_replay",
+                                "not_human_label_review", "not_data_publication"]
                     + ([] if not toolchain["degraded"] else ["not_pinned_toolchain"])}
+    return {"status": "current_bytes_and_planned_inventory_verified", "source_count": len(rows),
+            "verified_outputs": verified, "published": False, "toolchain": toolchain,
+            "validation_level": "byte_receipt_and_source_timeline_only" if portable else "full_output_decode_and_current_receipts",
+            "limitations": (["no_current_output_RGB_PTS_decode", "original_toolchain_receipts_preserved"] if portable else [])
+                + ["not_new_frame_replay", "not_human_label_review", "not_data_publication"]
+                + ([] if not toolchain["degraded"] else ["not_pinned_toolchain"])}
 
 
 def audit_content(project_root, output_dir=None):
@@ -849,6 +853,11 @@ def audit_content(project_root, output_dir=None):
     """
     root = Path(project_root).resolve()
     output = _safe_output(root, output_dir)
+    with base._run_lock(output):
+        return _audit_content_locked(root, output)
+
+
+def _audit_content_locked(root, output):
     manifest_path = output / "manifest.json"
     if not manifest_path.is_file():
         raise base.PilotError("content audit requires an existing manifest.json")
@@ -897,12 +906,81 @@ def audit_batch(project_root, output_dir, *, portable=False):
     """
     root = Path(project_root).resolve()
     output = _safe_output(root, output_dir)
+    with base._run_lock(output):
+        return _audit_batch_locked(root, output, portable=portable)
+
+
+def _audit_batch_locked(root, output, *, portable=False):
     manifest_path = output / "manifest.json"
     if manifest_path.is_file():
         manifest = base._load(manifest_path)
         if manifest.get("schema") == virtual.SCHEMA or not _has_rules(manifest):
-            return audit_content(root, output)
-    return audit_outputs(root, output, portable=portable)
+            return _audit_content_locked(root, output)
+    return _audit_outputs_locked(root, output, portable=portable)
+
+
+AUDIT_SCHEMA = "tensile-unified-sub-video-audit/1"
+
+
+def write_audit_record(project_root, output_dir=None, *, portable=False, replace=False):
+    """Write a current official audit; content-only batches lack receipt validation.
+
+    Replay counts count source ``frame_preserving_replay`` receipts and candidate
+    ``output.frame_preserving_replay`` receipts recorded in the manifest. The
+    audit and record write share the same batch lock.
+    """
+    return _write_audit_record_with_result(project_root, output_dir, portable=portable, replace=replace)[1]
+
+
+def _write_audit_record_with_result(project_root, output_dir=None, *, portable=False, replace=False):
+    root = Path(project_root).resolve()
+    output = _safe_output(root, output_dir)
+    with base._run_lock(output):
+        manifest = base._load(output / "manifest.json")
+        result = _audit_batch_locked(root, output, portable=portable)
+        if result.get("verdict") == "content_only":
+            raise base.PilotError("content-only audit cannot establish current batch receipt validation")
+        path = output / "audit.json"
+        candidates = []
+        counts = Counter()
+        for candidate in manifest["candidates"]:
+            labels = candidate.get("candidate_labels") or {}
+            issues = []
+            if labels.get("断裂状态") == "未断裂":
+                if (labels.get("断裂现象") or {}).get("断后脱夹") == "是":
+                    issues.append("未断裂片段的断后脱夹需复核")
+                if (labels.get("异常情况") or {}).get("爆炸性断裂") == "是":
+                    issues.append("未断裂与爆炸性断裂互斥")
+            if issues:
+                counts.update(issues)
+                candidates.append({"candidate_id": candidate["candidate_id"],
+                                   "source_video_id": candidate["source_video_id"],
+                                   "scope": candidate["scope"], "issues": issues})
+        record = {
+            "schema": AUDIT_SCHEMA,
+            "manifest_sha256": base.sha256_file(output / "manifest.json"),
+            "checked_sources": len(manifest["sources"]),
+            "checked_candidates": len(manifest["candidates"]),
+            "source_replays_recorded": sum("frame_preserving_replay" in s for s in manifest["sources"]),
+            "clip_replays_recorded": sum("frame_preserving_replay" in (c.get("output") or {})
+                                         for c in manifest["candidates"]),
+            "generation_validation": {
+                "method": "generator_final_manifest_validation",
+                "scope": result["validation_level"],
+                "validated_outputs": result["verified_outputs"],
+                "run_summary_sha256": base.sha256_file(output / "summary.json"),
+                "limitations": result["limitations"],
+            },
+            "candidates_needing_attention": len(candidates),
+            "issue_counts": dict(counts),
+            "label_status": "candidate_labels_only_unreviewed",
+            "description": "候选标签是初值；所有片段须根据画面由人工审核，覆盖片段不推测事件或标签。",
+            "candidates": candidates,
+        }
+        if path.exists() and not replace:
+            raise base.PilotError("audit.json already exists; use --replace-audit explicitly")
+        base._atomic_json(path, record)
+        return result, record
 
 
 def main():
@@ -912,6 +990,8 @@ def main():
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--audit-only", action="store_true")
+    parser.add_argument("--write-audit", action="store_true")
+    parser.add_argument("--replace-audit", action="store_true")
     parser.add_argument("--portable-audit", action="store_true", help="read-only audit after copying outputs; no claim of current RGB replay")
     parser.add_argument("--videos-dir", type=Path, help="cut one window batch from this directory's top-level mp4 files; replaces the 110-source project mode and requires --output-dir")
     parser.add_argument("--verification", choices=VERIFICATION_MODES, default=None,
@@ -920,6 +1000,12 @@ def main():
     parser.add_argument("--jobs", type=int, default=None,
                         help="cut independent sources in parallel with this many workers; default: 1 (serial, same batch)")
     args = parser.parse_args()
+    if args.write_audit and not args.audit_only:
+        parser.error("--write-audit requires --audit-only")
+    if args.replace_audit and not args.write_audit:
+        parser.error("--replace-audit requires --write-audit")
+    if args.write_audit and args.videos_dir is not None:
+        parser.error("--write-audit cannot be combined with --videos-dir")
     if args.videos_dir is not None:
         if args.portable_audit:
             parser.error("--portable-audit cannot be combined with --videos-dir")
@@ -949,7 +1035,12 @@ def main():
             parser.error("--jobs cannot be combined with --audit-only")
     try:
         if args.audit_only:
-            result = audit_batch(args.project_root, args.output_dir or args.project_root / "data/sub_video", portable=args.portable_audit)
+            if args.write_audit:
+                result, _record = _write_audit_record_with_result(
+                    args.project_root, args.output_dir, portable=args.portable_audit,
+                    replace=args.replace_audit)
+            else:
+                result = audit_batch(args.project_root, args.output_dir or args.project_root / "data/sub_video", portable=args.portable_audit)
             print(base.canonical_bytes(result).decode(), end="")
             return 0 if result.get("ok", True) else 1
         manifest = run(args.project_root, args.output_dir, plan_only=args.plan_only, resume=args.resume,

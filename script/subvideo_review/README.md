@@ -9,6 +9,7 @@
 | 候选和视频 | `data/sub_video/manifest.json` 和 `data/sub_video/videos/`；包含开发集与固定测试集候选。 |
 | 来源与划分 | `data/videos/` 的源视频，以及 `data/splits/three-fold/` 的七份成员文件。片段继承原来源的集合和三折归属。 |
 | 核验提示 | `data/sub_video/audit.json`；仅在它记录的清单摘要与当前清单一致时展示，供人工重点检查。摘要不一致时该筛选不可用，需先核对或重算，不得在审查期间临时替换。 |
+| 核验记录的生成 | 由生成入口写入 `data/sub_video/audit.json`：`python3 -m script.subvideo_generation.generate --audit-only --write-audit`。已有记录时须显式加 `--replace-audit` 才覆盖；批次身份或清单校验不通过时拒绝写入，不会改动既有记录。不传 `--write-audit` 时 `--audit-only` 仍只打印、不写盘。 |
 | 标签规则 | [标签说明](../../docs/label.md)；输入值及组合按当前规则校验。 |
 | 人工审核 | `data/subvideo-review/reviews.json`；首次运行前不存在，之后逐次累积审核修订，并由 Git 跟踪。当前已有 3 个已确认候选的试审记录。审核后需提交记录，视频和本地锁文件不进入 Git。 |
 

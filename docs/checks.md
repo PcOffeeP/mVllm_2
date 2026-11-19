@@ -18,13 +18,13 @@
 | 层 | 这一层管什么 | 检查项数量 | 绿·黄·红·孤儿 | 一句话结论 |
 |---|---|---|---|---|
 | 源数据（标注表、划分、裁剪区域 ROI） | 原始标注、数据划分、画面裁剪这些输入对不对 | 20 | 18·2·0·0 | 能跑、能过，但两处记录与当前文件对不上（内容等价，未列入第 4 节）。 |
-| 子视频生成（把源视频切成候选片段那一步） | 片段怎么切、规则怎么派、批次怎么续跑 | 32 | 0·29·2·1 | 唯一的 2 个红项在这里；整套检查要单独跑，本次没跑完。 |
+| 子视频生成（把源视频切成候选片段那一步） | 片段怎么切、规则怎么派、批次怎么续跑 | 32 | 1·29·2·0 | 红项 3 个：本层 L2-30、L2-31，以及文档与事实层的 L5-02；整套检查需单独运行（不在默认 pytest 范围内）；审计写盘入口已具备（29 例测试覆盖），但当前批次因身份漂移未产出记录。 |
 | 人工审核（你看片打标签的界面） | 审核服务、ROI 决策、标注审核 | 16 | 15·1·0·0 | 跑得过；但审核页的「标签组合待复核」筛选现在用不了。 |
 | 模型评价（评分器与模型输入记录） | 评分器、帧来源链、清单转换、推理入口 | 17 | 15·0·0·2 | 在跑的这部分是好的；模型交付校验已删。 |
 | 文档与事实（`docs/facts.yaml` 那套「哪句话有出处」的记录） | 文档里的证据还对不对得上原文 | 6 | 3·1·1·1 | 校验程序已移植回 `script/checks/facts.py`，实测 0 条位置漂移、3 条原文消失；标题/锚点校验仍缺。 |
 | 仓库卫生（哪些文件该进版本库、哪些不该） | 仓库布局、旧路径、Git 忽略规则 | 43 | 0·39·0·4 | 39 个检查被静默跳过，从未真正跑过。 |
 
-六层合计 20+32+16+17+6+43=134；绿 51、黄 72、红 3、孤儿 8。
+六层合计 20+32+16+17+6+43=134；绿 52、黄 72、红 3、孤儿 7。
 
 ## 3. 主表：只列「需要你知道」的检查
 
@@ -32,9 +32,9 @@
 
 | 编号 | 它在管什么（人话，一句话） | 检查的输入 → 输出的判断 | 谁在跑 | 状态 | 怎么自己确认它现在是这个状态 |
 |---|---|---|---|---|---|
-| L2-30 | 审计记录里的清单摘要与当前清单是否一致 | `data/sub_video/audit.json:3` 的清单摘要 → 必须与当前清单摘要一致 | 没人跑；该记录现在只被审阅服务读取 | 红 | 打开 `data/sub_video/audit.json` 看第 3 行，与 `data/sub_video/manifest.json` 当前内容算出的摘要比对 |
-| L2-31 | 审计记录里的运行摘要是否属于当前批次 | `data/sub_video/audit.json:12` 的运行摘要 → 必须是当前批次 | 没人跑 | 红 | 打开 `data/sub_video/audit.json` 看第 12 行，再打开 `data/sub_video/superseded-20261113/audit.json` 看同一字段，两者相同即说明是上一批次 |
-| L2-32 | 有没有程序负责生成和维护审计文件 | `script/subvideo_generation/generate.py` 的写文件动作 → 应当生成或维护 `audit.json` | 没有任何程序 | 孤儿 | 在 `script/subvideo_generation/generate.py` 里搜索 `audit.json`，看不到写文件动作；只有 `script/subvideo_review/server.py:154` 读取它 |
+| L2-30 | 审计记录里的清单摘要与当前清单是否一致 | `data/sub_video/audit.json:3` 的清单摘要 → 必须与当前清单摘要一致 | 无人定期跑；写盘能力已具备，但当前批次身份已漂移（`docs/subvideo-current-logic.md` 在批次写入后被改），生成入口按 fail-closed 拒绝写盘，记录仍是上一批次的 | 红 | 打开 `data/sub_video/audit.json` 看第 3 行，与 `data/sub_video/manifest.json` 当前内容算出的摘要比对 |
+| L2-31 | 审计记录里的运行摘要是否属于当前批次 | `data/sub_video/audit.json:12` 的运行摘要 → 必须是当前批次 | 无人定期跑；当前批次身份已漂移，审计按 fail-closed 拒绝写盘，记录仍是上一批次的 | 红 | 打开 `data/sub_video/audit.json` 看第 12 行，再打开 `data/sub_video/superseded-20261113/audit.json` 看同一字段，两者相同即说明是上一批次 |
+| L2-32 | 有没有程序负责生成和维护审计文件 | `script/subvideo_generation/generate.py` 的写文件动作 → 应当生成或维护 `audit.json` | 生成入口已具备写盘能力（`--write-audit` / `--replace-audit`，fail-closed + 原子写），有 29 例测试守住 | 绿 | 运行 `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q script/subvideo_generation/tests/test_audit_record_writes.py`，看到 29 例通过 |
 | L4-16 | 模型/服务交付时的批次身份对不对 | 交付产物与约定规则 → 身份一致才放行 | 没有；脚本已删除 | 孤儿 | 仓库里找不到 `scripts/serve_validate_delivery.py` |
 | L4-17 | 模型/服务有没有越界输出 | 服务响应与允许范围 → 不越界 | 没有；脚本已删除 | 孤儿 | 仓库里找不到 `scripts/serve_validate_no_oob.py` |
 | L5-01 | 文档证据的行号是否还指得到原文 | `docs/facts.yaml` 的 ref 证据 → 行号与原文对得上 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 绿 | 运行该 `--json` 命令，看 `totals.drift`（本次实测 0 条漂移，204 条通过） |
@@ -61,9 +61,9 @@
 
 六件事按优先级排好了；时间只够做三件时，按 1、2、3 的顺序做。
 
-1. **`docs/facts.yaml` 的 287 条证据没有校验器。** 原 1132 行校验程序 `scripts/verify_design_facts.py` 在 2026-11-14 随 `scripts/` 目录一起删除；`docs/facts.yaml` 头部注释自己也承认「当前无自动校验器，evidence 的行号、路径存在性与 expect 匹配须人工核对」。影响是事实记录与代码、文档之间的连接正在断裂：本次复核 287 条里 214 条能在本机核对，其中 27 条在原行号找不到原句（23 条只是句子挪了位置，4 条句子已被改写或消失）；另有 73 条标记「证据取自原工作区」，80 条引用指向 21 个本机没有检出的文件，都无法核对。修它要先决定那 73 + 80 条无法核对的证据是保留、补充文件还是删除；然后恢复或重写一个校验器，逐条修正 27 条漂移或消失的证据。修好之后，文档引用的行号、原文、仓库路径再发生变化时，校验器会在第一时间报错，而不是等到审计才发现。 2026-11-19 已把该校验器移植回 `script/checks/facts.py`，本次实测报告 204 条通过 / 0 条位置漂移 / 3 条原文消失，另有 80 条本机无法核对；DF-044 的 `affects` 已修正，条目级结构错误实测为 0。
+1. **`docs/facts.yaml` 的 287 条证据里仍有 3 条原文消失。** 校验器已于 2026-11-19 移植回 `script/checks/facts.py`（默认报告模式、`--strict` 拦截），`docs/facts.yaml` 头部注释也已同步改写成「由该脚本核对」，不再声称「当前无自动校验器」。最近一次实测（`.venv/bin/python -m script.checks.facts --json`）的分布是：通过 204、位置漂移 0、原文消失 3、本机无法核对 80，合计 287。影响是仍有 3 条事实记录与原文的连接断了：其 `expect` 在全文找不到，需要补回文件、改路径或删除条目；另有 80 条引用的路径在本机未检出（sparse-checkout），只能在原工作区或训练机上核对。标题与锚点校验仍未移植（台账 L5-06 记为孤儿）。修好之后，文档引用的行号、原文、仓库路径再发生变化时，校验器会在第一时间报错，而不是等到审计才发现。DF-044 的 `affects` 已修正，条目级结构错误实测为 0。
 
-2. **`data/sub_video/audit.json` 没人生成、没人维护，内容却属于上一批次。** 文件大小 12,022 字节；第 3 行的清单摘要和第 12 行的运行摘要，与 `data/sub_video/superseded-20261113/audit.json` 的对应字段逐字符相同；生成入口 `script/subvideo_generation/generate.py` 里没有该文件名字面量，也没有写文件动作，审计结果只打印到屏幕。影响是审核页的「标签组合待复核」筛选现在不可用；`audit.json` 里记着 54 条候选（判据为「未断裂且断后脱夹」51 条 + 「未断裂且爆炸性断裂」6 条，并集 54 条），这些候选只能靠人工线下复算。修它要决定 `audit.json` 是改成由生成脚本写入、还是由审阅服务维护、或者干脆删除；如果保留，必须让生成或审阅程序在每次批次运行时更新它。修好之后，审核页筛选能实时给出正确结果，以后不会再把上一批次的审计记录当成当前批次用。
+2. **审计记录写入入口现已具备，但当前批次产不出核验记录。** 显式执行 `--audit-only --write-audit` 可写入；已有记录须显式加 `--replace-audit` 才覆盖。批次身份或清单校验不通过时 fail-closed 拒绝写入且不改动既有记录；写盘为原子替换，有 29 例测试守住。当前批次身份已漂移：`docs/subvideo-current-logic.md` 在批次清单写入（`6859f9a`，2026-11-15）之后被 `267096f`（2026-11-16）改动，记录中的清单摘要 `5828cb1a…` 与当前 `ca50492d…` 不一致；该漂移与本次代码改动无关，用 `git show HEAD:` 的旧版本跑出同一异常。`data/sub_video/audit.json` 仍是上一批次内容（12,022 字节，第 3 行清单摘要与第 12 行运行摘要与 `data/sub_video/superseded-20261113/audit.json` 逐字符相同）；54 条候选（「未断裂且断后脱夹」51 条 + 「未断裂且爆炸性断裂」6 条，并集 54 条）仍只能线下复算，审核页「标签组合待复核」筛选仍不可用。要恢复该批次的核验记录，需重生成批次；或在重生成前不依赖该记录（L2-30、L2-31 因此保持红）。
 
 3. **仓库卫生的 39 个检查被静默跳过。** `tests/test_layout_migration_guard.py:65` 和 `tests/test_project_workspace.py:10` 在模块级依赖 `pipeline` 包，条件不满足就整体跳过；而 `pipeline/` 目录因为仓库只检出部分目录而不在本机。影响是运行默认测试时报告「640 passed, 2 skipped」，这 39 个检查一个都没跑；「测试全绿」会让人误以为仓库布局与忽略规则已经成立。修它要么把缺失的 `pipeline/` 目录也检出来，要么把这两个测试改成不依赖该目录也能跑，要么把仓库卫生检查从依赖模块里解耦。修好之后，仓库扁平化布局、旧路径字面量、Git 忽略规则等 39 项规则会有人真正去跑，不会被静默跳过掩盖。
 
@@ -150,9 +150,9 @@
 | L2-27 | 子视频生成 | 输入、批次模式或模式版本身份不同时拒绝续跑。 | `script/subvideo_generation/generate.py:196` | 续跑或完整批次审计时比较身份 | 黄 |
 | L2-28 | 子视频生成 | 运行期间输入或生成规则发生变化时中止。 | `script/subvideo_generation/generate.py:200` | 运行中的身份复核 | 黄 |
 | L2-29 | 子视频生成 | 完整批次审计比较 summary 与从 manifest 计算的摘要。 | `script/subvideo_generation/generate.py:820` | 显式执行完整批次审计 | 黄 |
-| L2-30 | 子视频生成 | 审计记录的清单摘要与当前 manifest 的摘要不一致。 | `data/sub_video/audit.json:3` | 只读计算当前清单摘要并对照记录 | 红 |
-| L2-31 | 子视频生成 | 审计记录的本轮运行摘要属于上一批次；当前和 superseded 审计文件均为 12022 字节且两个记录摘要相同。 | `data/sub_video/audit.json:12` | 对照旧审计文件与记录摘要 | 红 |
-| L2-32 | 子视频生成 | 没有程序生成或维护 audit.json；generate.py 无该字面量、write_text 或 json.dump，审计结果只打印；仓库中仅审阅服务读取该文件。 | `script/subvideo_generation/generate.py:953`；读取位置 `script/subvideo_review/server.py:154` | 不存在自动生成或维护触发 | 孤儿 |
+| L2-30 | 子视频生成 | 审计记录的清单摘要与当前 manifest 的摘要不一致。当前批次身份已漂移（`docs/subvideo-current-logic.md` 在批次写入后被改），审计按 fail-closed 拒绝写盘，记录仍是上一批次的；写盘能力本身可用。 | `data/sub_video/audit.json:3` | 只读计算当前清单摘要并对照记录 | 红 |
+| L2-31 | 子视频生成 | 审计记录的本轮运行摘要属于上一批次；当前和 superseded 审计文件均为 12022 字节且两个记录摘要相同。当前批次身份已漂移（`docs/subvideo-current-logic.md` 在批次写入后被改），审计按 fail-closed 拒绝写盘，记录仍是上一批次的；写盘能力本身可用。 | `data/sub_video/audit.json:12` | 对照旧审计文件与记录摘要 | 红 |
+| L2-32 | 子视频生成 | 生成入口已具备审计记录写盘能力（`--write-audit` / `--replace-audit`，fail-closed + 原子写 + 显式覆盖 + 单锁临界区），有 29 例测试守住；当前批次因身份漂移未产出记录（见 L2-30、L2-31）。 | `script/subvideo_generation/generate.py:925`，写盘函数 `write_audit_record`；读取位置 `script/subvideo_review/server.py:154` | 显式执行 `--audit-only --write-audit`（覆盖需 `--replace-audit`），另有 29 例测试 | 绿 |
 
 ### 人工审核层（L3）
 
@@ -256,7 +256,7 @@
 | L6-42 | 仓库卫生 | Git 钩子目录只有 `*.sample` 样例（`git rev-parse --git-path hooks` 指向的目录）。 | 当前不存在：钩子目录仅含样例 | 无 | 孤儿 |
 | L6-43 | 仓库卫生 | `tests/test_verify_design_facts.py`、`tests/test_serve_validate_delivery.py` 与 `tests/test_environment_deployment.py` 已从索引移除，磁盘上也没有。 | 当前不存在：索引和磁盘均无 | 无 | 孤儿 |
 
-六层 20+32+16+17+6+43=134；绿 51、黄 72、红 3、孤儿 8。
+六层 20+32+16+17+6+43=134；绿 52、黄 72、红 3、孤儿 7。
 
 ## 7. 这份台账自己的失效条件
 
