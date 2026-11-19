@@ -21,10 +21,10 @@
 | 子视频生成（把源视频切成候选片段那一步） | 片段怎么切、规则怎么派、批次怎么续跑 | 32 | 0·29·2·1 | 唯一的 2 个红项在这里；整套检查要单独跑，本次没跑完。 |
 | 人工审核（你看片打标签的界面） | 审核服务、ROI 决策、标注审核 | 16 | 15·1·0·0 | 跑得过；但审核页的「标签组合待复核」筛选现在用不了。 |
 | 模型评价（评分器与模型输入记录） | 评分器、帧来源链、清单转换、推理入口 | 17 | 15·0·0·2 | 在跑的这部分是好的；模型交付校验已删。 |
-| 文档与事实（`docs/facts.yaml` 那套「哪句话有出处」的记录） | 文档里的证据还对不对得上原文 | 6 | 2·1·2·1 | 校验程序已移植回 `script/checks/facts.py`，实测 0 条位置漂移、3 条原文消失；标题/锚点校验仍缺。 |
+| 文档与事实（`docs/facts.yaml` 那套「哪句话有出处」的记录） | 文档里的证据还对不对得上原文 | 6 | 3·1·1·1 | 校验程序已移植回 `script/checks/facts.py`，实测 0 条位置漂移、3 条原文消失；标题/锚点校验仍缺。 |
 | 仓库卫生（哪些文件该进版本库、哪些不该） | 仓库布局、旧路径、Git 忽略规则 | 43 | 0·39·0·4 | 39 个检查被静默跳过，从未真正跑过。 |
 
-六层合计 20+32+16+17+6+43=134；绿 50、黄 72、红 4、孤儿 8。
+六层合计 20+32+16+17+6+43=134；绿 51、黄 72、红 3、孤儿 8。
 
 ## 3. 主表：只列「需要你知道」的检查
 
@@ -37,7 +37,7 @@
 | L2-32 | 有没有程序负责生成和维护审计文件 | `script/subvideo_generation/generate.py` 的写文件动作 → 应当生成或维护 `audit.json` | 没有任何程序 | 孤儿 | 在 `script/subvideo_generation/generate.py` 里搜索 `audit.json`，看不到写文件动作；只有 `script/subvideo_review/server.py:154` 读取它 |
 | L4-16 | 模型/服务交付时的批次身份对不对 | 交付产物与约定规则 → 身份一致才放行 | 没有；脚本已删除 | 孤儿 | 仓库里找不到 `scripts/serve_validate_delivery.py` |
 | L4-17 | 模型/服务有没有越界输出 | 服务响应与允许范围 → 不越界 | 没有；脚本已删除 | 孤儿 | 仓库里找不到 `scripts/serve_validate_no_oob.py` |
-| L5-01 | 文档证据的行号是否还指得到原文 | `docs/facts.yaml` 的 ref 证据 → 行号与原文对得上 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 红 | 运行该 `--json` 命令，看 `totals.drift`（实测 23） |
+| L5-01 | 文档证据的行号是否还指得到原文 | `docs/facts.yaml` 的 ref 证据 → 行号与原文对得上 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 绿 | 运行该 `--json` 命令，看 `totals.drift`（本次实测 0 条漂移，204 条通过） |
 | L5-02 | 文档证据的 expect 断言是否还成立 | `docs/facts.yaml` 的 expect 字段 → 断言内容仍与原文一致 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 红 | 运行该 `--json` 命令，看 `totals.gone`（实测 3，表示 expect 在全文都找不到） |
 | L5-03 | 文档里写的仓库路径是否真实存在 | Markdown 中的仓库内路径 → 路径存在 | `.venv/bin/python -m script.checks.facts --check-doc-paths` | 黄 | 运行该命令，会看到 41 个受跟踪 Markdown「无法读取」后退出 1（sparse-checkout 未检出，尚给不出路径判定） |
 | L5-04 | 文档记录格式的状态取值是否合法 | `docs/facts.yaml` 的状态字段 → 取值在允许列表内 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 绿 | 运行该 `--json` 命令，看 `structure_errors`：49 条 state 全部合法，DF-044 的 `affects` 已修正，`structure_errors` 实测为 0 |
@@ -201,7 +201,7 @@
 
 | 编号 | 层 | 一句话说明 | 位置 | 触发方式 | 状态 |
 |---|---|---|---|---|---|
-| L5-01 | 文档与事实 | 证据行号位置漂移实测 0 条。 | `script/checks/facts.py` | `--json` | 红 |
+| L5-01 | 文档与事实 | 证据行号位置漂移本次实测 0 条（204 条通过）。 | `script/checks/facts.py` | `--json` | 绿 |
 | L5-02 | 文档与事实 | expect 在全文找不到实测 3 条。 | `script/checks/facts.py` | `--json` | 红 |
 | L5-03 | 文档与事实 | sparse-checkout 下 41 个受跟踪 Markdown 无法读取，尚不能判定路径。 | `script/checks/facts.py`；`script/checks/doc-path-allowlist.txt` | `--check-doc-paths` | 黄 |
 | L5-04 | 文档与事实 | 49 条 state 合法；DF-044 的 affects 已修正，`structure_errors` 实测为 0。 | `script/checks/facts.py` | `--json` | 绿 |
@@ -256,7 +256,7 @@
 | L6-42 | 仓库卫生 | Git 钩子目录只有 `*.sample` 样例（`git rev-parse --git-path hooks` 指向的目录）。 | 当前不存在：钩子目录仅含样例 | 无 | 孤儿 |
 | L6-43 | 仓库卫生 | `tests/test_verify_design_facts.py`、`tests/test_serve_validate_delivery.py` 与 `tests/test_environment_deployment.py` 已从索引移除，磁盘上也没有。 | 当前不存在：索引和磁盘均无 | 无 | 孤儿 |
 
-六层 20+32+16+17+6+43=134；绿 50、黄 72、红 4、孤儿 8。
+六层 20+32+16+17+6+43=134；绿 51、黄 72、红 3、孤儿 8。
 
 ## 7. 这份台账自己的失效条件
 
