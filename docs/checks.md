@@ -49,13 +49,13 @@
 | L6-43 | 已删除校验器的回归测试是否还留在索引里 | Git 索引与磁盘文件 → 索引中的测试文件在磁盘上存在 | 没有；磁盘上没有，跑不到 | 孤儿 | `tests/test_verify_design_facts.py`、`tests/test_serve_validate_delivery.py`、`tests/test_environment_deployment.py` 已从索引移除，磁盘上也没有 |
 | L1-03 | 标注表的非法取值与标签组合 | 标注表记录 → 缺少 ID、重复 ID、空标签、非法枚举、不合法标签组合都被拒绝 | `script/data_split/tests/test_generate.py:132` | 绿 | 运行 `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/data_split/tests`，该测试通过 |
 | L1-13 | ROI 输出的画面尺寸、时长、方向 | ROI 输出媒体 → 几何、时间、方向符合要求才验收 | `script/roi/tests/test_core.py:328` | 绿 | 运行 `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/roi/tests`，该测试通过 |
-| L3-16 | 审核与评分的集成行为 | 集成测试集 → 82 项行为检查通过 | 默认 pytest；本次实测 717 项通过（另有 20 项具名跳过），其中集成 82 项 | 绿 | 运行默认 `pytest`，看到集成测试通过 |
+| L3-16 | 审核与评分的集成行为 | 集成测试集 → 82 项行为检查通过 | 默认 pytest；本次实测 728 项通过（另有 20 项具名跳过），其中集成 82 项 | 绿 | 运行默认 `pytest`，看到集成测试通过 |
 | L4-01 | 评分器检查身份字段和文件指纹格式 | 评分文件 → 身份字段存在、文件指纹格式正确 | `script/five_label_eval/score.py:91` | 绿 | 运行默认 `pytest` 中评价相关测试，或打开 `script/five_label_eval/score.py:91` 看校验逻辑 |
 | L1-01…L1-02 | 标注表与划分清单的历史记录是否还对应得上当前文件 | 记录中的文件指纹与当前文件 → 指纹一致 | 测试会跑，但记录本身在漂移 | 黄 | 打开 `data/split-inputs/source-groups-20261107.json:6` 与 `data/splits/three-fold/manifest.json:256`，比对记录中的文件指纹和当前文件 |
 | L2-01…L2-29 | 子视频生成全阶段的契约与身份校验 | 源视频、标注、规则 → 片段、覆盖、续跑、审计都符合规则 | 须单独运行该目录测试 | 黄 | 打开 `pyproject.toml` 第 19 行，看默认测试范围里没有 `script/subvideo_generation/tests` |
 | L3-08 | 审核页「标签组合待复核」筛选 | 批次核验记录与清单 → 摘要一致时筛选可用 | 审核页加载触发；核验记录缺失时静默跳过 | 黄 | 新批次生成后核对其记录与筛选 |
 | L3-15 | 审核服务与标注审核的测试 | 对应测试目录 → 45 + 10 项检查通过 | 默认 pytest；审核服务和标注审核测试均通过 | 绿 | 运行默认 `pytest`，收集审核服务 45 项、标注审核 10 项，全部通过 |
-| L6-01…L6-39 | 仓库布局与忽略规则 | 仓库文件结构 → 布局符合扁平化规则、忽略规则覆盖到位 | 默认 `pytest` 会收集全部 63 个测试条目 | 19·20·0（绿·黄·红） | 运行默认 `pytest`，报告显示 `717 passed, 20 skipped`；加 `-rs` 可逐条看到 20 条跳过理由：18 条为 sparse-checkout 未检出 `pipeline/`、2 条为未检出 `versioning/backup.py` |
+| L6-01…L6-39 | 仓库布局与忽略规则 | 仓库文件结构 → 布局符合扁平化规则、忽略规则覆盖到位 | 默认 `pytest` 会收集全部 63 个测试条目 | 19·20·0（绿·黄·红） | 运行默认 `pytest`，报告显示 `728 passed, 20 skipped`；加 `-rs` 可逐条看到 20 条跳过理由：18 条为 sparse-checkout 未检出 `pipeline/`、2 条为未检出 `versioning/backup.py` |
 
 ## 4. 现在最该处理的六件事
 
@@ -65,9 +65,9 @@
 
 2. **审计记录写入入口仍在，但旧批次对象已退役。** 显式执行 `--audit-only --write-audit` 可写入；已有记录须显式加 `--replace-audit` 才覆盖。批次身份或清单校验不通过时 fail-closed 拒绝写入；写盘为原子替换，有 29 例测试覆盖。旧批次的清单与核验记录已移除，当前无可查对象，L2-30 和 L3-08 在核验记录缺失时静默跳过，记为黄；L2-31 无现行生产比较程序，记为孤儿；新批次生成后以该批次清单和核验记录为准。
 
-3. **仓库卫生 39 项检查已从「静默跳过」改为「19 项执行通过 + 20 项具名跳过」。** 两个文件原本在模块级 `pytest.importorskip("pipeline")`，条件不满足就整文件跳过，默认测试报告 `660 passed, 2 skipped`，这 39 项一个都没跑。现改为惰性依赖：不依赖 `pipeline` 的用例直接执行（`tests/test_layout_migration_guard.py` 的 T1/T2/T3/T5/T6 与 `tests/test_project_workspace.py` 的 Git 忽略用例，两文件共 43 个测试条目实测全通过）；真正依赖 `pipeline` 的 18 项用 `pytest.mark.skipif` 逐条具名跳过，理由写明「sparse-checkout 未检出 pipeline/」；`versioning/backup.py` 的 2 个豁免守卫改用 skip-worktree 探针区分「被 sparse-checkout 排除」（具名跳过）与「文件真丢失」（仍按原来的 `pytest.fail` 硬失败），因此硬失败守卫没有被放宽。实测默认 `pytest` 为 `717 passed, 20 skipped`、0 失败。仍存两点限制：（a）T3 的字面量扫描面在当前检出下只剩 `tests/` 的两个文件与根目录文件——`pipeline`/`versioning`/`finetune`/`delivery` 被 sparse-checkout 排除（HEAD 跟踪 116 个 `pipeline` 文件，磁盘上一个都没有），所以「旧布局字面量清零」的本机结论不等于全仓结论；同理 L6-08 在当前检出下没有可扫的备份模块，是通过但空转。（b）20 项跳过条目的断言本体（含 `tests/test_project_workspace.py` 里 12 处 `pytest.raises` 的 match 文案）在本机完全没有执行，只是计数可见，不等于已验证。要把这 20 项也真跑，需把 `/pipeline/`、`/versioning/` 加进 `git sparse-checkout` 白名单后重跑同一条命令，届时这些用例会自动转为执行。
+3. **仓库卫生 39 项检查已从「静默跳过」改为「19 项执行通过 + 20 项具名跳过」。** 两个文件原本在模块级 `pytest.importorskip("pipeline")`，条件不满足就整文件跳过，默认测试报告 `660 passed, 2 skipped`，这 39 项一个都没跑。现改为惰性依赖：不依赖 `pipeline` 的用例直接执行（`tests/test_layout_migration_guard.py` 的 T1/T2/T3/T5/T6 与 `tests/test_project_workspace.py` 的 Git 忽略用例，两文件共 43 个测试条目实测全通过）；真正依赖 `pipeline` 的 18 项用 `pytest.mark.skipif` 逐条具名跳过，理由写明「sparse-checkout 未检出 pipeline/」；`versioning/backup.py` 的 2 个豁免守卫改用 skip-worktree 探针区分「被 sparse-checkout 排除」（具名跳过）与「文件真丢失」（仍按原来的 `pytest.fail` 硬失败），因此硬失败守卫没有被放宽。实测默认 `pytest` 为 `728 passed, 20 skipped`、0 失败。仍存两点限制：（a）T3 的字面量扫描面在当前检出下只剩 `tests/` 的两个文件与根目录文件——`pipeline`/`versioning`/`finetune`/`delivery` 被 sparse-checkout 排除（HEAD 跟踪 116 个 `pipeline` 文件，磁盘上一个都没有），所以「旧布局字面量清零」的本机结论不等于全仓结论；同理 L6-08 在当前检出下没有可扫的备份模块，是通过但空转。（b）20 项跳过条目的断言本体（含 `tests/test_project_workspace.py` 里 12 处 `pytest.raises` 的 match 文案）在本机完全没有执行，只是计数可见，不等于已验证。要把这 20 项也真跑，需把 `/pipeline/`、`/versioning/` 加进 `git sparse-checkout` 白名单后重跑同一条命令，届时这些用例会自动转为执行。
 
-4. **默认测试命令覆盖 8 个测试目录。** 默认范围实测收集 737 项，其中 717 项通过、20 项具名跳过、0 项失败；9 个测试目录中唯一不在默认范围的是 `script/subvideo_generation/tests`（337 项，需单独按需运行）。按实际执行数计算，默认覆盖 717/1074 ≈ 66.8%（1074 = 717 通过 + 20 跳过 + 337 未纳入默认范围）；子视频生成测试此前耗时超过 10 分钟仍未跑完，需要按需单独运行。
+4. **默认测试命令覆盖 8 个测试目录。** 默认范围实测收集 748 项，其中 728 项通过、20 项具名跳过、0 项失败；9 个测试目录中唯一不在默认范围的是 `script/subvideo_generation/tests`（337 项，需单独按需运行）。按实际执行数计算，默认覆盖 728/1085 ≈ 67.1%（1085 = 728 通过 + 20 跳过 + 337 未纳入默认范围）；子视频生成测试此前耗时超过 10 分钟仍未跑完，需要按需单独运行。
 
 5. **划分清单与 ROI 清单里记录的文件指纹，没有任何程序回读比对。** 指纹分别写入 `script/data_split/generate.py:530` 和 `script/roi/core.py:416`；只有测试会比对，生产链路不检查。影响是输入换了、产物没换也没人发现；本次已实证：`data/splits/three-fold/manifest.json:256` 起的 12 项输入记录中，4 项与当前文件对不上（`docs_label.md`、`generate.py`、`labels.csv` 内容已变；`docs_data-split-design.md` 已改名为 `docs/split/data-split-design.md` 且内容亦变），另 6 个 `old_fold_*` 快照从未入库，一直没人发现。修它要在划分和 ROI 的入口程序里加入回读比对：每次读取清单时，先核对清单里记录的文件指纹是否与磁盘当前文件一致；不一致时拒绝继续或要求重新生成。修好之后，输入文件悄悄被替换、重命名或内容变更时，程序会停下来要求确认，不会继续用旧清单跑。（2026 年 11 月补记，仅作登记、不新增检查项也不改计数：ROI 清单记录的是绝对路径，读取逻辑已改为「存在即用、缺失则按显式项目根解析 `data`/`script`/`docs` 相对后缀、两者皆无则报错」；本机 110 条源/输出路径全部原样可用，重定位路径由 20 例合成测试覆盖（`script/roi/tests/test_manifest_paths.py`）。）
 
@@ -97,7 +97,7 @@
 | 编号 | 层 | 一句话说明 | 位置 | 触发方式 | 状态 |
 |---|---|---|---|---|---|
 | L1-01 | 源数据 | 分组记录的标注表文件指纹与当前表不符；已实测仅 44 个单元格从「无法确定」规范为「无法判断」，两版均为 111 行 × 28 列、表头逐字节相同、其余内容等价，不是真问题。 | `data/split-inputs/source-groups-20261107.json:6` | 查看记录并与当前标注表比对 | 黄 |
-| L1-02 | 源数据 | 划分清单的 12 项输入记录中，`docs_label.md`、`generate.py`、`labels.csv` 内容已变，`docs_data-split-design.md` 已改名为 `docs/split/data-split-design.md` 且内容亦变；6 个 `old_fold_*` 快照从未入库，`groups.json` 和 `test.json` 一致；这是生成后的历史漂移，不代表划分失效。 | `data/splits/three-fold/manifest.json:256` | 查看记录并与当前文件及入库历史比对 | 黄 |
+| L1-02 | 源数据 | 划分清单 12 项输入中，`labels.csv`、`groups.json`、`test.json`、`docs_label.md`、`generate.py` 和对应 `docs/split/data-split-design.md` 的 `docs_data-split-design.md` 共 6 项与当前文件一致；6 项 `old_fold_*` 与当前折文件不同，记录的是替换前旧折指纹，均可用提交 `51d647d` 复核一致；因此清单未失效，但无自动回读校验。 | `data/splits/three-fold/manifest.json:256` | 查看清单 `inputs`，用 `shasum -a 256 docs/split/data-split-design.md docs/label.md script/data_split/generate.py data/split-inputs/source-groups-20261107.json data/annotation-table-full.csv data/splits/three-fold/*.json` 比对当前文件；对每个旧折执行例如 `git show 51d647d:data/splits/three-fold/fold_0_val.json > /tmp/old-fold-check.json; shasum -a 256 /tmp/old-fold-check.json`，与对应 `old_fold_0_val.json` 记录比对 | 黄 |
 | L1-03 | 源数据 | 缺少 ID、重复 ID、空标签、非法枚举或不合法标签组合必须拒绝。 | `script/data_split/tests/test_generate.py:132` | `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/data_split/tests` | 绿 |
 | L1-04 | 源数据 | 旧的不确定性术语归一化为「无法判断」。 | `script/data_split/tests/test_generate.py:153` | `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/data_split/tests` | 绿 |
 | L1-05 | 源数据 | 分组跨测试集边界、成员重复或缺失等声明必须拒绝。 | `script/data_split/tests/test_generate.py:167` | `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/data_split/tests` | 绿 |
