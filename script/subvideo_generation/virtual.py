@@ -94,6 +94,22 @@ def plan_virtual_windows(media: dict) -> list[dict]:
     return windows
 
 
+def _is_allowed_virtual_output(output: Path, project_data: Path) -> bool:
+    """Allow outputs under ``data/virtual/<dataset>/<stage>`` while protecting version inputs."""
+    virtual_root = (project_data / "virtual").resolve()
+    try:
+        rel = output.relative_to(virtual_root)
+    except ValueError:
+        return False
+    # Require at least <dataset>/<stage> so neither data/virtual nor data/virtual/<dataset>
+    # (which holds labels.csv, manifest.json, videos/) can be overwritten.
+    if len(rel.parts) < 2:
+        return False
+    if rel.parts[1] in ("videos", "labels.csv", "manifest.json"):
+        return False
+    return True
+
+
 def _safe_output(root: Path, requested) -> Path:
     """Reject outputs that would overwrite inputs, source code, or the official batch."""
     candidate = Path(requested)
@@ -106,7 +122,7 @@ def _safe_output(root: Path, requested) -> Path:
     if output == official or official in output.parents:
         raise VirtualError("output must not be the official batch directory: " + str(official))
     project_data = (root / "data").resolve()
-    if output == project_data or project_data in output.parents:
+    if (output == project_data or project_data in output.parents) and not _is_allowed_virtual_output(output, project_data):
         raise VirtualError("virtual output must not be written under the project data directory")
     protected = [root / name for name in ("data/videos", "data/roi", "data/splits", "data/source",
         "data/annotation", "data/annotation-table-full.csv", "script", "docs", ".git")]

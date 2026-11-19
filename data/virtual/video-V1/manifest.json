@@ -1,0 +1,614 @@
+{
+  "schema": "tensile-virtual-dataset/1",
+  "dataset_id": "video-V1",
+  "source_domain": "virtual",
+  "upstream": {
+    "repo": "BlenderTensileVideo",
+    "dataset_path": "datasets/video-V1",
+    "git_branch": "codex/virtual-eval-supplement",
+    "git_head": "79ae940586ad6d5d5beb92698d7237a7893d7be9",
+    "working_tree_dirty": true,
+    "manifest_sha256": "662693ddb70cf9bb94c79d57087cd33cffca97072fc45a4896aa964ae3b56444",
+    "confirmed_on": "2026-10-10",
+    "status": "user_confirmed_first_validation_simulation_dataset",
+    "imported_at": "2026-11-19T02:19:37+00:00",
+    "omitted_upstream_assets": [
+      "metadata/"
+    ]
+  },
+  "labels": {
+    "path": "labels.csv",
+    "sha256": "a236073d548fb8d1ce7a73c6118b0cf7eb64887a17e10bcd89bedb4a93c43a5d",
+    "row_count": 65,
+    "format_reference": "annotation-table-full.csv"
+  },
+  "video_count": 65,
+  "total_video_bytes": 28732471,
+  "videos": [
+    {
+      "id": "metal_round_ductile_baseline_v1",
+      "video_path": "videos/metal_round_ductile_baseline_v1.mp4",
+      "sha256": "acb37f0e079e850d4d0562bfd2af487e0b809bcf069e1b3af2652631ebe23b6f",
+      "bytes": 509159,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_round_brittle_baseline_v1",
+      "video_path": "videos/metal_round_brittle_baseline_v1.mp4",
+      "sha256": "19b3f862a13f4c38200f41bc56e05171cc10ec6721859aeeb97b1b09b22ddc08",
+      "bytes": 439228,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_black_dogbone_baseline_v2",
+      "video_path": "videos/polymer_black_dogbone_baseline_v2.mp4",
+      "sha256": "709bb8db6ee6bdbd28692d40b57f5e6d4248b1bb1368d9b045e8efd8a62b2eb7",
+      "bytes": 420627,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_yellow_film_grip_root_baseline_v2",
+      "video_path": "videos/polymer_yellow_film_grip_root_baseline_v2.mp4",
+      "sha256": "6dae1dcc436a826b095a99e0e78baa1a444199eea03800875c5f10cff81cbece",
+      "bytes": 433692,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_brittle_lower_feedback_v0_3",
+      "video_path": "videos/composite_brittle_lower_feedback_v0_3.mp4",
+      "sha256": "fed17e58fe19af53240695aec7c464df4574aa55210980dc1e48fb78f0be404a",
+      "bytes": 379836,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "ceramic_dogbone_brittle_baseline_v1",
+      "video_path": "videos/ceramic_dogbone_brittle_baseline_v1.mp4",
+      "sha256": "0fe9e04c0b921765b56b98cdc5b92ee0e7b8a234e345dacb0c5dc79a677e246c",
+      "bytes": 506138,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_interface_debond_simultaneous_baseline_v0_4",
+      "video_path": "videos/composite_interface_debond_simultaneous_baseline_v0_4.mp4",
+      "sha256": "ff4b576ffd2c29a7c9812ce161ea4f8433993fe013183e5d082d9d7e3a963581",
+      "bytes": 386177,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_pale_green_brittle_flat_strip_baseline_v1",
+      "video_path": "videos/polymer_pale_green_brittle_flat_strip_baseline_v1.mp4",
+      "sha256": "5c7d0fd1f5a519c7040a99101a2dbb79a43cb04e7c474b1c4e14a3d206226ddc",
+      "bytes": 268157,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_finite_deformation_oblique_rupture_baseline_v1",
+      "video_path": "videos/polymer_finite_deformation_oblique_rupture_baseline_v1.mp4",
+      "sha256": "63bf46edbf5065c37f3114e864fb3f7fca5b41fbbcc259e38c51bcdf1dfbfeb6",
+      "bytes": 728220,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_rapid_strand_fragmentation_baseline_v0_1",
+      "video_path": "videos/composite_rapid_strand_fragmentation_baseline_v0_1.mp4",
+      "sha256": "7216102004e389b2472c15f382984a21e0d55038ad5066eedb2ba5e020e6881d",
+      "bytes": 381905,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_flat_limited_deformation_rupture_baseline_v1",
+      "video_path": "videos/metal_flat_limited_deformation_rupture_baseline_v1.mp4",
+      "sha256": "b1e9ec7b708cdf621721b4e1300506d002f51f5f59907489279a8c71bcb6d065",
+      "bytes": 230710,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_round_ductile_stage1_a2_v1",
+      "video_path": "videos/metal_round_ductile_stage1_a2_v1.mp4",
+      "sha256": "30e92252e1d53c89d9bf56ec5738cb183f0bd7d297d74af887af86394fd4638d",
+      "bytes": 515878,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_round_brittle_stage1_center_p075_v1",
+      "video_path": "videos/metal_round_brittle_stage1_center_p075_v1.mp4",
+      "sha256": "9c76f1f2a0b91797ec3637e309259b94f8e14b0683f028f0a15c388b33645bc8",
+      "bytes": 481046,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_black_dogbone_stage1_stretch085_v1",
+      "video_path": "videos/polymer_black_dogbone_stage1_stretch085_v1.mp4",
+      "sha256": "a8fa1902111210a45fff4d616ee5e620743f253d8cdbde63e3beed4a80593ed6",
+      "bytes": 473160,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_stage1_position055_v1",
+      "video_path": "videos/polymer_brittle_stage1_position055_v1.mp4",
+      "sha256": "a0e084d4e056e37e3a6c9d5f173bcac04e9e3d50cce7a1ca5a436162d8e10048",
+      "bytes": 268130,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_mixed_stage1_stretch115_v1",
+      "video_path": "videos/polymer_mixed_stage1_stretch115_v1.mp4",
+      "sha256": "1e6efd113d7e510615870599b32383f37ccdd2a04d167d364890414342366935",
+      "bytes": 725867,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_brittle_stage1_position_minus012_v1",
+      "video_path": "videos/composite_brittle_stage1_position_minus012_v1.mp4",
+      "sha256": "2372c4c4108ef2696f8e2ede4fcb62ff65b8747d4d13f74f2abad11075478e21",
+      "bytes": 380381,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_debond_stage1_length080_v1",
+      "video_path": "videos/composite_debond_stage1_length080_v1.mp4",
+      "sha256": "4628f018e1fe17bc66fa3baf9a994a182d77645005342ab94432d3327a617387",
+      "bytes": 386961,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_debond_stage1_opening120_v1",
+      "video_path": "videos/composite_debond_stage1_opening120_v1.mp4",
+      "sha256": "ef09a7b1f0ed1dd70183a78f7979dfb4dda6cfc58f43046211b545b9da2e47b6",
+      "bytes": 386509,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "ceramic_brittle_stage1_time12_v1",
+      "video_path": "videos/ceramic_brittle_stage1_time12_v1.mp4",
+      "sha256": "90286477080b9341383aea821778f2e1e4dcc5599dff6c40baa39b8fe9102a05",
+      "bytes": 504137,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_round_ductile_coupled_a2_time12_v1",
+      "video_path": "videos/metal_round_ductile_coupled_a2_time12_v1.mp4",
+      "sha256": "e9c8037d2f14372649b66cebb3c59f21501ec3c3d7a6f8e05bf4d8d7f6914a2f",
+      "bytes": 510151,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_round_brittle_coupled_center_p075_time15_v1",
+      "video_path": "videos/metal_round_brittle_coupled_center_p075_time15_v1.mp4",
+      "sha256": "1aec598054a268bd0e8ba0bd705504b2cd8218564b1461e6846c37023df1a849",
+      "bytes": 490247,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_dogbone_coupled_stretch085_time17_v1",
+      "video_path": "videos/polymer_dogbone_coupled_stretch085_time17_v1.mp4",
+      "sha256": "f8b465299eb63cc1f3f30a450acc30416e51456e68c54377aad67fd113830385",
+      "bytes": 466783,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_coupled_position055_time12_v1",
+      "video_path": "videos/polymer_brittle_coupled_position055_time12_v1.mp4",
+      "sha256": "c7e93f5ca20cd38fe93882d73b33425aceedae1b935ddafef4d58a2abcd7f598",
+      "bytes": 267175,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_mixed_coupled_stretch115_time15_v1",
+      "video_path": "videos/polymer_mixed_coupled_stretch115_time15_v1.mp4",
+      "sha256": "a462a2d8403f4397be1093a802baf4917bc36499e7834048bc84485a9b615492",
+      "bytes": 732159,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_brittle_coupled_center_minus195_time12_v1",
+      "video_path": "videos/composite_brittle_coupled_center_minus195_time12_v1.mp4",
+      "sha256": "fed25df11c5aa779c484bd5c415f2534f3d5ce7bb69948443d3ae4a2a434e7c2",
+      "bytes": 369867,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_debond_coupled_length080_opening120_time15_v1",
+      "video_path": "videos/composite_debond_coupled_length080_opening120_time15_v1.mp4",
+      "sha256": "645a632daf815b8b4bb48eb64e9652536e5a992cd45c97c6fec7068703e3b32a",
+      "bytes": 384195,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "ceramic_54c9123982ca",
+      "video_path": "videos/ceramic_54c9123982ca.mp4",
+      "sha256": "641aecc653e5c88369fccff3d58d96656352729c78875ee39e4a541e3eb21aaa",
+      "bytes": 507392,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "ceramic_fafb6d038402",
+      "video_path": "videos/ceramic_fafb6d038402.mp4",
+      "sha256": "4acc117d71ddf8959c321ed355690fa81ad3ee5b4627b94645d8691b96374235",
+      "bytes": 493843,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_brittle_40de05bc8db6",
+      "video_path": "videos/composite_brittle_40de05bc8db6.mp4",
+      "sha256": "b7d80b3fd70dd549423c37b9c0b93f7337fa009144395dc7cdbc0c47ce9c3180",
+      "bytes": 247057,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_brittle_71add4d43545",
+      "video_path": "videos/composite_brittle_71add4d43545.mp4",
+      "sha256": "9a0940ea72dcc5771aac675ecbcb7f19679382fab0699c12cf3277cb4019408b",
+      "bytes": 254767,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_brittle_85e1faca3a2f",
+      "video_path": "videos/composite_brittle_85e1faca3a2f.mp4",
+      "sha256": "72caa9c42c92990c72c1447983b49fd6707d5834e0117464dec30f707e1c5aa3",
+      "bytes": 254642,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "composite_brittle_f8c38a77a63d",
+      "video_path": "videos/composite_brittle_f8c38a77a63d.mp4",
+      "sha256": "f3cf15df21302ad1b6b7932a7d32f6454616b8d51c7c5bb17e0b65557e31f66f",
+      "bytes": 241472,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "debond_19ad315937d9",
+      "video_path": "videos/debond_19ad315937d9.mp4",
+      "sha256": "e1d63ae77184b7f349baedd2f8214a65d653a670bb7dc5d2b0363c5c5bd33ddb",
+      "bytes": 254712,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "debond_3a83e6589f3c",
+      "video_path": "videos/debond_3a83e6589f3c.mp4",
+      "sha256": "cd1b961b8b2797823de92e9cf8d95b4d8f7bbd581061e7dd3c5bec6cddf39992",
+      "bytes": 256144,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "debond_633abced1e80",
+      "video_path": "videos/debond_633abced1e80.mp4",
+      "sha256": "6bb1a62d1b1401bb09e756e7654918f2baeae34517b854de3bc00cef3802250b",
+      "bytes": 253560,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "debond_9a6e9873f857",
+      "video_path": "videos/debond_9a6e9873f857.mp4",
+      "sha256": "fdc8df3d1e643cf5855a4afb19b221850a4146b83e7adb944f5d2c4759cb4b3e",
+      "bytes": 254133,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "debond_f1b9bd026fc6",
+      "video_path": "videos/debond_f1b9bd026fc6.mp4",
+      "sha256": "08ce4e7c85d6ade0c370b940b121b80970ee1a83baa0bb9a54ebd05599d04187",
+      "bytes": 253964,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "debond_f8acebcca850",
+      "video_path": "videos/debond_f8acebcca850.mp4",
+      "sha256": "97108961137d83a4fe0e95c4b486170f882884ac4a02537bf4f214a9da13eeb0",
+      "bytes": 253674,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_brittle_24b9f8453ffd",
+      "video_path": "videos/metal_brittle_24b9f8453ffd.mp4",
+      "sha256": "96b7fc198941bf66bb5f570954656ff3305edc125352d301de186c29a40e66af",
+      "bytes": 464395,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_brittle_5208fef67de7",
+      "video_path": "videos/metal_brittle_5208fef67de7.mp4",
+      "sha256": "22df21c45fe8ecd22c9d0eae507838f8c56ded13dcaa971585285391ce0a0a05",
+      "bytes": 460774,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_brittle_8fd177bc37cd",
+      "video_path": "videos/metal_brittle_8fd177bc37cd.mp4",
+      "sha256": "74fce195156abf7108f65a1d75f74fc5a902de9d731439ef950f770977ae6562",
+      "bytes": 483755,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_brittle_95bf83c84c0a",
+      "video_path": "videos/metal_brittle_95bf83c84c0a.mp4",
+      "sha256": "83c1a8bc7f72ceb15434f32d09a43a67bc8552b3974056253a0a3415460ff2c5",
+      "bytes": 468859,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_brittle_c3f0c995c8ef",
+      "video_path": "videos/metal_brittle_c3f0c995c8ef.mp4",
+      "sha256": "af77f19769bb1cc898025ed6be3c3627f561a722b92161940c2f6df0d2ec713e",
+      "bytes": 483423,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_brittle_cc100241b5f7",
+      "video_path": "videos/metal_brittle_cc100241b5f7.mp4",
+      "sha256": "412cc4be06f6a3c7ae61d86083f1257c7548021cb1e290c9531439333a4eb71e",
+      "bytes": 494604,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_brittle_d113c4e01c83",
+      "video_path": "videos/metal_brittle_d113c4e01c83.mp4",
+      "sha256": "7eabf55a10f678daae08ffb78838bfb22b0ac2598e4ef7371b0964618b2ee21e",
+      "bytes": 454469,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "metal_brittle_dda4b5e6e727",
+      "video_path": "videos/metal_brittle_dda4b5e6e727.mp4",
+      "sha256": "6702dfe11b3750f8a3576d05b07190ced9f30b20670b0843030af8137b57fd15",
+      "bytes": 457682,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_2a9499713a2b",
+      "video_path": "videos/mixed_2a9499713a2b.mp4",
+      "sha256": "254007d33fe8222230c9834da013aebebbcab7b9488eeafa9bef979f72716b47",
+      "bytes": 725359,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_3568deb2ca33",
+      "video_path": "videos/mixed_3568deb2ca33.mp4",
+      "sha256": "3bd9fa61a5688ac68b3d132ff4b3c46c42f25341f654f78e01115f4d48feb22d",
+      "bytes": 731100,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_474c4c10ff01",
+      "video_path": "videos/mixed_474c4c10ff01.mp4",
+      "sha256": "335b929c90bcfc1b8b6aefe376961df258fcc289a8fedf52012bbfb205f57efe",
+      "bytes": 737974,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_6bd6ad919f7f",
+      "video_path": "videos/mixed_6bd6ad919f7f.mp4",
+      "sha256": "6ff0a736678a3ac248a3ffd732236ba820c88375000ff23888d72e6c03cd0c0e",
+      "bytes": 733977,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_8e505bb139b5",
+      "video_path": "videos/mixed_8e505bb139b5.mp4",
+      "sha256": "284eeda4283811ad34525606263406b0256a5a687fa2bd5fb0921a2adb276e3d",
+      "bytes": 726920,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_b6dd4440bb01",
+      "video_path": "videos/mixed_b6dd4440bb01.mp4",
+      "sha256": "e8d380e1a86f367a686af4893b601ab57c685d07b5b3f2334b4474f4c433acb5",
+      "bytes": 732699,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_c25215a9fc08",
+      "video_path": "videos/mixed_c25215a9fc08.mp4",
+      "sha256": "f0042bb4f7a5dbb7af6e5346a19d28d1bdd996a0c9106b7b78e446b3b3e27de2",
+      "bytes": 716655,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_d78ee0af8f98",
+      "video_path": "videos/mixed_d78ee0af8f98.mp4",
+      "sha256": "9c7913b746e43963235e94e829b5b57cb0f3cb760a9c7657aefde9225d7105fa",
+      "bytes": 719800,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_e4b70b9f11d1",
+      "video_path": "videos/mixed_e4b70b9f11d1.mp4",
+      "sha256": "6130391ab53d1350184b15810928de4dd6254ff5b917416546d05332210aa2b4",
+      "bytes": 723389,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "mixed_f22a4a698822",
+      "video_path": "videos/mixed_f22a4a698822.mp4",
+      "sha256": "ca505531d85b6da56c9cf5c3c2d109b7846f8dd38c555da570d59cae3bbd5500",
+      "bytes": 717321,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_527d847f2741",
+      "video_path": "videos/polymer_brittle_527d847f2741.mp4",
+      "sha256": "a268af6b10b44dc7a620bddf4df2e9df2552a87386ee7df301ac6d36d6ac9f33",
+      "bytes": 268072,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_7c88eeeae51f",
+      "video_path": "videos/polymer_brittle_7c88eeeae51f.mp4",
+      "sha256": "91cb141e52d7ed16e4a4f7cd255b978eae50261854d9adb14b6d02842150960f",
+      "bytes": 269393,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_b0cd99f7ae30",
+      "video_path": "videos/polymer_brittle_b0cd99f7ae30.mp4",
+      "sha256": "ca02e8ebcd31b934b5dd4150eb0957132f6231d759ba26095fa292978bcf2e98",
+      "bytes": 266802,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_b9ab8a238e19",
+      "video_path": "videos/polymer_brittle_b9ab8a238e19.mp4",
+      "sha256": "2fef41e0911eafafbf6a5a13d532128cd63d44b62315659fc420af747cbac6ae",
+      "bytes": 269164,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_bcfe3a307376",
+      "video_path": "videos/polymer_brittle_bcfe3a307376.mp4",
+      "sha256": "6763dcb6a9b740f39566f5b2d2bf1671aaf3261fdb09c1fc90fb508332f810b5",
+      "bytes": 268628,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_e2c15b3c1473",
+      "video_path": "videos/polymer_brittle_e2c15b3c1473.mp4",
+      "sha256": "eca11870a7692c158707fd70794f610628dd512e9b2a1d18ad348919ce6861f9",
+      "bytes": 267707,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_ea23f4e39317",
+      "video_path": "videos/polymer_brittle_ea23f4e39317.mp4",
+      "sha256": "31a66f4d51a74ff45f6a1020c6ec34d276b38b27965b13075c07c657fb657133",
+      "bytes": 268519,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    },
+    {
+      "id": "polymer_brittle_f89aa7bc8961",
+      "video_path": "videos/polymer_brittle_f89aa7bc8961.mp4",
+      "sha256": "a86e083a3ca8df61ee84a262965dc746e5b52291cda91883aeb6fe0c24ca82b5",
+      "bytes": 269176,
+      "duration_s": 20,
+      "fps": 30,
+      "frames": 600
+    }
+  ]
+}

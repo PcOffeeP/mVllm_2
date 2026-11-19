@@ -863,3 +863,25 @@ def test_resumed_sources_carry_the_same_media_fields_as_fresh_ones(videos, tmp_p
         f"a source recovered by resume must record the same media fields as a fresh one: "
         f"{sorted(recovered)} != {sorted(healthy)}")
     assert sources["short_03s"]["status"] == "cropped"
+
+
+def test_safe_output_allows_virtual_version_stage_and_protects_inputs(tmp_path):
+    """Contract: data/virtual/<version>/<stage> is allowed; real data and version inputs stay blocked."""
+    virtual = import_virtual()
+    project = tmp_path / "project"
+    (project / "data/virtual/video-V1/videos").mkdir(parents=True)
+
+    allowed = virtual._safe_output(project, "data/virtual/video-V1/sub_video")
+    assert allowed == (project / "data/virtual/video-V1/sub_video").resolve()
+
+    for blocked in (
+        "data/sub_video",
+        "data/other",
+        "data/virtual",
+        "data/virtual/video-V1",
+        "data/virtual/video-V1/videos",
+        "data/virtual/video-V1/labels.csv",
+        "data/virtual/video-V1/manifest.json",
+    ):
+        with pytest.raises(virtual.VirtualError):
+            virtual._safe_output(project, blocked)

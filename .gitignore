@@ -34,6 +34,9 @@ wheels/
 # 子视频人工审核的锁与临时文件；审核记录 JSON 仍可进入 Git
 /data/subvideo-review/reviews.json.lock
 /data/subvideo-review/.reviews-*
+# 虚拟数据目录的运行锁与审核临时文件（视频媒体已由上方 /data/**/* 规则忽略）
+/data/virtual/**/*.lock
+/data/virtual/**/.reviews-*
 
 # 本地模型权重
 models/*
