@@ -3,7 +3,7 @@
     "assertion": "用户确认当前 110 个源视频分别来自不同的独立试验",
     "confirmed_date": "2026-11-07",
     "basis": "用户对每个视频均为独立试验的直接确认；按视频 ID 一组一视频",
-    "label_csv_sha256": "9970d259e14e6321eea76282b6a206b5b907527101736fe28d3c437387fa8d81",
+    "label_csv_sha256": "c928bea3d769eb16ad55ed7d872a877a3b4fd327d0af5422bc2bb682c1ec354c",
     "scope": "当前 110 个真实源视频；不包含模拟视频",
     "limitations": "该确认不替代跨视频近似素材核查；文件完全相同须另核查"
   },
