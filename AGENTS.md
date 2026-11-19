@@ -43,7 +43,7 @@
 .venv/bin/python -m script.checks.facts
 ```
 
-pytest 须通过；facts 校验器的 `gone`／`ambiguous` 不得相对仓库内记录的基线新增，新增即须先修。当前基线为 `gone` 14、`ambiguous` 0；`docs/facts.yaml` 头部注释记录的历史五类分布基线为 `gone` 4、`ambiguous` 0。差额中 6 条因 2026-11-19 退役已作废批次清单、4 条因删除 `docs/eval-migration-plan.md`，目标文件已不存在，均为待处理项；修好后应回落到 `gone` 4。
+pytest 须通过；facts 校验器的 `gone`／`ambiguous` 不得相对仓库内记录的基线新增，新增即须先修。当前基线为 `gone` 4、`ambiguous` 0；实测五类分布为证据 290、通过 206、`gone` 4、`ambiguous` 0、本机无法核对 80、结构错误 0，与 `docs/facts.yaml` 头部注释一致。残留的 4 条 `gone` 属既有问题（DF-022、DF-027，以及 DF-047 的两条），目标文件已不存在，仍待处理。
 
 默认模式即使 `gone > 0` 也退出 0，退出码不代表准入通过，判据以基线对照为准。查看当前五类分布并与上述基线及 `docs/facts.yaml` 头部注释对照：
 
@@ -54,7 +54,7 @@ pytest 须通过；facts 校验器的 `gone`／`ambiguous` 不得相对仓库内
 自动判断当前基线（不满足时退出非零）：
 
 ```bash
-.venv/bin/python -m script.checks.facts --json | .venv/bin/python -c 'import json,sys; t=json.load(sys.stdin)["totals"]; print({k: t[k] for k in ("evidence","passed","gone","ambiguous","unverifiable","structure")}); sys.exit(not (t["gone"] <= 14 and t["ambiguous"] == 0))'
+.venv/bin/python -m script.checks.facts --json | .venv/bin/python -c 'import json,sys; t=json.load(sys.stdin)["totals"]; print({k: t[k] for k in ("evidence","passed","gone","ambiguous","unverifiable","structure")}); sys.exit(not (t["gone"] <= 4 and t["ambiguous"] == 0))'
 ```
 
 ### 1.5 冲突处置
