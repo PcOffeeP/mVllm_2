@@ -12,6 +12,49 @@
 - worktree 合并后，在已获删除授权的范围内清理 worktree 及其使用的短期分支。
 - 保留主线、未合并或用途不明的分支；
 
+## 并行工作管理
+
+### 1.1 一个工作线一个 worktree
+
+- 新工作线使用 `git worktree add ../TensileAgent-Finetune-<线名> -b work/<线名>`；同一 worktree 内不得并行两个写入者。
+- 每条线使用独立分支，完工后以 `git merge --ff-only` 合并回本工作区长期主线分支 `feat/tensileagent-finetune`，以「工作区与主线分支」小节为准，并遵守合并授权要求。
+- 共享 worktree 会让各自的 `git status` 互相可见；一方执行 `git switch` 会连带改变另一方的工作树。
+
+### 1.2 路径所有权表
+
+| 所有权 | 路径 |
+| --- | --- |
+| 全局共享、默认只读 | `data/annotation-table-full.csv`、`data/splits/`、`data/roi/*.json`、`data/split-inputs/`、`data/videos/`、`data/roi/videos/` |
+| 子视频线 | `data/sub_video/`、`data/subvideo-review/`、`docs/label.md`、`script/subvideo_generation/`、`script/subvideo_review/` |
+| 虚拟数据线 | `data/virtual/`、`script/checks/virtual_dataset.py` |
+| 检查体系线 | `script/checks/`、`docs/checks.md`、`docs/facts.yaml` |
+| 共享文档（短事务，改完立即提交） | `docs/guide.md`、`README.md`、`docs/TODO.md` |
+
+路径不重叠可任意并行；重叠时先声明者优先，另一方改用其他任务或等待。
+
+### 1.3 变更窗口声明
+
+仅针对全局共享只读项：动 `data/` 共享项前，先建 `docs/changes/<日期>-<工作线>-<对象>.md`，写明意图、涉及文件、时间窗口、备份位置、回滚方式；完成后追加「已完成 + 实际结果」；过期文件可直接删除，不归档。
+
+### 1.4 准入检查（合并前必须跑）
+
+```bash
+.venv/bin/python -m pytest
+.venv/bin/python -m script.checks.facts --strict
+```
+
+两条都过才合并；任何一条红，先修再合。
+
+### 1.5 冲突处置
+
+合并冲突由后到者解决，不得强推；发现他人未提交改动与自己重叠时，改为在自己的 worktree 里改同一文件、合并时人工取舍，不要直接编辑对方工作树。
+
+### 1.6 明确禁止
+
+- 不得因为「工作区有别人未提交的改动」就停手或要求对方停工——应改用独立 worktree 或选不重叠路径；
+- 不得在共享 worktree 里 `git switch` 到自己的任务分支；
+- 不得把备份目录建在仓库内。
+
 ## 项目资料
 
 开始工作时，依次阅读 `docs/facts.yaml`、`docs/TODO.md` 和 `docs/guide.md`。

@@ -28,8 +28,8 @@ from typing import BinaryIO
 
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parents[1]
-DEFAULT_CSV = "data/annotation/annotation-table-full.csv"
-DEFAULT_VIDEOS = "data/source/videos"
+DEFAULT_CSV = "data/annotation-table-full.csv"
+DEFAULT_VIDEOS = "data/videos"
 ASSETS = {
     "/": (HERE / "review_annotation.html", "text/html; charset=utf-8"),
     "/review_annotation.js": (HERE / "review_annotation.js", "text/javascript; charset=utf-8"),
@@ -54,6 +54,15 @@ FRAME_CACHE_COUNT = 48
 FRAME_CACHE_BYTES = 64 * 1024**2
 MAX_PNG_BYTES = MAX_PIXELS * 9
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def default_source_warnings(project_root: Path) -> list[str]:
+    warnings = []
+    if not (project_root / DEFAULT_CSV).is_file():
+        warnings.append(f"默认标注表 {DEFAULT_CSV} 在项目根目录 {project_root} 不存在；请在页面的 CSV 路径填写实际标注表路径。")
+    if not (project_root / DEFAULT_VIDEOS).is_dir():
+        warnings.append(f"默认视频目录 {DEFAULT_VIDEOS} 在项目根目录 {project_root} 不存在；请在页面填写实际视频目录路径。")
+    return warnings
 
 
 class ReviewError(Exception):
@@ -334,7 +343,12 @@ class LocalServer(ThreadingHTTPServer):
             raise ReviewError(HTTPStatus.NOT_FOUND, "找不到此路径，或本机没有访问权限。") from error
 
     def read_csv(self, value: object) -> dict:
-        path = self.source_path(value)
+        try:
+            path = self.source_path(value)
+        except ReviewError as error:
+            if value == DEFAULT_CSV and error.status == HTTPStatus.NOT_FOUND:
+                raise ReviewError(HTTPStatus.NOT_FOUND, f"默认标注表 {DEFAULT_CSV} 不存在；请在页面的 CSV 路径填写实际标注表路径。") from error
+            raise
         if path.suffix.lower() != ".csv":
             raise ReviewError(HTTPStatus.BAD_REQUEST, "请选择 CSV 文件。")
         try:
@@ -405,7 +419,12 @@ class LocalServer(ThreadingHTTPServer):
                 pass
 
     def video_library(self, value: object) -> dict:
-        root = self.source_path(value)
+        try:
+            root = self.source_path(value)
+        except ReviewError as error:
+            if value == DEFAULT_VIDEOS and error.status == HTTPStatus.NOT_FOUND:
+                raise ReviewError(HTTPStatus.NOT_FOUND, f"默认视频目录 {DEFAULT_VIDEOS} 不存在；请在页面填写实际视频目录路径。") from error
+            raise
         if not root.is_dir():
             raise ReviewError(HTTPStatus.BAD_REQUEST, "请选择视频目录。")
         paths = {}
@@ -722,6 +741,8 @@ def main() -> None:
             parser.error(f"无法查询 {name} 的输入协议。")
         if b"fd" not in protocols:
             parser.error(f"需要支持 fd 输入协议的 {name}。")
+    for warning in default_source_warnings(PROJECT_ROOT):
+        print(warning, flush=True)
     with LocalServer() as server:
         url = f"{server.origin}/#{server.token}"
         print(f"本机标注地址：{url}\n标注结束后可按 Ctrl+C 关闭服务。", flush=True)

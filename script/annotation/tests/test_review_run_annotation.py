@@ -12,8 +12,8 @@ import pytest
 from script.annotation.review_run_annotation import LocalServer, PROJECT_ROOT
 
 
-DEFAULT_CSV = Path("data/annotation/annotation-table-full.csv")
-DEFAULT_VIDEOS = Path("data/source/videos")
+DEFAULT_CSV = Path("data/annotation-table-full.csv")
+DEFAULT_VIDEOS = Path("data/videos")
 ORIGINAL_CSV = "id,video_path,断裂模式,断裂位置,断裂时间点\n1,video.mp4,无,无,无\n"
 
 
