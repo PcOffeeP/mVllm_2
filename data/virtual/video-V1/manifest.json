@@ -5,13 +5,13 @@
   "upstream": {
     "repo": "BlenderTensileVideo",
     "dataset_path": "datasets/video-V1",
-    "git_branch": "codex/virtual-eval-supplement",
-    "git_head": "79ae940586ad6d5d5beb92698d7237a7893d7be9",
-    "working_tree_dirty": true,
+    "git_branch": "main",
+    "git_head": "8a37a1a2bf39304dc7002ccf89028b491f577273",
+    "working_tree_dirty": false,
     "manifest_sha256": "662693ddb70cf9bb94c79d57087cd33cffca97072fc45a4896aa964ae3b56444",
     "confirmed_on": "2026-10-10",
     "status": "user_confirmed_first_validation_simulation_dataset",
-    "imported_at": "2026-11-19T02:19:37+00:00",
+    "imported_at": "2026-11-19T07:47:17+00:00",
     "omitted_upstream_assets": [
       "metadata/"
     ]
