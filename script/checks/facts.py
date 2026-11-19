@@ -559,7 +559,7 @@ def load_allowlist(path: Path) -> list:
 def check_facts(root: Path, facts_path: Path) -> dict:
     root = Path(root).resolve()
     facts_path = Path(facts_path)
-    totals = dict.fromkeys(("entries", "evidence", "passed", "drift", "gone", "unverifiable", "structure", "structure_errors"), 0)
+    totals = dict.fromkeys(("entries", "evidence", "passed", "passed_anchored", "passed_moved", "gone", "ambiguous", "unverifiable", "structure", "structure_errors"), 0)
     report = {"facts_path": str(facts_path), "totals": totals, "results": [], "structure_errors": []}
 
     def error(label, message):
@@ -584,6 +584,7 @@ def check_facts(root: Path, facts_path: Path) -> dict:
     totals["entries"] = len(facts) + len(misreadings)
 
     def evidence(label, entry, location):
+        # A1 先验证结构、expect 和仓库内相对路径。
         ref, expect, problem = _evidence_entry(entry)
         if not isinstance(entry, dict) and problem is None:
             problem = "evidence 必须包含 ref 和 expect"
@@ -600,10 +601,13 @@ def check_facts(root: Path, facts_path: Path) -> dict:
             except (OSError, ValueError, RuntimeError):
                 problem = "ref 路径无法解析"
         category, actual, detail = "structure", None, problem
+        matches = []
         if problem:
             error(label, problem)
+        # A2 未检出前缀优先于文件存在性。
         elif path.startswith(("pipeline/", "finetune/", "versioning/", "docs/results/")):
             category, detail = "unverifiable", "未检出前缀"
+        # A3 文件不存在按 evidence_location 判定。
         elif not target.is_file():
             category = "unverifiable" if location == "original_worktree" else "gone"
             detail = "文件不存在"
@@ -612,16 +616,30 @@ def check_facts(root: Path, facts_path: Path) -> dict:
                 lines = target.read_text(encoding="utf-8").splitlines()
                 line = int(match.group("line"))
                 needle = normalize(expect)
+                # A4 记录行命中时直接采用记录行，不执行全文搜索。
                 if 1 <= line <= len(lines) and needle in normalize(lines[line - 1]):
-                    category, actual, detail = "pass", line, "指定行命中"
+                    category, actual, detail = "pass", line, "记录行命中"
                 else:
-                    found = next((i for i, text in enumerate(lines, 1) if needle in normalize(text)), None)
-                    category, actual, detail = ("drift", found, "其他行命中") if found is not None else ("gone", None, "未找到内容")
+                    # A5 记录行未命中：按全部命中数判定消失、移动或歧义。
+                    hits = [i for i, text in enumerate(lines, 1) if needle in normalize(text)]
+                    if not hits:
+                        category, detail = "gone", "未找到内容"
+                    elif len(hits) == 1:
+                        actual = hits[0]
+                        category, detail = "pass_moved", f"位置已变（唯一命中第 {actual} 行）"
+                    else:
+                        matches = hits
+                        category, detail = "ambiguous", f"多处命中（第 {'、'.join(map(str, hits))} 行）"
+            # A6 读取失败时无法核对。
             except (OSError, UnicodeDecodeError) as exc:
                 category, detail = "unverifiable", f"无法读取文件: {exc}"
-        report["results"].append(dict(id=label, ref=ref, expect=expect, actual=actual, category=category, detail=detail))
+        report["results"].append(dict(id=label, ref=ref, expect=expect, actual=actual, actual_line=actual, matches=matches, category=category, detail=detail))
         totals["evidence"] += 1
-        totals["passed" if category == "pass" else category] += 1
+        if category in ("pass", "pass_moved"):
+            totals["passed"] += 1
+            totals["passed_anchored" if category == "pass" else "passed_moved"] += 1
+        else:
+            totals[category] += 1
 
     seen = set()
     for index, fact in enumerate(facts, 1):
@@ -682,16 +700,15 @@ def main(argv=None) -> int:
         print(json.dumps(report, ensure_ascii=False))
     else:
         for result in report["results"]:
-            actual = f"（实际行号 {result['actual']}）" if result["category"] == "drift" else ""
-            print(f"{result['category'].upper()} {result['id']} {result['ref']}: {result['detail']}{actual}")
+            print(f"{result['category'].upper()} {result['id']} {result['ref']}: {result['detail']}")
         for error in report["structure_errors"]:
             print(f"STRUCTURE {error['id']}: {error['message']}")
         totals = report["totals"]
-        print(f"通过 {totals['passed']}，位置漂移 {totals['drift']}，原文消失 {totals['gone']}，"
+        print(f"通过 {totals['passed']}（记录行命中 {totals['passed_anchored']}、位置已变 {totals['passed_moved']}），原文消失 {totals['gone']}，歧义 {totals['ambiguous']}，"
               f"本机无法核对 {totals['unverifiable']}，结构错误 {totals['structure']}，"
               f"structure_errors {totals['structure_errors']}")
         print("合计:", totals)
-    return int(args.strict and (bool(report["structure_errors"]) or any(report["totals"][key] for key in ("drift", "gone", "unverifiable", "structure"))))
+    return int(args.strict and (bool(report["structure_errors"]) or any(report["totals"][key] for key in ("gone", "ambiguous", "unverifiable", "structure"))))
 
 
 if __name__ == "__main__":

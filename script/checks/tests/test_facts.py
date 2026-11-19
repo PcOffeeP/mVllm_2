@@ -3,20 +3,35 @@
 覆盖范围：
 - 单元层：`normalize`、白名单规则解析（`load_allowlist`）；
 - 行为层：除集成用例外，每个用例都在 `tmp_path` 里造 `<tmp>/docs/facts.yaml` 与被引用的源文件，
-  再用 `main(["--root", str(tmp), ...])` 跑一遍，按 `category` 五分类口径、JSON 固定形状、
+  再用 `main(["--root", str(tmp), ...])` 跑一遍，按 `category` 六分类口径、JSON 固定形状、
   默认模式（不带 `--json`）的人类可读输出文案与 `--strict` 退出码断言；
 - `--check-doc-paths`：在 `tmp_path` 里 `git init` 造小仓库做行为测试，不扫真实仓库；
 - 集成层：`test_should_report_real_facts_without_breaking_invariants` 等少量用例读真实仓库数据，
   只断不变量与退出码，不断言具体条数（真实数据随文档修订漂移）。
 
-分类口径（`category`）：`pass` / `drift` / `gone` / `unverifiable` / `structure`。
-汇总口径（`totals`）：`entries == facts 条数 + misreadings 条数`；
-`passed + drift + gone + unverifiable + structure == evidence == len(results)`；
+分类口径（`category`，**锚文本**口径：`ref` 的行号只是提示，判定以 `expect` 原文能否在目标文件中
+定位为准）：
+
+| category | 含义 | `actual` / `actual_line` / `matches` |
+| --- | --- | --- |
+| `pass` | 记录行命中（命中即早退，不做全文搜索） | 记录行号 / 同 / `[]` |
+| `pass_moved` | 记录行未命中，但全文唯一命中（位置已变） | 唯一命中行号 / 同 / `[]` |
+| `gone` | 记录行未命中且全文未找到内容 | `None` / `None` / `[]` |
+| `ambiguous` | 记录行未命中且全文多处命中（不默认取第一处） | `None` / `None` / 全部命中行号（升序） |
+| `unverifiable` | 未检出前缀、原工作区特有文件缺失、文件无法读取 | `None` |
+| `structure` | 结构或 `expect` 非法 | `None` |
+
+旧口径的 `drift`（位置漂移）已废除：行号对不上但原文在别处唯一命中改为 `pass_moved`，多处命中改为
+`ambiguous`。`pass_moved` 只提示位置变化，**不**触发 `--strict` 拦截。
+
+汇总口径（`totals` 精确键集合见 `TOTALS_KEYS`）：`entries == facts 条数 + misreadings 条数`；
+`passed == passed_anchored + passed_moved`（分别数 `pass` 与 `pass_moved`）；
+`passed + gone + ambiguous + unverifiable + structure == evidence == len(results)`；
 `structure` 只数 evidence 级结构错误，`structure_errors` 数全部结构错误记录（文档级 + 条目级 +
 evidence 级）。
 
-失效条件：`script/checks/facts.py` 的分类口径、`totals` 键集合、默认输出文案或 `--strict` 语义变更时，
-本文件需同步修订。
+失效条件：`script/checks/facts.py` 的分类口径、`totals` / `results` 键集合、默认输出文案或
+`--strict` 语义变更时，本文件需同步修订。
 """
 from __future__ import annotations
 
@@ -38,17 +53,29 @@ LEGACY_TOTALS_KEYS = {
     "entries",
     "evidence",
     "passed",
-    "drift",
     "gone",
     "unverifiable",
     "structure",
 }
+# 锚文本口径新增/改名的计数键：`drift` 废止，`passed` 拆成 anchored + moved，新增 `ambiguous`。
+ANCHOR_TOTALS_KEYS = {"passed_anchored", "passed_moved", "ambiguous"}
 # 完整键集合（契约）：由 `test_should_expose_exact_totals_key_set` 断言，不放进共享不变量里，
 # 否则同一根因会让几十个用例一起红、掩盖各自要验证的行为。
-TOTALS_KEYS = LEGACY_TOTALS_KEYS | {"structure_errors"}
-RESULT_KEYS = {"id", "ref", "expect", "actual", "category", "detail"}
+TOTALS_KEYS = LEGACY_TOTALS_KEYS | ANCHOR_TOTALS_KEYS | {"structure_errors"}
+RESULT_KEYS = {
+    "id",
+    "ref",
+    "expect",
+    "actual",
+    "actual_line",
+    "matches",
+    "category",
+    "detail",
+}
 # 五个中文汇总标签（默认模式必须逐条带数字）。
-SUMMARY_LABELS = ("通过", "位置漂移", "原文消失", "本机无法核对", "结构错误")
+SUMMARY_LABELS = ("通过", "原文消失", "歧义", "本机无法核对", "结构错误")
+# 旧口径标签：不得再作为类别或汇总标签出现在默认输出里。
+DEPRECATED_LABELS = ("位置漂移", "DRIFT")
 requires_git = pytest.mark.skipif(
     shutil.which("git") is None, reason="`--check-doc-paths` 行为测试需要 git"
 )
@@ -135,14 +162,26 @@ def _linear_source(root: Path) -> None:
     _write(root, "src/a.txt", "alpha\nplaceholder\nbeta\n")
 
 
+def _repeated_source(root: Path) -> None:
+    """三行源文件：第 1 行 x，第 2、3 行都是 alpha（全文多处命中）。"""
+    _write(root, "src/dup.txt", "x\nalpha\nalpha\n")
+
+
 def _passing_repo(root: Path) -> None:
     _linear_source(root)
     _write_facts(root, _yaml(_fact("DF-001", _ev("src/a.txt:1", "alpha"))))
 
 
-def _drift_repo(root: Path) -> None:
+def _moved_repo(root: Path) -> None:
+    """记录行写错、但 `expect` 原文在文件里唯一命中第 3 行：判 `pass_moved`（位置已变）。"""
     _linear_source(root)
     _write_facts(root, _yaml(_fact("DF-001", _ev("src/a.txt:2", "beta"))))
+
+
+def _ambiguous_repo(root: Path) -> None:
+    """记录行写错、且 `expect` 原文在文件里命中第 2、3 两处：判 `ambiguous`（不默认取第一处）。"""
+    _repeated_source(root)
+    _write_facts(root, _yaml(_fact("DF-001", _ev("src/dup.txt:1", "alpha"))))
 
 
 # --------------------------------------------------------------------------- #
@@ -218,25 +257,51 @@ def _assert_invariants(report: dict, expected_entries: int | None = None) -> Non
     assert LEGACY_TOTALS_KEYS <= set(totals), (
         f"totals 缺基线键：{sorted(LEGACY_TOTALS_KEYS - set(totals))}"
     )
+    assert ANCHOR_TOTALS_KEYS <= set(totals), (
+        f"totals 缺锚文本口径的分类键 {sorted(ANCHOR_TOTALS_KEYS - set(totals))}"
+        f"（旧口径的 drift 已废止），实际键 {sorted(totals)}"
+    )
     assert len(results) == totals["evidence"]
+    assert totals["passed"] == totals["passed_anchored"] + totals["passed_moved"], (
+        "passed 必须等于 passed_anchored + passed_moved，实际"
+        f" {totals['passed']} vs {totals['passed_anchored']} + {totals['passed_moved']}"
+    )
     assert (
         totals["passed"]
-        + totals["drift"]
         + totals["gone"]
+        + totals["ambiguous"]
         + totals["unverifiable"]
         + totals["structure"]
         == totals["evidence"]
-    )
+    ), f"五类计数之和必须等于 evidence，实际 totals={totals!r}"
     assert totals["structure"] == len(_by_category(report, "structure"))
+    assert totals["passed_anchored"] == len(_by_category(report, "pass"))
+    assert totals["passed_moved"] == len(_by_category(report, "pass_moved"))
+    assert totals["ambiguous"] == len(_by_category(report, "ambiguous"))
+    assert not _by_category(report, "drift"), "drift 类别已废止，不应再出现在 results 里"
     if expected_entries is not None:
         assert totals["entries"] == expected_entries
     for result in results:
         assert RESULT_KEYS <= set(result)
-        if result["category"] in ("pass", "drift"):
+        if result["category"] in ("pass", "pass_moved"):
             assert isinstance(result["actual"], int)
             assert not isinstance(result["actual"], bool)
-        if result["category"] in ("gone", "unverifiable"):
-            assert result["actual"] is None
+            assert result["actual_line"] == result["actual"], (
+                f"{result['category']} 的 actual 与 actual_line 必须一致：{result!r}"
+            )
+            assert result["matches"] == [], (
+                f"{result['category']} 的 matches 必须为空：{result!r}"
+            )
+        if result["category"] in ("gone", "ambiguous", "unverifiable"):
+            assert result["actual"] is None, (
+                f"{result['category']} 的 actual 必须为 None：{result!r}"
+            )
+        if result["category"] in ("gone", "ambiguous"):
+            assert result["actual_line"] is None, (
+                f"{result['category']} 的 actual_line 必须为 None：{result!r}"
+            )
+        if result["category"] == "gone":
+            assert result["matches"] == [], f"gone 的 matches 必须为空：{result!r}"
 
 
 # --------------------------------------------------------------------------- #
@@ -404,7 +469,7 @@ def test_should_report_structure_error_when_evidence_missing(
 
 
 # --------------------------------------------------------------------------- #
-# 5. 三类正向判定：pass / drift / gone
+# 5. 正向判定：pass / pass_moved / gone
 # --------------------------------------------------------------------------- #
 def test_should_pass_when_expect_matches_line_after_whitespace_normalization(
     tmp_path: Path, capsys
@@ -420,25 +485,62 @@ def test_should_pass_when_expect_matches_line_after_whitespace_normalization(
     result = _result_for(report, "src/ws.txt:2")
     assert result["category"] == "pass"
     assert result["actual"] == 2
+    assert result["actual_line"] == 2
+    assert result["detail"] == "记录行命中"
+    assert result["matches"] == []
     assert report["totals"]["passed"] == 1
-    assert report["totals"]["drift"] == 0
+    assert report["totals"]["passed_anchored"] == 1
+    assert report["totals"]["passed_moved"] == 0
     assert report["totals"]["gone"] == 0
+    assert report["totals"]["ambiguous"] == 0
     assert report["totals"]["unverifiable"] == 0
     assert report["totals"]["structure"] == 0
     _assert_invariants(report, expected_entries=1)
 
 
-def test_should_drift_when_expect_moved_to_another_line(tmp_path: Path, capsys) -> None:
-    _linear_source(tmp_path)
-    _write_facts(tmp_path, _yaml(_fact("DF-001", _ev("src/a.txt:2", "beta"))))
+def test_should_pass_moved_when_expect_moved_to_another_line(
+    tmp_path: Path, capsys
+) -> None:
+    """记录行对不上、但原文在全文唯一命中：改判 pass_moved（不再是旧口径的 drift）。"""
+    _moved_repo(tmp_path)
 
     report = _report(capsys, tmp_path)
 
     result = _result_for(report, "src/a.txt:2")
-    assert result["category"] == "drift"
-    assert result["actual"] == 3, "漂移的 actual 必须是首次命中的真实行号"
-    assert report["totals"]["drift"] == 1
-    assert report["totals"]["passed"] == 0
+    assert result["category"] == "pass_moved", (
+        f"行号错但全文唯一命中应判 pass_moved，实际 {result['category']!r}"
+    )
+    assert result["actual"] == 3, "位置已变的 actual 必须是唯一命中的真实行号"
+    assert result["actual_line"] == 3
+    assert result["matches"] == []
+    assert "3" in result["detail"], (
+        f"位置已变的 detail 必须写出唯一命中行号 3，实际 {result['detail']!r}"
+    )
+    assert report["totals"]["passed"] == 1
+    assert report["totals"]["passed_moved"] == 1
+    assert report["totals"]["passed_anchored"] == 0
+    assert report["totals"]["gone"] == 0
+    assert report["totals"]["ambiguous"] == 0
+    _assert_invariants(report, expected_entries=1)
+
+
+def test_should_count_pass_moved_in_totals_when_record_line_misses_and_expect_unique(
+    tmp_path: Path, capsys
+) -> None:
+    """锚文本口径的汇总：记录行错 + 全文唯一命中 = pass_moved，并计入 passed。"""
+    _moved_repo(tmp_path)
+
+    report = _report(capsys, tmp_path)
+
+    result = _result_for(report, "src/a.txt:2")
+    totals = report["totals"]
+    assert result["category"] == "pass_moved"
+    assert result["actual_line"] == 3
+    assert totals["passed"] == 1
+    assert totals["passed_moved"] == 1
+    assert totals["passed_anchored"] == 0
+    assert totals["ambiguous"] == 0
+    assert "drift" not in totals, f"旧口径的 drift 键已废止，实际键 {sorted(totals)}"
     _assert_invariants(report, expected_entries=1)
 
 
@@ -453,8 +555,12 @@ def test_should_be_gone_when_expect_absent_from_existing_file(
     result = _result_for(report, "src/a.txt:2")
     assert result["category"] == "gone"
     assert result["actual"] is None
+    assert result["actual_line"] is None
+    assert result["matches"] == []
+    assert result["detail"] == "未找到内容"
     assert report["totals"]["gone"] == 1
     assert report["totals"]["passed"] == 0
+    assert report["totals"]["ambiguous"] == 0
     _assert_invariants(report, expected_entries=1)
 
 
@@ -471,9 +577,71 @@ def test_should_be_gone_when_ref_file_missing_outside_unchecked_prefixes(
     result = _result_for(report, "src/missing.txt:3")
     assert result["category"] == "gone"
     assert result["actual"] is None
+    assert result["actual_line"] is None
+    assert "文件不存在" in result["detail"], (
+        f"gone 的 detail 应指出文件不存在，实际 {result['detail']!r}"
+    )
     assert report["totals"]["gone"] == 1
     assert report["totals"]["unverifiable"] == 0
     _assert_invariants(report, expected_entries=1)
+
+
+# --------------------------------------------------------------------------- #
+# 5b. 锚文本口径：命中即停（记录行命中不做全文搜索）与多处命中
+# --------------------------------------------------------------------------- #
+def test_should_not_search_whole_file_when_record_line_hits(tmp_path: Path, capsys) -> None:
+    """第 2 行命中，即使全文有两处 alpha 也不得判 ambiguous（命中即停）。"""
+    _repeated_source(tmp_path)
+    _write_facts(tmp_path, _yaml(_fact("DF-001", _ev("src/dup.txt:2", "alpha"))))
+
+    report = _report(capsys, tmp_path)
+
+    result = _result_for(report, "src/dup.txt:2")
+    assert result["category"] == "pass", (
+        "记录行命中必须早退（实现若先做全文搜索会变 ambiguous），"
+        f"实际 {result['category']!r}"
+    )
+    assert result["detail"] == "记录行命中"
+    assert result["matches"] == []
+    assert report["totals"]["ambiguous"] == 0
+    assert report["totals"]["passed_anchored"] == 1
+    _assert_invariants(report, expected_entries=1)
+
+
+def test_should_mark_ambiguous_when_needle_hits_multiple_lines(
+    tmp_path: Path, capsys
+) -> None:
+    """记录行错且全文多处命中：判 ambiguous，列出全部命中行号，不得默认取第一处。"""
+    _ambiguous_repo(tmp_path)
+
+    report = _report(capsys, tmp_path)
+
+    result = _result_for(report, "src/dup.txt:1")
+    assert result["category"] == "ambiguous"
+    assert result["matches"] == [2, 3], (
+        f"必须列出全部命中行号（升序），实际 {result['matches']!r}"
+    )
+    assert result["actual"] is None, "歧义时不得给出单一 actual（不得默认取第一处）"
+    assert result["actual_line"] is None
+    assert report["totals"]["ambiguous"] == 1
+    assert report["totals"]["passed"] == 0
+    _assert_invariants(report, expected_entries=1)
+
+    code, out = _run_text(capsys, ["--root", str(tmp_path), "--strict"])
+
+    assert code != 0, f"存在 ambiguous 时必须让 --strict 非 0：\n{out}"
+    assert _count_for_label(out, "歧义") == 1
+    detail_lines = [line for line in out.splitlines() if "src/dup.txt:1" in line]
+    assert detail_lines, f"默认输出缺少歧义明细行：\n{out}"
+    assert any(
+        line.startswith("AMBIGUOUS DF-001 src/dup.txt:1:") for line in detail_lines
+    ), (
+        "歧义明细行须为 `<CATEGORY 大写> <id> <ref>: <detail>`（AMBIGUOUS DF-001 src/dup.txt:1: ...）：\n"
+        + "\n".join(detail_lines)
+    )
+    assert any(re.search(r"2[^\d]*3", line) for line in detail_lines), (
+        "歧义明细行必须列出全部命中行号 2 与 3：\n" + "\n".join(detail_lines)
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -570,6 +738,7 @@ def test_should_mark_unverifiable_for_unchecked_out_prefix(
 
     result = _result_for(report, ref)
     assert result["category"] == "unverifiable"
+    assert result["detail"] == "未检出前缀"
     assert result["actual"] is None
     assert report["totals"]["unverifiable"] == 1
     assert report["totals"]["passed"] == 0
@@ -598,6 +767,9 @@ def test_should_mark_unverifiable_when_original_worktree_ref_file_missing(
     remote = _result_for(report, "notes/remote-only.md:4")
     assert remote["category"] == "unverifiable", "evidence_location: original_worktree 缺失须为 unverifiable"
     assert remote["actual"] is None
+    assert "文件不存在" in remote["detail"], (
+        f"原工作区缺失的 detail 应指出文件不存在，实际 {remote['detail']!r}"
+    )
     local = _result_for(report, "src/a.txt:1")
     assert local["category"] == "pass", "同一份 YAML 里本机命中的 ref 仍算 pass"
     assert report["totals"]["unverifiable"] == 1
@@ -629,6 +801,30 @@ def test_should_still_pass_local_ref_inside_original_worktree_entry(
     assert _result_for(report, "src/a.txt:1")["category"] == "pass"
     assert report["totals"]["unverifiable"] == 1
     assert report["totals"]["passed"] == 1
+    _assert_invariants(report, expected_entries=1)
+
+
+def test_should_mark_unverifiable_when_file_cannot_be_decoded(
+    tmp_path: Path, capsys
+) -> None:
+    """非 UTF-8 文件读不出来：不得当 gone/pass，必须判 unverifiable 并写明无法读取。"""
+    binary = tmp_path / "src" / "bin.txt"
+    binary.parent.mkdir(parents=True, exist_ok=True)
+    binary.write_bytes(b"\xff\xfe\x00alpha\n")
+    _write_facts(tmp_path, _yaml(_fact("DF-001", _ev("src/bin.txt:1", "alpha"))))
+
+    report = _report(capsys, tmp_path)
+
+    result = _result_for(report, "src/bin.txt:1")
+    assert result["category"] == "unverifiable", (
+        f"无法解码的文件必须判 unverifiable，实际 {result['category']!r}"
+    )
+    assert result["actual"] is None
+    assert "无法读取文件" in result["detail"], (
+        f"detail 应含「无法读取文件」，实际 {result['detail']!r}"
+    )
+    assert report["totals"]["unverifiable"] == 1
+    assert report["totals"]["gone"] == 0
     _assert_invariants(report, expected_entries=1)
 
 
@@ -669,28 +865,35 @@ def test_should_report_structure_error_for_empty_wrong_and_pass_its_evidence(
 # --------------------------------------------------------------------------- #
 # 9. 退出码口径
 # --------------------------------------------------------------------------- #
-def test_should_return_zero_without_strict_when_drift_present(
+def test_should_return_zero_without_strict_when_expect_moved(
     tmp_path: Path, capsys
 ) -> None:
-    _drift_repo(tmp_path)
+    _moved_repo(tmp_path)
     report = _report(capsys, tmp_path)
-    assert report["totals"]["drift"] == 1
+    assert report["totals"]["passed_moved"] == 1
 
     code = main(["--root", str(tmp_path)])
 
     assert code == 0, "默认模式只报告不拦人"
 
 
-def test_should_return_nonzero_with_strict_when_drift_present(
+def test_should_return_zero_with_strict_when_only_pass_moved(
     tmp_path: Path, capsys
 ) -> None:
-    _drift_repo(tmp_path)
+    """位置已变（pass_moved）只提示、不拦人：--strict 必须返回 0。"""
+    _moved_repo(tmp_path)
     report = _report(capsys, tmp_path)
-    assert report["totals"]["drift"] == 1
+    totals = report["totals"]
+    assert totals["passed_moved"] == 1
+    assert totals["gone"] == 0
+    assert totals["ambiguous"] == 0
+    assert totals["unverifiable"] == 0
+    assert totals["structure"] == 0
+    assert report["structure_errors"] == []
 
     code = main(["--root", str(tmp_path), "--strict"])
 
-    assert code != 0, "--strict 下漂移必须让退出码非 0"
+    assert code == 0, "只有 pass_moved 时 --strict 必须返回 0（位置变化不拦人）"
 
 
 def test_should_return_zero_with_strict_when_all_pass(tmp_path: Path, capsys) -> None:
@@ -820,7 +1023,15 @@ def test_should_report_real_facts_without_breaking_invariants(capsys) -> None:
     assert Path(report["facts_path"]).is_file()
     _assert_invariants(report)
     totals = report["totals"]
-    for category in ("passed", "drift", "gone", "unverifiable", "structure"):
+    for category in (
+        "passed",
+        "passed_anchored",
+        "passed_moved",
+        "gone",
+        "ambiguous",
+        "unverifiable",
+        "structure",
+    ):
         assert 0 <= totals[category] <= totals["evidence"]
 
 
@@ -835,7 +1046,21 @@ def test_should_expose_exact_totals_key_set(tmp_path: Path, capsys) -> None:
     assert set(report["totals"]) == TOTALS_KEYS, (
         f"totals 键集合应为 {sorted(TOTALS_KEYS)}，实际 {sorted(report['totals'])}"
     )
+    assert "drift" not in report["totals"], (
+        f"旧键 drift 必须废止，实际键 {sorted(report['totals'])}"
+    )
     assert report["totals"]["structure_errors"] == len(report["structure_errors"]) == 0
+
+
+def test_should_expose_exact_result_key_set(tmp_path: Path, capsys) -> None:
+    _passing_repo(tmp_path)
+
+    report = _report(capsys, tmp_path)
+
+    assert len(report["results"]) == 1
+    assert set(report["results"][0]) == RESULT_KEYS, (
+        f"单条 result 键集合应为 {sorted(RESULT_KEYS)}，实际 {sorted(report['results'][0])}"
+    )
 
 
 def test_should_count_entry_level_structure_errors_apart_from_structure_category(
@@ -900,15 +1125,18 @@ def test_should_count_entries_as_facts_plus_misreadings(tmp_path: Path, capsys) 
 # 15. 默认模式（不带 --json）的人类可读输出
 # --------------------------------------------------------------------------- #
 def _mixed_repo(root: Path) -> None:
-    """2 通过 / 1 位置漂移 / 1 原文消失 / 1 本机无法核对 / 0 结构错误。"""
+    """五类各一条：1 通过 / 1 原文消失 / 1 歧义 / 1 本机无法核对 / 1 结构错误。"""
     _linear_source(root)
+    _repeated_source(root)
     _write_facts(
         root,
         _yaml(
-            _fact("DF-001", _ev("src/a.txt:1", "alpha") + _ev("src/a.txt:3", "beta")),
-            _fact("DF-002", _ev("src/a.txt:2", "beta")),
-            _fact("DF-003", _ev("src/a.txt:2", "gamma")),
+            _fact("DF-001", _ev("src/a.txt:1", "alpha")),
+            _fact("DF-002", _ev("src/a.txt:2", "gamma")),
+            _fact("DF-003", _ev("src/dup.txt:1", "alpha")),
             _fact("DF-004", _ev("pipeline/contracts/x.json:1", "片段")),
+            # 未知 evidence 键：evidence 级结构错误（category=structure）
+            _fact("DF-005", ["      - ref: src/a.txt:3", "        contnt: beta"]),
         ),
     )
 
@@ -918,23 +1146,34 @@ def test_should_print_chinese_summary_labels_with_numbers(tmp_path: Path, capsys
 
     _, out = _run_text(capsys, ["--root", str(tmp_path)])
 
-    expected = {"通过": 2, "位置漂移": 1, "原文消失": 1, "本机无法核对": 1, "结构错误": 0}
+    expected = {"通过": 1, "原文消失": 1, "歧义": 1, "本机无法核对": 1, "结构错误": 1}
     for label, count in expected.items():
         assert label in SUMMARY_LABELS
         assert _count_for_label(out, label) == count, (
             f"汇总标签 {label!r} 的数字应为 {count}，输出为：\n{out}"
         )
+    for label in DEPRECATED_LABELS:
+        assert label not in out, f"旧口径标签 {label!r} 不得再出现在默认输出里：\n{out}"
 
 
-def test_should_print_actual_line_number_in_drift_detail(tmp_path: Path, capsys) -> None:
-    _drift_repo(tmp_path)
+def test_should_print_pass_moved_detail_with_actual_line(tmp_path: Path, capsys) -> None:
+    _moved_repo(tmp_path)
 
     _, out = _run_text(capsys, ["--root", str(tmp_path)])
 
     lines = [line for line in out.splitlines() if "src/a.txt:2" in line]
-    assert lines, f"默认输出缺少 drift 明细行：\n{out}"
-    assert any(re.search(r"实际行号[：: ]*3", line) for line in lines), (
-        "drift 明细行必须写出实际行号 3：\n" + "\n".join(lines)
+    assert lines, f"默认输出缺少位置已变明细行：\n{out}"
+    assert any(
+        line.startswith("PASS_MOVED DF-001 src/a.txt:2:") for line in lines
+    ), (
+        "位置已变明细行须为 `<CATEGORY 大写> <id> <ref>: <detail>`"
+        "（PASS_MOVED DF-001 src/a.txt:2: ...）：\n" + "\n".join(lines)
+    )
+    assert any("3" in line for line in lines), (
+        "位置已变明细行必须写出唯一命中行号 3（ref 里只有 2）：\n" + "\n".join(lines)
+    )
+    assert _count_for_label(out, "通过") == 1, (
+        f"位置已变计入「通过」，实际输出：\n{out}"
     )
 
 
@@ -946,9 +1185,14 @@ def test_should_print_gone_ref_in_default_output(tmp_path: Path, capsys) -> None
 
     lines = [line for line in out.splitlines() if "src/a.txt:2" in line]
     assert lines, f"默认输出缺少原文消失明细行：\n{out}"
-    assert any("原文消失" in line or "GONE" in line for line in lines), (
-        "原文消失明细行须标明类别并带 ref：\n" + "\n".join(lines)
+    assert any(
+        line.startswith("GONE DF-001 src/a.txt:2:") and "未找到内容" in line
+        for line in lines
+    ), (
+        "原文消失明细行须为 `GONE DF-001 src/a.txt:2: 未找到内容` 形式：\n"
+        + "\n".join(lines)
     )
+    assert _count_for_label(out, "原文消失") == 1
 
 
 def test_should_print_entry_level_structure_error_in_default_output(
@@ -982,7 +1226,8 @@ def test_should_return_nonzero_with_strict_when_only_gone_present(
 
     report = _report(capsys, tmp_path)
     assert report["totals"]["gone"] == 1
-    assert report["totals"]["drift"] == 0
+    assert report["totals"]["ambiguous"] == 0
+    assert report["totals"]["passed_moved"] == 0
     capsys.readouterr()
 
     assert main(["--root", str(tmp_path), "--strict"]) != 0, "只有 gone 也必须让 --strict 非 0"
@@ -1017,7 +1262,8 @@ def test_should_return_nonzero_with_strict_when_only_entry_level_structure_error
     )
 
     report = _report(capsys, tmp_path)
-    assert report["totals"]["drift"] == 0
+    assert report["totals"]["ambiguous"] == 0
+    assert report["totals"]["passed_moved"] == 0
     assert report["totals"]["gone"] == 0
     assert report["totals"]["unverifiable"] == 0
     assert report["totals"]["structure"] == 0
@@ -1032,14 +1278,16 @@ def test_should_return_nonzero_with_strict_when_only_entry_level_structure_error
 def test_should_return_nonzero_with_strict_json_and_keep_pure_json(
     tmp_path: Path, capsys
 ) -> None:
-    _drift_repo(tmp_path)
+    _linear_source(tmp_path)
+    _write_facts(tmp_path, _yaml(_fact("DF-001", _ev("src/a.txt:2", "gamma"))))
 
     code = main(["--root", str(tmp_path), "--json", "--strict"])
     out = capsys.readouterr().out
 
     assert code != 0
     report = json.loads(out)  # 整段 stdout 必须是纯 JSON，多一行文本就会解析失败
-    assert report["totals"]["drift"] == 1
+    assert report["totals"]["gone"] == 1
+    assert "drift" not in report["totals"]
 
 
 # --------------------------------------------------------------------------- #
@@ -1090,7 +1338,7 @@ def test_should_not_report_residue_error_when_obsolete_entry_has_residue(
 # --------------------------------------------------------------------------- #
 # 18. evidence 判定边界
 # --------------------------------------------------------------------------- #
-def test_should_drift_with_real_line_when_line_number_out_of_range(
+def test_should_pass_moved_when_line_number_out_of_range(
     tmp_path: Path, capsys
 ) -> None:
     _linear_source(tmp_path)
@@ -1099,21 +1347,30 @@ def test_should_drift_with_real_line_when_line_number_out_of_range(
     report = _report(capsys, tmp_path)
 
     result = _result_for(report, "src/a.txt:99")
-    assert result["category"] == "drift", "行号越界但内容在别处 = 位置漂移，不是 gone"
+    assert result["category"] == "pass_moved", (
+        f"行号越界但原文在全文唯一命中 = 位置已变，不是 gone，实际 {result['category']!r}"
+    )
     assert result["actual"] == 3
-    assert report["totals"]["drift"] == 1
+    assert result["actual_line"] == 3
+    assert report["totals"]["passed_moved"] == 1
+    assert report["totals"]["passed_anchored"] == 0
+    assert report["totals"]["gone"] == 0
     _assert_invariants(report, expected_entries=1)
 
 
-def test_should_drift_when_ref_points_to_blank_line(tmp_path: Path, capsys) -> None:
+def test_should_pass_moved_when_ref_points_to_blank_line(tmp_path: Path, capsys) -> None:
     _write(tmp_path, "src/blank.txt", "alpha\n\nbeta\n")
     _write_facts(tmp_path, _yaml(_fact("DF-001", _ev("src/blank.txt:2", "beta"))))
 
     report = _report(capsys, tmp_path)
 
     result = _result_for(report, "src/blank.txt:2")
-    assert result["category"] == "drift", "指向空行且内容在别处 = 位置漂移"
+    assert result["category"] == "pass_moved", (
+        f"指向空行且原文在全文唯一命中 = 位置已变，实际 {result['category']!r}"
+    )
     assert result["actual"] == 3
+    assert result["actual_line"] == 3
+    assert report["totals"]["ambiguous"] == 0
     _assert_invariants(report, expected_entries=1)
 
 
@@ -1181,18 +1438,28 @@ def test_should_report_structure_when_expect_contains_newline(
     _assert_invariants(report, expected_entries=1)
 
 
-def test_should_drift_to_first_occurrence_when_needle_repeats(
+def test_should_mark_ambiguous_when_needle_repeats(
     tmp_path: Path, capsys
 ) -> None:
-    _write(tmp_path, "src/dup.txt", "x\nalpha\nalpha\n")
-    _write_facts(tmp_path, _yaml(_fact("DF-001", _ev("src/dup.txt:1", "alpha"))))
+    """记录行（第 1 行 x）未命中、全文两处命中：判 ambiguous，不得取首次命中。"""
+    _ambiguous_repo(tmp_path)
 
     report = _report(capsys, tmp_path)
 
     result = _result_for(report, "src/dup.txt:1")
-    assert result["category"] == "drift"
-    assert result["actual"] == 2, "重复片段取首次命中行"
+    assert result["category"] == "ambiguous"
+    assert result["matches"] == [2, 3], (
+        f"多处命中必须列出全部行号 [2, 3]，实际 {result['matches']!r}"
+    )
+    assert result["actual"] is None, "多处命中不得默认取第一处（actual 必须为 None）"
+    assert result["actual_line"] is None
+    assert report["totals"]["ambiguous"] == 1
+    assert report["totals"]["passed"] == 0
     _assert_invariants(report, expected_entries=1)
+
+    assert main(["--root", str(tmp_path), "--strict"]) != 0, (
+        "存在 ambiguous 时 --strict 必须返回非 0"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -1220,7 +1487,7 @@ def test_should_report_structure_error_when_misreading_correct_empty(
     _assert_invariants(report, expected_entries=2)
 
 
-def test_should_drift_for_misreading_evidence(tmp_path: Path, capsys) -> None:
+def test_should_pass_moved_for_misreading_evidence(tmp_path: Path, capsys) -> None:
     _linear_source(tmp_path)
     _write_facts(
         tmp_path,
@@ -1233,10 +1500,16 @@ def test_should_drift_for_misreading_evidence(tmp_path: Path, capsys) -> None:
     report = _report(capsys, tmp_path)
 
     result = _result_for(report, "src/a.txt:2")
-    assert result["category"] == "drift"
+    assert result["category"] == "pass_moved"
     assert result["actual"] == 3
+    assert result["actual_line"] == 3
     assert result["id"] == "misreadings[1]"
-    assert report["totals"]["drift"] == 1
+    # 本 fixture 有两条 evidence：DF-001 的 src/a.txt:1 记录行命中（第 1 行就是 alpha），
+    # misreadings[1] 的 src/a.txt:2 位置已变（第 2 行是 placeholder，beta 唯一命中第 3 行）；
+    # 按契约 C，两者都计入 passed，因此 passed == 2 == passed_anchored(1) + passed_moved(1)。
+    assert report["totals"]["passed_moved"] == 1
+    assert report["totals"]["passed_anchored"] == 1
+    assert report["totals"]["passed"] == 2
     _assert_invariants(report, expected_entries=2)
 
 

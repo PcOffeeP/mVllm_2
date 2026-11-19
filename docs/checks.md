@@ -21,7 +21,7 @@
 | 子视频生成（把源视频切成候选片段那一步） | 片段怎么切、规则怎么派、批次怎么续跑 | 32 | 1·29·2·0 | 红项 3 个：本层 L2-30、L2-31，以及文档与事实层的 L5-02；整套检查需单独运行（不在默认 pytest 范围内）；审计写盘入口已具备（29 例测试覆盖），但当前批次因身份漂移未产出记录。 |
 | 人工审核（你看片打标签的界面） | 审核服务、ROI 决策、标注审核 | 16 | 15·1·0·0 | 跑得过；但审核页的「标签组合待复核」筛选现在用不了。 |
 | 模型评价（评分器与模型输入记录） | 评分器、帧来源链、清单转换、推理入口 | 17 | 15·0·0·2 | 在跑的这部分是好的；模型交付校验已删。 |
-| 文档与事实（`docs/facts.yaml` 那套「哪句话有出处」的记录） | 文档里的证据还对不对得上原文 | 6 | 3·1·1·1 | 校验程序已移植回 `script/checks/facts.py`，实测 0 条位置漂移、3 条原文消失；标题/锚点校验仍缺。 |
+| 文档与事实（`docs/facts.yaml` 那套「哪句话有出处」的记录） | 文档里的证据还对不对得上原文 | 6 | 3·1·1·1 | 校验程序已移植回 `script/checks/facts.py`，判定改为锚文本（`expect` 能否定位、行号只作提示），实测通过 203（记录行命中 189、位置已变 14）、原文消失 4、歧义 0；标题/锚点校验仍缺。 |
 | 仓库卫生（哪些文件该进版本库、哪些不该） | 仓库布局、旧路径、Git 忽略规则 | 43 | 19·20·0·4 | 19 项已真正执行并通过；20 项按未检出目录逐条具名跳过（18 项缺 `pipeline/`、2 项缺 `versioning/backup.py`）。 |
 
 六层合计 20+32+16+17+6+43=134；绿 71、黄 53、红 3、孤儿 7。
@@ -37,11 +37,11 @@
 | L2-32 | 有没有程序负责生成和维护审计文件 | `script/subvideo_generation/generate.py` 的写文件动作 → 应当生成或维护 `audit.json` | 生成入口已具备写盘能力（`--write-audit` / `--replace-audit`，fail-closed + 原子写），有 29 例测试守住 | 绿 | 运行 `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q script/subvideo_generation/tests/test_audit_record_writes.py`，看到 29 例通过 |
 | L4-16 | 模型/服务交付时的批次身份对不对 | 交付产物与约定规则 → 身份一致才放行 | 没有；脚本已删除 | 孤儿 | 仓库里找不到 `scripts/serve_validate_delivery.py` |
 | L4-17 | 模型/服务有没有越界输出 | 服务响应与允许范围 → 不越界 | 没有；脚本已删除 | 孤儿 | 仓库里找不到 `scripts/serve_validate_no_oob.py` |
-| L5-01 | 文档证据的行号是否还指得到原文 | `docs/facts.yaml` 的 ref 证据 → 行号与原文对得上 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 绿 | 运行该 `--json` 命令，看 `totals.drift`（本次实测 0 条漂移，204 条通过） |
-| L5-02 | 文档证据的 expect 断言是否还成立 | `docs/facts.yaml` 的 expect 字段 → 断言内容仍与原文一致 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 红 | 运行该 `--json` 命令，看 `totals.gone`（实测 3，表示 expect 在全文都找不到） |
+| L5-01 | 文档证据的 `expect` 原文是否还能在文件中定位（行号只作提示） | `docs/facts.yaml` 的 ref 证据 → `expect` 原文可在目标文件定位，位置变化不算错 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 绿 | 运行该 `--json` 命令，看 `totals.passed`（实测 203，其中记录行命中 189、位置已变 14）与 `totals.ambiguous`（实测 0）；`totals.passed_moved` 不再算失败 |
+| L5-02 | 文档证据的 expect 断言是否还成立 | `docs/facts.yaml` 的 expect 字段 → 断言内容仍与原文一致，或在全文多处出现无法唯一确定 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 红 | 运行该 `--json` 命令，看 `totals.gone`（实测 4，表示 expect 在全文都找不到）与 `totals.ambiguous`（实测 0，多处命中无法唯一确定） |
 | L5-03 | 文档里写的仓库路径是否真实存在 | Markdown 中的仓库内路径 → 路径存在 | `.venv/bin/python -m script.checks.facts --check-doc-paths` | 黄 | 运行该命令，会看到 41 个受跟踪 Markdown「无法读取」后退出 1（sparse-checkout 未检出，尚给不出路径判定） |
 | L5-04 | 文档记录格式的状态取值是否合法 | `docs/facts.yaml` 的状态字段 → 取值在允许列表内 | `.venv/bin/python -m script.checks.facts --json`（2026-11-19 实测） | 绿 | 运行该 `--json` 命令，看 `structure_errors`：49 条 state 全部合法，DF-044 的 `affects` 已修正，`structure_errors` 实测为 0 |
-| L5-05 | 原 1132 行文档事实校验程序本身 | `docs/facts.yaml` 与仓库文件 → 证据、路径检查结果 | `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q script/checks/tests`（73 项） | 绿 | 运行该 pytest 命令看 `73 passed`，再跑 `.venv/bin/python -m script.checks.facts` 看五类汇总 |
+| L5-05 | 原 1132 行文档事实校验程序本身 | `docs/facts.yaml` 与仓库文件 → 证据、路径检查结果 | `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q script/checks/tests`（87 项） | 绿 | 运行该 pytest 命令看 `87 passed`，再跑 `.venv/bin/python -m script.checks.facts` 看五类汇总 |
 | L5-06 | 文档内部标题与互相引用是否还连得上 | `docs/facts.yaml` 的标题与锚点引用 → 引用目标存在 | 没有；移植版只校验证据行与文档路径，不含标题/锚点校验 | 孤儿 | 在 `script/checks/facts.py` 里搜索 `anchor`／标题解析，没有对应逻辑 |
 | L6-40 | 仓库有没有持续集成 | 仓库根目录 → 存在 CI 配置 | 没有 | 孤儿 | 在项目根目录执行 `ls -la .github`，提示没有该目录 |
 | L6-41 | 提交前有没有自动检查钩子 | 仓库根目录 → 存在提交前钩子配置 | 没有 | 孤儿 | 在项目根目录执行 `ls -la .pre-commit-config.yaml`，提示没有该文件 |
@@ -49,25 +49,25 @@
 | L6-43 | 已删除校验器的回归测试是否还留在索引里 | Git 索引与磁盘文件 → 索引中的测试文件在磁盘上存在 | 没有；磁盘上没有，跑不到 | 孤儿 | `tests/test_verify_design_facts.py`、`tests/test_serve_validate_delivery.py`、`tests/test_environment_deployment.py` 已从索引移除，磁盘上也没有 |
 | L1-03 | 标注表的非法取值与标签组合 | 标注表记录 → 缺少 ID、重复 ID、空标签、非法枚举、不合法标签组合都被拒绝 | `script/data_split/tests/test_generate.py:132` | 绿 | 运行 `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/data_split/tests`，该测试通过 |
 | L1-13 | ROI 输出的画面尺寸、时长、方向 | ROI 输出媒体 → 几何、时间、方向符合要求才验收 | `script/roi/tests/test_core.py:328` | 绿 | 运行 `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/roi/tests`，该测试通过 |
-| L3-16 | 审核与评分的集成行为 | 集成测试集 → 82 项行为检查通过 | 默认 pytest；本次实测 703 项通过（另有 20 项具名跳过），其中集成 82 项 | 绿 | 运行默认 `pytest`，看到集成测试通过 |
+| L3-16 | 审核与评分的集成行为 | 集成测试集 → 82 项行为检查通过 | 默认 pytest；本次实测 717 项通过（另有 20 项具名跳过），其中集成 82 项 | 绿 | 运行默认 `pytest`，看到集成测试通过 |
 | L4-01 | 评分器检查身份字段和文件指纹格式 | 评分文件 → 身份字段存在、文件指纹格式正确 | `script/five_label_eval/score.py:91` | 绿 | 运行默认 `pytest` 中评价相关测试，或打开 `script/five_label_eval/score.py:91` 看校验逻辑 |
 | L1-01…L1-02 | 标注表与划分清单的历史记录是否还对应得上当前文件 | 记录中的文件指纹与当前文件 → 指纹一致 | 测试会跑，但记录本身在漂移 | 黄 | 打开 `data/split-inputs/source-groups-20261107.json:6` 与 `data/splits/three-fold/manifest.json:256`，比对记录中的文件指纹和当前文件 |
 | L2-01…L2-29 | 子视频生成全阶段的契约与身份校验 | 源视频、标注、规则 → 片段、覆盖、续跑、审计都符合规则 | 须单独运行该目录测试 | 黄 | 打开 `pyproject.toml` 第 19 行，看默认测试范围里没有 `script/subvideo_generation/tests` |
 | L3-08 | 审核页「标签组合待复核」筛选 | `audit.json` 的清单摘要与当前清单 → 一致时筛选可用 | 审核页加载时触发，但现在不一致导致筛选灰掉 | 黄 | 打开审核页，看「标签组合待复核」筛选是否不可用；或打开 `data/sub_video/audit.json:3` 与当前清单摘要比对 |
 | L3-15 | 审核服务与标注审核的测试 | 对应测试目录 → 45 + 10 项检查通过 | 默认 pytest；审核服务和标注审核测试均通过 | 绿 | 运行默认 `pytest`，收集审核服务 45 项、标注审核 10 项，全部通过 |
-| L6-01…L6-39 | 仓库布局与忽略规则 | 仓库文件结构 → 布局符合扁平化规则、忽略规则覆盖到位 | 默认 `pytest` 会收集全部 63 个测试条目 | 19·20·0（绿·黄·红） | 运行默认 `pytest`，报告显示 `703 passed, 20 skipped`；加 `-rs` 可逐条看到 20 条跳过理由：18 条为 sparse-checkout 未检出 `pipeline/`、2 条为未检出 `versioning/backup.py` |
+| L6-01…L6-39 | 仓库布局与忽略规则 | 仓库文件结构 → 布局符合扁平化规则、忽略规则覆盖到位 | 默认 `pytest` 会收集全部 63 个测试条目 | 19·20·0（绿·黄·红） | 运行默认 `pytest`，报告显示 `717 passed, 20 skipped`；加 `-rs` 可逐条看到 20 条跳过理由：18 条为 sparse-checkout 未检出 `pipeline/`、2 条为未检出 `versioning/backup.py` |
 
 ## 4. 现在最该处理的六件事
 
 六件事按优先级排好了；时间只够做三件时，按 1、2、3 的顺序做。
 
-1. **`docs/facts.yaml` 的 287 条证据里仍有 3 条原文消失。** 校验器已于 2026-11-19 移植回 `script/checks/facts.py`（默认报告模式、`--strict` 拦截），`docs/facts.yaml` 头部注释也已同步改写成「由该脚本核对」，不再声称「当前无自动校验器」。最近一次实测（`.venv/bin/python -m script.checks.facts --json`）的分布是：通过 204、位置漂移 0、原文消失 3、本机无法核对 80，合计 287。影响是仍有 3 条事实记录与原文的连接断了：其 `expect` 在全文找不到，需要补回文件、改路径或删除条目；另有 80 条引用的路径在本机未检出（sparse-checkout），只能在原工作区或训练机上核对。标题与锚点校验仍未移植（台账 L5-06 记为孤儿）。修好之后，文档引用的行号、原文、仓库路径再发生变化时，校验器会在第一时间报错，而不是等到审计才发现。DF-044 的 `affects` 已修正，条目级结构错误实测为 0。
+1. **`docs/facts.yaml` 的 287 条证据里仍有 4 条原文消失。** 校验器已于 2026-11-19 移植回 `script/checks/facts.py`（默认报告模式、`--strict` 拦截），`docs/facts.yaml` 头部注释也已同步改写成「由该脚本核对」，不再声称「当前无自动校验器」。证据判定改为锚文本契约：以 `expect` 原文能否在目标文件中定位为准，`ref` 里的行号只作提示，正文移动导致行号变化不算错；只有原文被改写、被删除，或在同一文件中出现多处、无法唯一确定（单列为「歧义」）时才算问题。最近一次实测（`.venv/bin/python -m script.checks.facts --json`）的五类分布是：通过 203（记录行命中 189、位置已变 14）、原文消失 4、歧义 0、本机无法核对 80、结构错误 0，合计 287 条证据。影响是仍有 4 条事实记录与原文的连接断了：其 `expect` 在全文找不到，需要补回文件、改路径或删除条目；另有 80 条引用的路径在本机未检出（sparse-checkout），只能在原工作区或训练机上核对。标题与锚点校验仍未移植（台账 L5-06 记为孤儿）。修好之后，正文增删导致的行号移动不会再报错、也不需逐条改行号；只有原文被改写、被删除，或同一文件里出现多处命中无法唯一确定时，校验器才会在第一时间报错，而不是等到审计才发现。DF-044 的 `affects` 已修正，条目级结构错误实测为 0。
 
 2. **审计记录写入入口现已具备，但当前批次产不出核验记录。** 显式执行 `--audit-only --write-audit` 可写入；已有记录须显式加 `--replace-audit` 才覆盖。批次身份或清单校验不通过时 fail-closed 拒绝写入且不改动既有记录；写盘为原子替换，有 29 例测试守住。当前批次身份已漂移：`docs/subvideo-current-logic.md` 在批次清单写入（`6859f9a`，2026-11-15）之后被 `267096f`（2026-11-16）改动，记录中的清单摘要 `5828cb1a…` 与当前 `ca50492d…` 不一致；该漂移与本次代码改动无关，用 `git show HEAD:` 的旧版本跑出同一异常。`data/sub_video/audit.json` 仍是上一批次内容（12,022 字节，第 3 行清单摘要与第 12 行运行摘要与 `data/sub_video/superseded-20261113/audit.json` 逐字符相同）；54 条候选（「未断裂且断后脱夹」51 条 + 「未断裂且爆炸性断裂」6 条，并集 54 条）仍只能线下复算，审核页「标签组合待复核」筛选仍不可用。要恢复该批次的核验记录，需重生成批次；或在重生成前不依赖该记录（L2-30、L2-31 因此保持红）。
 
-3. **仓库卫生 39 项检查已从「静默跳过」改为「19 项执行通过 + 20 项具名跳过」。** 两个文件原本在模块级 `pytest.importorskip("pipeline")`，条件不满足就整文件跳过，默认测试报告 `660 passed, 2 skipped`，这 39 项一个都没跑。现改为惰性依赖：不依赖 `pipeline` 的用例直接执行（`tests/test_layout_migration_guard.py` 的 T1/T2/T3/T5/T6 与 `tests/test_project_workspace.py` 的 Git 忽略用例，两文件共 43 个测试条目实测全通过）；真正依赖 `pipeline` 的 18 项用 `pytest.mark.skipif` 逐条具名跳过，理由写明「sparse-checkout 未检出 pipeline/」；`versioning/backup.py` 的 2 个豁免守卫改用 skip-worktree 探针区分「被 sparse-checkout 排除」（具名跳过）与「文件真丢失」（仍按原来的 `pytest.fail` 硬失败），因此硬失败守卫没有被放宽。实测默认 `pytest` 为 `703 passed, 20 skipped`、0 失败。仍存两点限制：（a）T3 的字面量扫描面在当前检出下只剩 `tests/` 的两个文件与根目录文件——`pipeline`/`versioning`/`finetune`/`delivery` 被 sparse-checkout 排除（HEAD 跟踪 116 个 `pipeline` 文件，磁盘上一个都没有），所以「旧布局字面量清零」的本机结论不等于全仓结论；同理 L6-08 在当前检出下没有可扫的备份模块，是通过但空转。（b）20 项跳过条目的断言本体（含 `tests/test_project_workspace.py` 里 12 处 `pytest.raises` 的 match 文案）在本机完全没有执行，只是计数可见，不等于已验证。要把这 20 项也真跑，需把 `/pipeline/`、`/versioning/` 加进 `git sparse-checkout` 白名单后重跑同一条命令，届时这些用例会自动转为执行。
+3. **仓库卫生 39 项检查已从「静默跳过」改为「19 项执行通过 + 20 项具名跳过」。** 两个文件原本在模块级 `pytest.importorskip("pipeline")`，条件不满足就整文件跳过，默认测试报告 `660 passed, 2 skipped`，这 39 项一个都没跑。现改为惰性依赖：不依赖 `pipeline` 的用例直接执行（`tests/test_layout_migration_guard.py` 的 T1/T2/T3/T5/T6 与 `tests/test_project_workspace.py` 的 Git 忽略用例，两文件共 43 个测试条目实测全通过）；真正依赖 `pipeline` 的 18 项用 `pytest.mark.skipif` 逐条具名跳过，理由写明「sparse-checkout 未检出 pipeline/」；`versioning/backup.py` 的 2 个豁免守卫改用 skip-worktree 探针区分「被 sparse-checkout 排除」（具名跳过）与「文件真丢失」（仍按原来的 `pytest.fail` 硬失败），因此硬失败守卫没有被放宽。实测默认 `pytest` 为 `717 passed, 20 skipped`、0 失败。仍存两点限制：（a）T3 的字面量扫描面在当前检出下只剩 `tests/` 的两个文件与根目录文件——`pipeline`/`versioning`/`finetune`/`delivery` 被 sparse-checkout 排除（HEAD 跟踪 116 个 `pipeline` 文件，磁盘上一个都没有），所以「旧布局字面量清零」的本机结论不等于全仓结论；同理 L6-08 在当前检出下没有可扫的备份模块，是通过但空转。（b）20 项跳过条目的断言本体（含 `tests/test_project_workspace.py` 里 12 处 `pytest.raises` 的 match 文案）在本机完全没有执行，只是计数可见，不等于已验证。要把这 20 项也真跑，需把 `/pipeline/`、`/versioning/` 加进 `git sparse-checkout` 白名单后重跑同一条命令，届时这些用例会自动转为执行。
 
-4. **默认测试命令覆盖 8 个测试目录。** 默认范围实测收集 723 项，其中 703 项通过、20 项具名跳过、0 项失败；9 个测试目录中唯一不在默认范围的是 `script/subvideo_generation/tests`（337 项，需单独按需运行）。按实际执行数计算，默认覆盖 703/1060 ≈ 66.3%（1060 = 703 通过 + 20 跳过 + 337 未纳入默认范围）；子视频生成测试此前耗时超过 10 分钟仍未跑完，需要按需单独运行。
+4. **默认测试命令覆盖 8 个测试目录。** 默认范围实测收集 737 项，其中 717 项通过、20 项具名跳过、0 项失败；9 个测试目录中唯一不在默认范围的是 `script/subvideo_generation/tests`（337 项，需单独按需运行）。按实际执行数计算，默认覆盖 717/1074 ≈ 66.8%（1074 = 717 通过 + 20 跳过 + 337 未纳入默认范围）；子视频生成测试此前耗时超过 10 分钟仍未跑完，需要按需单独运行。
 
 5. **划分清单与 ROI 清单里记录的文件指纹，没有任何程序回读比对。** 指纹分别写入 `script/data_split/generate.py:530` 和 `script/roi/core.py:416`；只有测试会比对，生产链路不检查。影响是输入换了、产物没换也没人发现；本次已实证：`data/splits/three-fold/manifest.json:256` 起的 12 项输入记录中，4 项与当前文件对不上（`docs_label.md`、`generate.py`、`labels.csv` 内容已变；`docs_data-split-design.md` 已改名为 `docs/split/data-split-design.md` 且内容亦变），另 6 个 `old_fold_*` 快照从未入库，一直没人发现。修它要在划分和 ROI 的入口程序里加入回读比对：每次读取清单时，先核对清单里记录的文件指纹是否与磁盘当前文件一致；不一致时拒绝继续或要求重新生成。修好之后，输入文件悄悄被替换、重命名或内容变更时，程序会停下来要求确认，不会继续用旧清单跑。（2026 年 11 月补记，仅作登记、不新增检查项也不改计数：ROI 清单记录的是绝对路径，读取逻辑已改为「存在即用、缺失则按显式项目根解析 `data`/`script`/`docs` 相对后缀、两者皆无则报错」；本机 110 条源/输出路径全部原样可用，重定位路径由 20 例合成测试覆盖（`script/roi/tests/test_manifest_paths.py`）。）
 
@@ -79,7 +79,7 @@
 
 | 已删除的校验 | 以前能防住什么 | 删除时间 | 现在有没有替代品 |
 |---|---|---|---|
-| `scripts/verify_design_facts.py`（1132 行） | `docs/facts.yaml` 每条证据的文件、行号、原文是否还对得上 | 2026-11-14，提交 `4cd54fa` | `script/checks/facts.py`（已移植，实测见第 4 节第 1 条） |
+| `scripts/verify_design_facts.py`（1132 行） | `docs/facts.yaml` 每条证据的文件、行号、原文是否还对得上（现口径下行号只作提示） | 2026-11-14，提交 `4cd54fa` | `script/checks/facts.py`（已移植，按锚文本判定：`expect` 能否在文件中定位、行号只作提示、新增「歧义」类别；实测见第 4 节第 1 条） |
 | 同一程序的文档路径检查模式（配白名单 `scripts/doc-path-allowlist.txt`） | 文档里写的仓库路径是否真的存在 | 同上 | `script/checks/facts.py --check-doc-paths` + `script/checks/doc-path-allowlist.txt`（已随本次移植恢复；当前工作区部分目录未检出，会按「无法读取」报错） |
 | `scripts/serve_validate_delivery.py`（181 行） | 模型/服务交付时的批次身份是否正确 | 同上 | 没有 |
 | `scripts/serve_validate_no_oob.py`（289 行） | 模型/服务有没有越界输出 | 同上 | 没有 |
@@ -201,11 +201,11 @@
 
 | 编号 | 层 | 一句话说明 | 位置 | 触发方式 | 状态 |
 |---|---|---|---|---|---|
-| L5-01 | 文档与事实 | 证据行号位置漂移本次实测 0 条（204 条通过）。 | `script/checks/facts.py` | `--json` | 绿 |
-| L5-02 | 文档与事实 | expect 在全文找不到实测 3 条。 | `script/checks/facts.py` | `--json` | 红 |
+| L5-01 | 文档与事实 | 证据 expect 原文可定位，本次实测通过 203 条（记录行命中 189、位置已变 14）；歧义 0 条。 | `script/checks/facts.py` | `--json` | 绿 |
+| L5-02 | 文档与事实 | expect 在全文找不到 4 条；多处命中（歧义）0 条。 | `script/checks/facts.py` | `--json` | 红 |
 | L5-03 | 文档与事实 | sparse-checkout 下 41 个受跟踪 Markdown 无法读取，尚不能判定路径。 | `script/checks/facts.py`；`script/checks/doc-path-allowlist.txt` | `--check-doc-paths` | 黄 |
 | L5-04 | 文档与事实 | 49 条 state 合法；DF-044 的 affects 已修正，`structure_errors` 实测为 0。 | `script/checks/facts.py` | `--json` | 绿 |
-| L5-05 | 文档与事实 | 移植版校验器的测试 73 项通过，提供五类汇总。 | `script/checks/facts.py` | pytest；默认模式 | 绿 |
+| L5-05 | 文档与事实 | 移植版校验器的测试 87 项通过，提供五类汇总。 | `script/checks/facts.py` | pytest；默认模式 | 绿 |
 | L5-06 | 文档与事实 | 移植版不含标题与锚点校验。 | `script/checks/facts.py` | 无 | 孤儿 |
 
 ### 仓库卫生层（L6）
