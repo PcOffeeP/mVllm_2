@@ -62,12 +62,12 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("pipeline", reason="sparse-checkout 未检出 pipeline/：该模块依赖 pipeline 包")
+from _repo_layout_probe import PIPELINE_AVAILABLE, PIPELINE_SKIP_REASON, sparse_checkout_excludes
 
-from pipeline.project_workspace import (
-    experiment_workspace_paths,
-    project_workspace_paths,
-)
+requires_pipeline = pytest.mark.skipif(not PIPELINE_AVAILABLE, reason=PIPELINE_SKIP_REASON)
+if PIPELINE_AVAILABLE:  # 惰性依赖：sparse-checkout 未检出 pipeline/ 时只有 T4 用例被显式跳过
+    from pipeline.project_workspace import experiment_workspace_paths, project_workspace_paths
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SELF = Path(__file__).resolve()
@@ -326,7 +326,15 @@ def test_t3_allow_marker_appears_only_in_backup_module() -> None:
 def test_t3_backup_allow_marker_only_guards_pack_structure() -> None:
     """backup.py 里被标记的行必须同时含 workspace/evaluations（备份包内结构）。"""
     backup = REPO_ROOT / _BACKUP_MODULE
-    if not backup.is_file():  # 不 skip：备份包结构豁免的载体不见了应显式失败
+    if not backup.is_file():
+        # 两条分支：被 sparse-checkout 排除（索引里有、本 worktree 未检出）属环境缺口，
+        # 可数跳过；其余情况（文件真被删除 / 挪走）仍显式失败——备份包结构豁免的
+        # 载体不见了必须硬报错，不能因环境缺口把守卫一起软化。
+        if sparse_checkout_excludes(_BACKUP_MODULE):
+            pytest.skip(
+                "sparse-checkout 未检出 versioning/：versioning/backup.py 不在本 "
+                "worktree 的部分检出内，无法校验 layout-guard-allow 的适用范围"
+            )
         pytest.fail(f"{_BACKUP_MODULE} 不存在，无法校验 {ALLOW_MARKER} 的适用范围")
 
     marked_lines = backup.read_text(encoding="utf-8").splitlines()
@@ -346,7 +354,13 @@ def test_t3_backup_allow_marker_only_guards_pack_structure() -> None:
 def test_t3_backup_allow_marker_count_is_within_limit() -> None:
     """backup.py 的豁免行数不得超过上限（性质型上限，不作等值断言）。"""
     backup = REPO_ROOT / _BACKUP_MODULE
-    if not backup.is_file():  # 不 skip：备份包结构豁免的载体不见了应显式失败
+    if not backup.is_file():
+        # 同上：只有 sparse-checkout 排除才是可数跳过，文件真丢失仍显式失败。
+        if sparse_checkout_excludes(_BACKUP_MODULE):
+            pytest.skip(
+                "sparse-checkout 未检出 versioning/：versioning/backup.py 不在本 "
+                "worktree 的部分检出内，无法统计 layout-guard-allow 的豁免行数"
+            )
         pytest.fail(f"{_BACKUP_MODULE} 不存在，无法统计 {ALLOW_MARKER}")
 
     backup_marked = sum(
@@ -593,6 +607,7 @@ def test_t3_base_model_allowlist_count_is_within_limit() -> None:
 # T4 project_workspace_paths 语义
 # --------------------------------------------------------------------------- #
 
+@requires_pipeline
 def test_t4_workspace_root_is_repository_root(tmp_path: Path) -> None:
     """项目根即 workspace 根，路径里不再有 workspace 段。"""
     paths = project_workspace_paths(tmp_path)
@@ -600,6 +615,7 @@ def test_t4_workspace_root_is_repository_root(tmp_path: Path) -> None:
     assert paths.root == tmp_path.resolve()
 
 
+@requires_pipeline
 def test_t4_children_are_not_nested_under_workspace(tmp_path: Path) -> None:
     """data / runs / models 等子路径的首段都不是 workspace。"""
     paths = project_workspace_paths(tmp_path)
@@ -619,6 +635,7 @@ def test_t4_children_are_not_nested_under_workspace(tmp_path: Path) -> None:
     assert nested == {}, f"这些路径仍落在 workspace 下：{nested}"
 
 
+@requires_pipeline
 def test_t4_child_directory_names_follow_flattened_layout(tmp_path: Path) -> None:
     """子目录名与顶层语义目录一致（runs -> trains）。"""
     paths = project_workspace_paths(tmp_path)
@@ -629,6 +646,7 @@ def test_t4_child_directory_names_follow_flattened_layout(tmp_path: Path) -> Non
     assert paths.model_releases.name == "releases"
 
 
+@requires_pipeline
 def test_t4_experiment_run_dir_lands_in_trains(tmp_path: Path) -> None:
     """实验运行目录首段是 trains。"""
     paths = experiment_workspace_paths(tmp_path, "v4.1-x-v1-seed1")

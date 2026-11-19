@@ -7,29 +7,30 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("pipeline", reason="sparse-checkout 未检出 pipeline/：该模块依赖 pipeline 包")
+from _repo_layout_probe import PIPELINE_AVAILABLE, requires_pipeline
 
-from pipeline.current_data import (
-    LEGACY_REBUILD_LAYOUT,
-    current_data_paths,
-    create_staging_context,
-    data_context_for_root,
-    inspect_legacy_context,
-    resume_staging_context,
-)
-import pipeline.current_data as current_data_module
-import pipeline.project_workspace as project_workspace
-from pipeline.data_roots import DataRootError
-from pipeline.project_workspace import (
-    ProjectWorkspaceError,
-    experiment_workspace_paths,
-    project_workspace_paths,
-    validate_experiment_id,
-    validate_model_output_path,
-)
-from pipeline.v3_candidate_plan import _portable_path
-from pipeline.v3_candidate_media import _frame_artifacts
-from pipeline.v4_1_review_workflow import _portable_identity_path
+if PIPELINE_AVAILABLE:  # 惰性依赖：sparse-checkout 未检出 pipeline/ 时其余用例由 requires_pipeline 显式跳过
+    from pipeline.current_data import (
+        LEGACY_REBUILD_LAYOUT,
+        current_data_paths,
+        create_staging_context,
+        data_context_for_root,
+        inspect_legacy_context,
+        resume_staging_context,
+    )
+    import pipeline.current_data as current_data_module
+    import pipeline.project_workspace as project_workspace
+    from pipeline.data_roots import DataRootError
+    from pipeline.project_workspace import (
+        ProjectWorkspaceError,
+        experiment_workspace_paths,
+        project_workspace_paths,
+        validate_experiment_id,
+        validate_model_output_path,
+    )
+    from pipeline.v3_candidate_plan import _portable_path
+    from pipeline.v3_candidate_media import _frame_artifacts
+    from pipeline.v4_1_review_workflow import _portable_identity_path
 
 ROOT = Path(__file__).resolve().parents[1]
 # 测试自带的合法实验 ID 字面量：本文件不再依赖被测模块的默认常量，
@@ -37,6 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_EXPERIMENT_ID = "v4.1-prompt-minimal-v1-seed3411"
 
 
+@requires_pipeline
 def test_current_v4_1_paths_are_project_local(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -50,6 +52,7 @@ def test_current_v4_1_paths_are_project_local(
     assert "tensile-data" not in str(paths.root)
 
 
+@requires_pipeline
 def test_rebuild_context_maps_legacy_paths_inside_isolated_root(
     tmp_path: Path,
 ) -> None:
@@ -67,6 +70,7 @@ def test_rebuild_context_maps_legacy_paths_inside_isolated_root(
     )
 
 
+@requires_pipeline
 def test_rebuild_context_rejects_wrong_root_and_path_escape(tmp_path: Path) -> None:
     project = tmp_path / "repo"
     with pytest.raises(DataRootError, match="staging data root"):
@@ -82,6 +86,7 @@ def test_rebuild_context_rejects_wrong_root_and_path_escape(tmp_path: Path) -> N
         context.resolve_artifact(tmp_path / "other/video.mp4")
 
 
+@requires_pipeline
 def test_rebuild_context_maps_frozen_absolute_paths(tmp_path: Path) -> None:
     project = tmp_path / "repo"
     context = data_context_for_root(
@@ -97,6 +102,7 @@ def test_rebuild_context_maps_frozen_absolute_paths(tmp_path: Path) -> None:
     ) == context.frames / "frame.jpg"
 
 
+@requires_pipeline
 def test_candidate_plan_paths_do_not_embed_rebuild_id(tmp_path: Path) -> None:
     project = tmp_path / "repo"
     alpha = project / "data-staging/alpha/data"
@@ -111,6 +117,7 @@ def test_candidate_plan_paths_do_not_embed_rebuild_id(tmp_path: Path) -> None:
     )
 
 
+@requires_pipeline
 def test_candidate_and_review_paths_do_not_embed_rebuild_id(
     tmp_path: Path,
 ) -> None:
@@ -136,6 +143,7 @@ def test_candidate_and_review_paths_do_not_embed_rebuild_id(
     )
 
 
+@requires_pipeline
 def test_inspect_legacy_context_is_read_only_and_requires_frozen_roots(
     tmp_path: Path,
 ) -> None:
@@ -163,6 +171,7 @@ def test_inspect_legacy_context_is_read_only_and_requires_frozen_roots(
         )
 
 
+@requires_pipeline
 def test_staging_create_gate_and_resume_identity(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -197,6 +206,7 @@ def test_staging_create_gate_and_resume_identity(
         resume_staging_context(project, run, "different")
 
 
+@requires_pipeline
 def test_resume_rejects_symlinked_run_or_data_root(tmp_path: Path) -> None:
     project = tmp_path / "repo"
     real = project / "data-staging/real"
@@ -229,6 +239,7 @@ def test_resume_rejects_symlinked_run_or_data_root(tmp_path: Path) -> None:
         resume_staging_context(project, real, "producer")
 
 
+@requires_pipeline
 def test_writer_output_guard_rejects_legacy_and_versioned_roots(
     tmp_path: Path,
 ) -> None:
@@ -265,6 +276,7 @@ def test_writer_output_guard_rejects_legacy_and_versioned_roots(
         )
 
 
+@requires_pipeline
 def test_semantic_experiment_id_drives_git_and_run_directories(
     tmp_path: Path,
 ) -> None:
@@ -285,6 +297,7 @@ def test_semantic_experiment_id_drives_git_and_run_directories(
         validate_experiment_id("hash-8fe58f171667")
 
 
+@requires_pipeline
 def test_module_does_not_expose_a_default_experiment_id() -> None:
     assert not hasattr(project_workspace, "CURRENT_EXPERIMENT_ID")
 
@@ -314,6 +327,7 @@ def test_flattened_local_artifacts_are_ignored_by_git() -> None:
     )
 
 
+@requires_pipeline
 def test_project_workspace_has_no_environment_dependency(
     tmp_path: Path,
 ) -> None:
@@ -326,6 +340,7 @@ def test_project_workspace_has_no_environment_dependency(
     assert dict(os.environ) == before
 
 
+@requires_pipeline
 def test_model_outputs_must_stay_under_workspace_runs(tmp_path: Path) -> None:
     expected = tmp_path / "trains/experiment/fold0/adapter"
     assert validate_model_output_path(tmp_path, expected) == expected.resolve()
