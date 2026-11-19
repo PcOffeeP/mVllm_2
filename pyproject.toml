@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "script/five_label_eval/tests", "script/integration_tests"]
+testpaths = ["tests", "script/five_label_eval/tests", "script/integration_tests", "script/annotation/tests", "script/data_split/tests", "script/roi/tests", "script/subvideo_review/tests", "script/checks/tests"]
 pythonpath = ["."]
 # `script/subvideo_generation/tests` 全部跑完耗时较长（此前记录约 272 秒，本次合并未复测），不进默认收集，需单独运行：
 # PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider --basetemp=/private/tmp/subvideo-generation-tests script/subvideo_generation/tests

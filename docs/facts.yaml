@@ -960,7 +960,7 @@ facts:
     established: 2026-11-14
     established_by: 训练机现场核实（模型路径、分片、精度与层数）；8 帧约束与跳过分支按原始工作区 `mVllm_2` 的同名文件核对行号，与训练机现场文件是否逐字一致未在本次复核
     supersedes: null
-    affects: [input, inference]
+    affects: [contract, eval]
 
   - id: DF-045
     state: active
