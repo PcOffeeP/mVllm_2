@@ -24,10 +24,14 @@
 | 检查体系线 | `script/checks/`、`docs/checks.md`、`docs/facts.yaml` |
 | 共享文档（短事务，改完立即提交） | `docs/guide.md`、`README.md`、`docs/TODO.md` |
 
-- **变更窗口声明（与 Draft PR 占坑）**：仅针对全局共享只读项（及训练机/未入库共享媒体目录）：
-  1. **开工前探针**：动共享项前先运行 `gh pr list --state open --json number,headRefName,title,isDraft,files`，确认没有其他在途 PR 正在修改同一共享资源；
-  2. **Draft PR 占坑**：确认空闲后，先在自己的 `work/*` 分支新建 `docs/changes/<日期>-<工作线>-<对象>.md`（写明意图、涉及文件、时间窗口、备份位置、回滚方式），立刻提交推送并创建 Draft PR（`gh pr create --draft --base feat/tensileagent-finetune`），确保跨 worktree、跨 Agent 实时可见；
-  3. **完工转正与保留期**：完成后在同一分支追加实际改动与「已完成 + 实际结果」并将 Draft PR 转为 Ready for review；自「已完成」记录之日起保留 7 天，过期文件可直接删除，不归档。
+- **变更窗口声明（Draft PR 占坑机制）**：仅针对全局共享只读项（及训练机/未入库共享媒体目录）：
+  1. **开工前探针**：动共享项前先运行 `gh pr list --state open --json number,headRefName,title,isDraft,labels,files`，确认没有其他在途 PR（含 Draft PR）正在修改同一共享资源；若已有在途 PR 占坑，须等待其合并或关闭后再动手，不得并发写入或基于过期数据启动高成本下游任务；
+  2. **先占坑再干活（Draft PR）**：确认空闲后，先在自己的 `work/*` 分支新建 `docs/changes/<日期>-<工作线>-<对象>.md`（写明意图、涉及文件/资源、时间窗口、备份位置、回滚方式），立刻提交推送并创建 **Draft PR** 占坑（Draft 状态下合并按钮锁死，同时跨 worktree、跨 Agent、跨本机/训练机实时可见）：
+     ```bash
+     git push -u github work/<线名>
+     gh pr create --draft --base feat/tensileagent-finetune --title "wip(lock): <简述>" --body-file docs/changes/<日期>-<工作线>-<对象>.md
+     ```
+  3. **完工转正与保留期**：完成后在同一分支追加实际改动与「已完成 + 实际结果」并推送，先按 `.github/PULL_REQUEST_TEMPLATE.md` 更新 PR 正文（`gh pr edit`）以满足 `pr-template-check`，再执行 `gh pr ready` 转为 Ready for review；PR 合并或关闭后占坑自动释放。变更单自「已完成」记录之日起保留 7 天，过期文件可直接删除，不归档。
 
 ### 3. 准入检查与基线标准（合并前必须跑）
 
