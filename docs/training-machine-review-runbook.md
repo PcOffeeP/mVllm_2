@@ -160,6 +160,7 @@ rsync -av docs/training-machine-review-runbook.md \
 ### 5.1 审查前媒体同步（训练机 → 本机）
 
 - **方向与范围**：只允许训练机 → 本机单向同步，严禁本机 → 训练机。只同步待审批次的媒体目录：当前为 `data/sub_video/videos/`；后续批次以该批次 `manifest.json` 中 `output_path` 的父目录为准。不包含 `data/` 下其它文件，包括清单、划分、标注、ROI 和审核记录；审核记录按第 3.6 节另行回传。
+- **范围限定**：本节只约束媒体同步范围；清单（`manifest.json`／`summary.json`／`audit.json`）与人工审查记录不属本节，按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 10 条回传并提交 Git。
 - **方式**：逐文件 `rsync`，禁止 `--delete` 和整目录覆盖；训练机端只读，不写、不删；本机只增不删，不覆盖已有文件。逐个选取清单中的媒体文件，在本机项目根执行（占位路径替换为该批次实际文件）：
 
   ```bash
