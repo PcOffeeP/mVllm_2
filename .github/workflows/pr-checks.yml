@@ -1,0 +1,158 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - feat/tensileagent-finetune
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pr-template-check:
+    name: pr-template-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify PR description follows template
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+
+          body = os.environ.get("PR_BODY") or ""
+          required_sections = [
+              "## 一句话总结",
+              "## 提交步骤清单",
+              "## 准入检查实测结果",
+          ]
+
+          missing = []
+          empty = []
+
+          for heading in required_sections:
+              pattern = rf"(?m)^{re.escape(heading)}\s*$"
+              match = re.search(pattern, body)
+              if not match:
+                  missing.append(heading)
+                  continue
+              start = match.end()
+              next_heading = re.search(r"(?m)^##\s+", body[start:])
+              section = body[start : start + next_heading.start()] if next_heading else body[start:]
+              # Strip HTML comments and placeholder whitespace
+              cleaned = re.sub(r"<!--.*?-->", "", section, flags=re.DOTALL).strip()
+              if not cleaned:
+                  empty.append(heading)
+
+          if missing or empty:
+              if missing:
+                  print(f"❌ PR 正文缺少必需章节: {missing}")
+              if empty:
+                  print(f"❌ PR 正文以下章节内容为空（请填写实际内容，不要只留模板注释）: {empty}")
+              sys.exit(1)
+
+          print("✅ PR 正文模板章节完整且已填写。")
+          PY
+
+  facts-baseline:
+    name: facts-baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (match local sparse-checkout scope)
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /README.md
+            /AGENTS.md
+            /uv.lock
+            /requirements.txt
+            /.gitignore
+            /.gitmodules
+            /docs/
+            !/docs/reports/
+            !/docs/results/
+            /LlamaFactory
+            /script/
+            /pyproject.toml
+            /data/
+            /tests/test_layout_migration_guard.py
+            /tests/test_project_workspace.py
+            /config/
+            /tests/_repo_layout_probe.py
+            /.github/
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install minimal dependencies for facts checker
+        run: python -m pip install --quiet pyyaml
+
+      - name: Run script.checks.facts baseline gate
+        run: |
+          python -m script.checks.facts --json | python -c '
+          import json, sys
+          t = json.load(sys.stdin)["totals"]
+          summary = {k: t[k] for k in ("evidence", "passed", "gone", "ambiguous", "unverifiable", "structure")}
+          print("facts totals:", summary)
+          ok = (t["gone"] <= 4 and t["ambiguous"] == 0 and t["structure"] == 0)
+          if not ok:
+              print("❌ facts 基线校验未通过（要求 gone <= 4, ambiguous == 0, structure == 0）")
+              sys.exit(1)
+          print("✅ facts 基线校验通过。")
+          '
+
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (match local sparse-checkout scope)
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /README.md
+            /AGENTS.md
+            /uv.lock
+            /requirements.txt
+            /.gitignore
+            /.gitmodules
+            /docs/
+            !/docs/reports/
+            !/docs/results/
+            /LlamaFactory
+            /script/
+            /pyproject.toml
+            /data/
+            /tests/test_layout_migration_guard.py
+            /tests/test_project_workspace.py
+            /config/
+            /tests/_repo_layout_probe.py
+            /.github/
+
+      - name: Install system libraries for OpenCV and FFmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg libgl1 libglib2.0-0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Sync Python environment from uv.lock
+        run: uv sync --frozen --no-install-project
+
+      - name: Run default pytest suite (excluding local-only data/videos checks)
+        run: |
+          echo "Note: Excluding 2 local-only tests that require gitignored data/videos directory on CI."
+          uv run --no-project pytest -q \
+            -k "not test_default_paths_point_to_real_project_files and not test_default_sources_resolve_independently_of_working_directory"
