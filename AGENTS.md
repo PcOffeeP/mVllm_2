@@ -17,7 +17,7 @@
 
 ### 1.1 一个工作线一个 worktree
 
-- 新建工作线前先运行 `bash script/sync_and_clean.sh` 同步主线并顺手清理已合并的干净 `work/*` worktree 与分支；再使用 `git worktree add ../TensileAgent-Finetune-<线名> -b work/<线名>` 创建独立工作树（同一 worktree 内不得并行两个写入者）。
+- 新建工作线前先运行 `bash script/sync_and_clean.sh` 同步主线并顺手清理已合并的干净 `work/*` worktree 与分支；再使用 `git worktree add --no-track ../TensileAgent-Finetune-<线名> -b work/<线名> github/feat/tensileagent-finetune` 创建独立工作树（同一 worktree 内不得并行两个写入者）。
 - 新建 worktree 后须核对 `git sparse-checkout list` 与主工作区一致（未检出 `pipeline/`、`versioning/`），避免多检出文件导致测试计数口径漂移。
 - 每条线使用独立 `work/<线名>` 分支，完工跑通准入检查后推送到 `github` 并向 `feat/tensileagent-finetune` 提交 PR，由用户在 GitHub 审查后以 Create a merge commit 合并。
 - 共享 worktree 会让各自的 `git status` 互相可见；一方执行 `git switch` 会连带改变另一方的工作树。
@@ -34,9 +34,12 @@
 
 路径不重叠可任意并行；重叠时先声明者优先，另一方改用其他任务或等待。
 
-### 1.3 变更窗口声明
+### 1.3 变更窗口声明（与 Draft PR 占坑）
 
-仅针对全局共享只读项：动 `data/` 共享项前，先建 `docs/changes/<日期>-<工作线>-<对象>.md`，写明意图、涉及文件、时间窗口、备份位置、回滚方式；完成后追加「已完成 + 实际结果」；自「已完成」记录之日起保留 7 天，过期文件可直接删除，不归档。
+仅针对全局共享只读项（及训练机/未入库共享媒体目录）：
+1. **开工前探针**：动共享项前先运行 `gh pr list --state open --json number,headRefName,title,isDraft,files`，确认没有其他在途 PR 正在修改同一共享资源；
+2. **Draft PR 占坑**：确认空闲后，先在自己的 `work/*` 分支新建 `docs/changes/<日期>-<工作线>-<对象>.md`（写明意图、涉及文件、时间窗口、备份位置、回滚方式），立刻提交推送并创建 Draft PR（`gh pr create --draft --base feat/tensileagent-finetune`），确保跨 worktree、跨 Agent 实时可见；
+3. **完工转正与保留期**：完成后在同一分支追加实际改动与「已完成 + 实际结果」并将 Draft PR 转为 Ready for review；自「已完成」记录之日起保留 7 天，过期文件可直接删除，不归档。
 
 ### 1.4 准入检查（合并前必须跑）
 
