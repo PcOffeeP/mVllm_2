@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# 同步主线并安全清理已合并的 work/* worktree 与本地分支。
+# 同步主线并安全清理已通过 Merge Commit 合并的 work/* worktree 与本地分支。
 #
 # 四重安全锁（全部满足才会清理，否则自动跳过）：
 #   1. 仅处理 work/* 分支（绝不触碰 feat/tensileagent-finetune、main 或其他分支）
-#   2. 必须已完全合并进 github/feat/tensileagent-finetune（merge-base --is-ancestor）
-#   3. 对应 worktree 必须完全干净（无未提交修改、无未跟踪文件）
+#   2. 该分支尖端 SHA 必须确已作为某个合并提交的第 2 父提交（^2）进入
+#      github/feat/tensileagent-finetune 的一阶历史（杜绝误删刚从主线切出的新分支！）
+#   3. 对应 worktree 必须完全干净（无未提交修改、无未跟踪文件）且未被 lock
 #   4. 绝不删除当前命令运行所在的 worktree
+#
+# 注意：本脚本按 Create a merge commit 合并策略判定“已合并”。
+# 若某分支曾被手动 Squash / Rebase 合并，本脚本会保守跳过，需人工确认后 git branch -D。
 #
 # 用法：
 #   bash script/sync_and_clean.sh            # 执行同步与安全清理
@@ -36,13 +40,24 @@ if ! git rev-parse --verify --quiet "$MAIN_REF" >/dev/null; then
   exit 1
 fi
 
-# 解析 git worktree list --porcelain，定位主工作区和所有 work/* worktree
+# 收集远端主线一阶历史中所有合并提交的第 2+ 父提交 SHA（即真正被 merge commit 合入的分支尖端）
+MERGED_TIPS="$(git log --merges --first-parent --format='%P' "$MAIN_REF" | awk '{for (i=2; i<=NF; i++) print $i}')"
+
+is_merged_via_merge_commit() {
+  local branch="$1"
+  local tip
+  tip="$(git rev-parse --verify --quiet "refs/heads/${branch}" || true)"
+  [ -n "$tip" ] && printf '%s\n' "$MERGED_TIPS" | grep -Fxq "$tip"
+}
+
 MAIN_WT=""
 WORK_WT_PATHS=()
 WORK_WT_BRANCHES=()
+WORK_WT_LOCKED=()
 
 wt_path=""
 wt_branch=""
+wt_locked="0"
 flush_worktree() {
   if [ -n "$wt_path" ] && [ -n "$wt_branch" ]; then
     if [ "$wt_branch" = "$MAIN_BRANCH" ]; then
@@ -50,10 +65,12 @@ flush_worktree() {
     elif [[ "$wt_branch" == work/* ]]; then
       WORK_WT_PATHS+=("$wt_path")
       WORK_WT_BRANCHES+=("$wt_branch")
+      WORK_WT_LOCKED+=("$wt_locked")
     fi
   fi
   wt_path=""
   wt_branch=""
+  wt_locked="0"
 }
 
 while IFS= read -r line || [ -n "$line" ]; do
@@ -63,6 +80,9 @@ while IFS= read -r line || [ -n "$line" ]; do
       ;;
     "branch refs/heads/"*)
       wt_branch="${line#branch refs/heads/}"
+      ;;
+    "locked"*)
+      wt_locked="1"
       ;;
     "")
       flush_worktree
@@ -88,13 +108,21 @@ fi
 echo "==> 3/4 扫描并安全清理已合并的 work/* worktree..."
 removed_wt_count=0
 skipped_wt_count=0
+PLANNED_REMOVED_BRANCHES=""
 
 for i in "${!WORK_WT_PATHS[@]}"; do
   p="${WORK_WT_PATHS[$i]}"
   b="${WORK_WT_BRANCHES[$i]}"
+  locked="${WORK_WT_LOCKED[$i]}"
 
   if [ ! -d "$p" ]; then
     echo "  ℹ️ 目录已不存在，稍后将由 worktree prune 清理: $p ($b)"
+    continue
+  fi
+
+  if [ "$locked" = "1" ]; then
+    echo "  ⏭️ 跳过已锁定的 worktree (locked): $b ($p)"
+    skipped_wt_count=$((skipped_wt_count + 1))
     continue
   fi
 
@@ -105,8 +133,8 @@ for i in "${!WORK_WT_PATHS[@]}"; do
     continue
   fi
 
-  if ! git merge-base --is-ancestor "refs/heads/${b}" "$MAIN_REF" 2>/dev/null; then
-    echo "  ⏭️ 跳过未合并分支: $b ($p)"
+  if ! is_merged_via_merge_commit "$b"; then
+    echo "  ⏭️ 跳过未通过 merge commit 合入主线的分支（含刚切出的新分支）: $b ($p)"
     skipped_wt_count=$((skipped_wt_count + 1))
     continue
   fi
@@ -119,9 +147,15 @@ for i in "${!WORK_WT_PATHS[@]}"; do
 
   if $DRY_RUN; then
     echo "  [dry-run] 将删除已合并且干净的 worktree: $p ($b)"
+    PLANNED_REMOVED_BRANCHES+="${b}"$'\n'
   else
-    git worktree remove "$p"
-    echo "  🧹 已删除 worktree: $p ($b)"
+    if git worktree remove "$p"; then
+      echo "  🧹 已删除 worktree: $p ($b)"
+    else
+      echo "  ⚠️ 删除 worktree 失败，已跳过: $p ($b)"
+      skipped_wt_count=$((skipped_wt_count + 1))
+      continue
+    fi
   fi
   removed_wt_count=$((removed_wt_count + 1))
 done
@@ -134,12 +168,15 @@ echo "==> 4/4 扫描并安全清理已合并且未检出的本地 work/* 分支.
 removed_br_count=0
 skipped_br_count=0
 
-# 重新收集当前仍被任意 worktree 检出的分支集合
 ACTIVE_BRANCHES=""
 while IFS= read -r line; do
   case "$line" in
     "branch refs/heads/"*)
-      ACTIVE_BRANCHES+="${line#branch refs/heads/}"$'\n'
+      br="${line#branch refs/heads/}"
+      if $DRY_RUN && printf '%s' "$PLANNED_REMOVED_BRANCHES" | grep -Fxq "$br"; then
+        continue
+      fi
+      ACTIVE_BRANCHES+="${br}"$'\n'
       ;;
   esac
 done < <(git worktree list --porcelain)
@@ -153,8 +190,8 @@ while IFS= read -r b; do
     continue
   fi
 
-  if ! git merge-base --is-ancestor "refs/heads/${b}" "$MAIN_REF" 2>/dev/null; then
-    echo "  ⏭️ 跳过未合并分支: $b"
+  if ! is_merged_via_merge_commit "$b"; then
+    echo "  ⏭️ 跳过未通过 merge commit 合入主线的分支: $b"
     skipped_br_count=$((skipped_br_count + 1))
     continue
   fi
@@ -162,7 +199,9 @@ while IFS= read -r b; do
   if $DRY_RUN; then
     echo "  [dry-run] 将删除已合并本地分支: $b"
   else
-    git branch -d "$b"
+    # 前置已严格校验该分支尖端 SHA 确已作为 merge commit 父提交进入远端主线，
+    # 使用 -D 避免在本地 HEAD 落后于远端主线时误报 not fully merged。
+    git branch -D "$b"
     echo "  🧹 已删除本地分支: $b"
   fi
   removed_br_count=$((removed_br_count + 1))
