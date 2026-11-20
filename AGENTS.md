@@ -2,22 +2,24 @@
 
 ## 工作区与主线分支
 
-- `TensileAgent-Finetune` 工作区的长期主线分支为 `feat/tensileagent-finetune`。开始工作和合并前核对当前 worktree、分支与提交；任务分支仍按下方规则从当前工作分支创建并合并回原工作分支。
-- `main` 是原项目 `mVllm_2` 工作区的分支，不是本工作区的长期主线。不要仅凭共享仓库或分支名称将两者等同；向主线合并及推送仍需用户授权。
+- `TensileAgent-Finetune` 工作区的长期主线分支为 `feat/tensileagent-finetune`，远程 PR 审查主战场为 `github`（`PcOffeeP/mVllm_2`，PR 流程基线 tag：`pr-workflow-baseline-20261120`）；`codeup` 仅在重要节点或定期同步备份。
+- `main` 是原项目 `mVllm_2` 工作区的分支，不是本工作区的长期主线。不要仅凭共享仓库或分支名称将两者等同。
+- 开始工作前先核对当前 worktree、分支、最新主线提交与 `sparse-checkout` 状态。
 
 ### Git 纪律
 
-- 每个独立的小任务先从当前工作分支新建任务分支，在任务分支完成对应工作并提交，核对提交和目标分支后合并回原工作分支；达到合并条件后，向用户获取授权，然后合并。**严禁**私自 push。
-- 定期核对本地短期分支与各 worktree 的状态；
-- worktree 合并后，在已获删除授权的范围内清理 worktree 及其使用的短期分支。
-- 保留主线、未合并或用途不明的分支；
+- **PR 审查流**：每个独立任务从最新 `feat/tensileagent-finetune` 新建独立 worktree 与 `work/<线名>` 任务分支；在任务分支完成工作并跑通 1.4 节准入检查后，将 `work/<线名>` 推送到 `github` 并创建指向 `feat/tensileagent-finetune` 的 PR（`gh pr create --base feat/tensileagent-finetune`，按 `.github/PULL_REQUEST_TEMPLATE.md` 填写）。
+- **权限红线**：允许 Agent 推送自己的 `work/*` 任务分支并创建/更新 PR；**严禁** push `feat/tensileagent-finetune` 或 `main`，**严禁**自行合并 PR，也不要再本地 `--ff-only` 直接合并回主线。
+- **合并与同步**：PR 统一由用户在 GitHub 审查后以 **Create a merge commit** 合并，主线保留“任务信封”合并节点（`git log --first-parent` 一任务一行，展开可看分步提交）。合并后主工作区用 `git pull --ff-only github feat/tensileagent-finetune` 同步。
+- 定期核对本地短期分支与各 worktree 的状态；PR 合并后，在已获删除授权的范围内清理对应的 worktree 及本地/远程短期分支；保留主线、未合并或用途不明的分支。
 
 ## 并行工作管理
 
 ### 1.1 一个工作线一个 worktree
 
 - 新工作线使用 `git worktree add ../TensileAgent-Finetune-<线名> -b work/<线名>`；同一 worktree 内不得并行两个写入者。
-- 每条线使用独立分支，完工后以 `git merge --ff-only` 合并回本工作区长期主线分支 `feat/tensileagent-finetune`，以「工作区与主线分支」小节为准，并遵守合并授权要求。
+- 新建 worktree 后须核对 `git sparse-checkout list` 与主工作区一致（未检出 `pipeline/`、`versioning/`），避免多检出文件导致测试计数口径漂移。
+- 每条线使用独立 `work/<线名>` 分支，完工跑通准入检查后推送到 `github` 并向 `feat/tensileagent-finetune` 提交 PR，由用户在 GitHub 审查后以 Create a merge commit 合并。
 - 共享 worktree 会让各自的 `git status` 互相可见；一方执行 `git switch` 会连带改变另一方的工作树。
 
 ### 1.2 路径所有权表
