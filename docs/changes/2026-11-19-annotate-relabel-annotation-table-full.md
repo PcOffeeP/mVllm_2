@@ -3,13 +3,13 @@
 - 状态：执行中，见文末「已完成 + 实际结果」
 - 工作线：`work/annotate-relabel-20261119`
 - 时间窗口：2026-11-19 单次连续窗口（本次执行）；窗口内 `data/annotation-table-full.csv` 与 `data/splits/three-fold/` 只由本工作线写入
-- 触发：用户 2026-11-19 完成重标注定稿，`data/annotation-table-full.csv` 共 6 处字段变更，划分输入字节随之变化，需按新字节重跑开发三折；`test.json` 不重生成。
+- 触发：用户 2026-11-19 完成重标注定稿，`data/annotation-table-full.csv` 共 6 处字段变更、4 条记录、4 个字段，划分输入字节随之变化，需按新字节重跑开发三折；`test.json` 不重生成。
 
 ## 涉及文件
 
 | 文件 | 动作 |
 | --- | --- |
-| `data/annotation-table-full.csv` | 用户重标注 5 处字段 + 按用户口径把 `video_0040` 的 `断裂模式` 由「脆性断裂」改为「半脆半韧断裂」，合计 6 处字段变更 |
+| `data/annotation-table-full.csv` | 用户重标注 5 处字段 + 按用户口径把 `video_0040` 的 `断裂模式` 由「脆性断裂」改为「半脆半韧断裂」，合计 6 处字段变更、4 条记录、4 个字段 |
 | `data/splits/three-fold/` | 8 个文件重跑后整体替换（6 个 train/val + `test.json` 字节不变 + `manifest.json`） |
 | `data/split-inputs/source-groups-20261107.json` | 仅更新 `provenance.label_csv_sha256` 为新 CSV 的 SHA-256，分组内容不变 |
 
@@ -29,7 +29,15 @@
 
 ### 结果数字
 
-- CSV：6 处字段变更落地，22452 → 22458 字节（+6），BOM 与全 CRLF 保持，111 行 × 28 列不变；改后 SHA-256 `c928bea3d769eb16ad55ed7d872a877a3b4fd327d0af5422bc2bb682c1ec354c`（提交 `51d647d`）。`断裂模式` 分布现为：韧性断裂 50、半脆半韧断裂 21、脆性断裂 20、无法判断 15、无 4。
+- CSV：6 处字段变更、4 条记录、4 个字段落地，22392 → 22458 字节（净增 66），BOM 与全 CRLF 保持，111 行 × 28 列不变；改后 SHA-256 `c928bea3d769eb16ad55ed7d872a877a3b4fd327d0af5422bc2bb682c1ec354c`（提交 `51d647d`）。`断裂模式` 分布现为：韧性断裂 50、半脆半韧断裂 21、脆性断裂 20、无法判断 15、无 4。
+- 更正：初版误记为 22452 → 22458（+6），2026-11-20 据 `git cat-file -s` 与逐格增量核对更正；净增 66 字节由 `断裂模式` +6、`标注备注` +60 构成。提交 `51d647d` 之后至当前，该文件逐字节未再变动。
+- 穷尽清单：
+  - `video_0021`：`断裂模式` 无法判断→韧性断裂。
+  - `video_0026`：`异常_爆炸性断裂` 是→否。
+  - `video_0040`：`断裂模式` 脆性断裂→半脆半韧断裂。
+  - `video_0040`：`标注备注` 空→「出现一个跳转，跳转能看到明显的视角伸长。」
+  - `video_0040`：`现象_伸长` 否→是。
+  - `video_0050`：`断裂模式` 韧性断裂→无法判断。
 - 划分：`test.json` 逐字节未变（`26fc3070662b8ac2c8683a50bd8dea9c78a96162ad5e4c0e83a6afc454c7d8dc`，21 条）。重跑后开发集 89 条：fold_0 train 59 / val 30、fold_1 train 59 / val 30、fold_2 train 60 / val 29。新 `manifest.json` SHA-256 `1ad84afb9a9eb122d6d7cdc13b78a975567a51667eaeacfabd5748c1055f6ae2`，`rule_version` = `explicit-source-five-task-v1`，`code_commit` = `51d647d`，`status` = `generated_split_not_model_evaluation`，`search_summary.best_seed` = 53。
 - 与改前划分对比：三折 val 增删合计 80 条（fold_0 增 12 / 删 11，fold_1 增 17 / 删 17，fold_2 增 11 / 删 12），涉及换折的开发集视频 40 个；每折 train 变化数与 val 互补。
 - 来源指纹：`data/split-inputs/source-groups-20261107.json` 的 `provenance.label_csv_sha256` 由 `9970d259…fa8d81` 改为 `c928bea3…c1ec354c`，分组内容未变；该文件 SHA-256 `ce96febf1a41a15a4ecc9eba0e1256ebc5c7105f15c01c22afbca80130dde28b` → `a640cd71746f508f9e904208a699b68391b54c2c5c0acb9a9ced19b0c46adaa7`（10983 字节不变，只差 1 行 1 值）。

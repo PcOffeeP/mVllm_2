@@ -1,7 +1,7 @@
 {
   "schema": "tensile-roi/1",
   "rule_version": "roi-rules/2",
-  "generated_at": "2026-11-08T13:20:20.164007+00:00",
+  "generated_at": "2026-11-20T02:31:08.422369+00:00",
   "videos_dir": "/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/videos",
   "split_input": {
     "status": "provided",
@@ -9,27 +9,27 @@
     "files": [
       {
         "path": "/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/splits/three-fold/fold_0_train.json",
-        "sha256": "73abf0f28a3d06b09aa0aabcefd31451bce1b32bba51f7d8356d8c7440ca0421"
+        "sha256": "9145833a4bc4722598ee133623f5dc96b8a0c9e83d1e53107d88afcd3495d529"
       },
       {
         "path": "/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/splits/three-fold/fold_1_train.json",
-        "sha256": "991229766e2a2ad74ec4298e195937c4fb9ee130d232875ab276ca65f7e2d2a3"
+        "sha256": "daf6116c2beb6a1e7aa9e41144197b6f7736c13956f3557780db0386526ed338"
       },
       {
         "path": "/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/splits/three-fold/fold_2_train.json",
-        "sha256": "a1467c8ed7332473425a73a832a6bf26cf37c76185e52e1b29a118546af0cfc7"
+        "sha256": "47bbe6680e5e2ed4fe5f2b9c96cbb745f76e54fbcf3231e32740f12c47cb6491"
       },
       {
         "path": "/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/splits/three-fold/fold_0_val.json",
-        "sha256": "026410713000db8b3ada0e93c6af63e3e7bc9767aebdf73e490672002c005d34"
+        "sha256": "15341b97c0d26302644f7b17b39e1a9c8616f9e0b391c87a17c9165e6dd18206"
       },
       {
         "path": "/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/splits/three-fold/fold_1_val.json",
-        "sha256": "61f4e41345bdd5f18c685411aef37800cf8b42b6590ca11b6772252c9da53ab3"
+        "sha256": "77e278e6c419bf24d6dea3d4432b1d2c8ee926776dce64736f2ab15bd04f5a27"
       },
       {
         "path": "/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/splits/three-fold/fold_2_val.json",
-        "sha256": "cecc8d653ec44bef5e81821d2fee87a3221fd287c7f5c17d644cafaa51ef436c"
+        "sha256": "77cf740c93cc9848b6c48e9dfa93f2f430ff636a9502f05780c859464836f9fb"
       },
       {
         "path": "/Users/pcoffeep/AgentPlayground/active-projects/TensileAgent-Finetune/data/splits/three-fold/test.json",
@@ -532,8 +532,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -920,9 +920,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "1": "train",
+          "0": "train",
           "2": "train",
-          "0": "val"
+          "1": "val"
         },
         "conflicts": []
       },
@@ -1309,9 +1309,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -1694,7 +1694,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "视频最后画面发生偏移，导致断裂行为不可见。  ",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -3255,9 +3255,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -4820,8 +4820,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -5581,7 +5581,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "否",
         "异常_爆炸性断裂": "否",
@@ -5597,9 +5597,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -7546,9 +7546,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -7905,7 +7905,7 @@
         "id": "video_0021",
         "video_path": "data/videos/video_0021.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "韧性断裂",
         "材料类型": "高分子",
         "清晰度": "576×1072",
         "断裂位置": "标距内",
@@ -7919,7 +7919,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "否",
         "异常_爆炸性断裂": "否",
@@ -7936,8 +7936,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "2": "train",
-          "1": "val"
+          "1": "train",
+          "2": "val"
         },
         "conflicts": []
       },
@@ -8324,9 +8324,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -9072,7 +9072,7 @@
         "id": "video_0024",
         "video_path": "data/videos/video_0024.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "金属",
         "清晰度": "502×610",
         "断裂位置": "标距内",
@@ -9102,9 +9102,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
+          "0": "train",
           "1": "train",
-          "2": "train",
-          "0": "val"
+          "2": "val"
         },
         "conflicts": []
       },
@@ -9464,7 +9464,7 @@
         "断裂模式": "韧性断裂",
         "材料类型": "高分子",
         "清晰度": "496×446",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "33.5333",
         "视频帧率": "30",
@@ -9863,7 +9863,7 @@
         "断裂状态": "发生断裂",
         "异常_未夹紧": "否",
         "异常_视频异常": "否",
-        "异常_爆炸性断裂": "是",
+        "异常_爆炸性断裂": "否",
         "现象_伸长": "否",
         "现象_颈缩": "否",
         "现象_开裂": "否",
@@ -9876,9 +9876,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
           "1": "train",
-          "2": "val"
+          "2": "train",
+          "0": "val"
         },
         "conflicts": []
       },
@@ -10265,9 +10265,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "1": "train",
+          "0": "train",
           "2": "train",
-          "0": "val"
+          "1": "val"
         },
         "conflicts": []
       },
@@ -10667,8 +10667,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -11858,8 +11858,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "2": "train",
-          "1": "val"
+          "1": "train",
+          "2": "val"
         },
         "conflicts": []
       },
@@ -12990,10 +12990,10 @@
         "id": "video_0034",
         "video_path": "data/videos/video_0034.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "1280×720",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "65.8412",
         "视频帧率": "29.9964",
@@ -13004,7 +13004,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": " 视频中未见断裂现象",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -13777,10 +13777,10 @@
         "id": "video_0036",
         "video_path": "data/videos/video_0036.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "1280×720",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "50.8659",
         "视频帧率": "30.000452",
@@ -13791,7 +13791,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "视频中无可见断裂",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -13807,9 +13807,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "1": "train",
+          "0": "train",
           "2": "train",
-          "0": "val"
+          "1": "val"
         },
         "conflicts": []
       },
@@ -15346,7 +15346,7 @@
         "id": "video_0040",
         "video_path": "data/videos/video_0040.mp4",
         "断裂时间点": "25.3333333333333",
-        "断裂模式": "脆性断裂",
+        "断裂模式": "半脆半韧断裂",
         "材料类型": "复材",
         "清晰度": "382×384",
         "断裂位置": "标距内",
@@ -15359,12 +15359,12 @@
         "标注状态": "已标注·有断裂",
         "断裂帧_前": "759",
         "断裂帧_后": "760",
-        "标注备注": "",
+        "标注备注": "出现一个跳转，跳转能看到明显的视角伸长。",
         "断裂状态": "发生断裂",
         "异常_未夹紧": "否",
         "异常_视频异常": "否",
         "异常_爆炸性断裂": "是",
-        "现象_伸长": "否",
+        "现象_伸长": "是",
         "现象_颈缩": "否",
         "现象_开裂": "否",
         "现象_界面分离": "是",
@@ -15377,8 +15377,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "2": "train",
-          "1": "val"
+          "1": "train",
+          "2": "val"
         },
         "conflicts": []
       },
@@ -16120,7 +16120,7 @@
         "id": "video_0042",
         "video_path": "data/videos/video_0042.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "金属",
         "清晰度": "406×560",
         "断裂位置": "标距内",
@@ -16134,7 +16134,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "视频最后画面跳转，",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -16536,9 +16536,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "1": "train",
+          "0": "train",
           "2": "train",
-          "0": "val"
+          "1": "val"
         },
         "conflicts": []
       },
@@ -16938,8 +16938,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -17311,7 +17311,7 @@
         "断裂模式": "韧性断裂",
         "材料类型": "高分子",
         "清晰度": "492×632",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "186.7",
         "视频帧率": "30",
@@ -17338,9 +17338,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
+          "0": "train",
           "1": "train",
-          "2": "train",
-          "0": "val"
+          "2": "val"
         },
         "conflicts": []
       },
@@ -18506,8 +18506,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -18864,10 +18864,10 @@
         "id": "video_0049",
         "video_path": "data/videos/video_0049.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "1280×720",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "175.3622",
         "视频帧率": "30.000764",
@@ -18878,7 +18878,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "视频无可见的断裂行为",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -19262,7 +19262,7 @@
         "id": "video_0050",
         "video_path": "data/videos/video_0050.mp4",
         "断裂时间点": "",
-        "断裂模式": "韧性断裂",
+        "断裂模式": "无法判断",
         "材料类型": "其他(无机非)",
         "清晰度": "890×698",
         "断裂位置": "标距内",
@@ -19276,7 +19276,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "否",
         "异常_爆炸性断裂": "否",
@@ -19293,8 +19293,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -20070,9 +20070,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
+          "0": "train",
           "1": "train",
-          "2": "train",
-          "0": "val"
+          "2": "val"
         },
         "conflicts": []
       },
@@ -20839,7 +20839,7 @@
         "id": "video_0054",
         "video_path": "data/videos/video_0054.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "金属",
         "清晰度": "424×312",
         "断裂位置": "标距内",
@@ -20853,7 +20853,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "视频清晰度过低，导致断裂情况不清晰。",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -21255,9 +21255,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "1": "train",
+          "0": "train",
           "2": "train",
-          "0": "val"
+          "1": "val"
         },
         "conflicts": []
       },
@@ -21614,10 +21614,10 @@
         "id": "video_0056",
         "video_path": "data/videos/video_0056.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "1280×720",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "73.6017",
         "视频帧率": "29.999293",
@@ -21628,7 +21628,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "这边无可见的断裂现象",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -21645,8 +21645,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -22042,9 +22042,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "1": "train",
+          "0": "train",
           "2": "train",
-          "0": "val"
+          "1": "val"
         },
         "conflicts": []
       },
@@ -22401,10 +22401,10 @@
         "id": "video_0058",
         "video_path": "data/videos/video_0058.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "金属",
         "清晰度": "638×636",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "5.9",
         "视频帧率": "30",
@@ -22415,7 +22415,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "视频最后发生画面的偏移，导致断裂现象不可见。",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -22432,8 +22432,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "2": "train",
-          "1": "val"
+          "1": "train",
+          "2": "val"
         },
         "conflicts": []
       },
@@ -22817,9 +22817,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -24736,10 +24736,10 @@
         "id": "video_0064",
         "video_path": "data/videos/video_0064.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "1280×720",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "74.945267",
         "视频帧率": "29.995223",
@@ -24750,7 +24750,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "视频无可见的断裂现象。",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -27488,9 +27488,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "1": "train",
+          "0": "train",
           "2": "train",
-          "0": "val"
+          "1": "val"
         },
         "conflicts": []
       },
@@ -28267,8 +28267,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -29044,9 +29044,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -30193,10 +30193,10 @@
         "id": "video_0078",
         "video_path": "data/videos/video_0078.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "720×1280",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "78.766333",
         "视频帧率": "30.000127",
@@ -30207,7 +30207,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "无可见断裂现象",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -30998,8 +30998,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "2": "train",
-          "1": "val"
+          "1": "train",
+          "2": "val"
         },
         "conflicts": []
       },
@@ -31387,8 +31387,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -32130,10 +32130,10 @@
         "id": "video_0083",
         "video_path": "data/videos/video_0083.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "1280×720",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "166.9614",
         "视频帧率": "30.00094",
@@ -32160,9 +32160,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -33695,10 +33695,10 @@
         "id": "video_0087",
         "video_path": "data/videos/video_0087.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "1280×720",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "58.033267",
         "视频帧率": "30.000034",
@@ -33709,7 +33709,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "视频中无可见的断裂现象",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -35668,8 +35668,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "2": "train",
-          "1": "val"
+          "1": "train",
+          "2": "val"
         },
         "conflicts": []
       },
@@ -36246,10 +36246,10 @@
         "id": "video_0094",
         "video_path": "data/videos/video_0094.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "1280×720",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "156.529633",
         "视频帧率": "30.000703",
@@ -36260,7 +36260,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "出现瞬时拉长和画面抖动，无法确认试样是否整体分离",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "是",
         "异常_爆炸性断裂": "否",
@@ -37034,10 +37034,10 @@
         "id": "video_0096",
         "video_path": "data/videos/video_0096.mp4",
         "断裂时间点": "",
-        "断裂模式": "无法确定",
+        "断裂模式": "无法判断",
         "材料类型": "复材",
         "清晰度": "1280×720",
-        "断裂位置": "无法确定",
+        "断裂位置": "无法判断",
         "断裂帧数": "",
         "视频时长": "225.1857",
         "视频帧率": "30.001901",
@@ -37048,7 +37048,7 @@
         "断裂帧_前": "无",
         "断裂帧_后": "无",
         "标注备注": "视频无可靠的断裂现象",
-        "断裂状态": "无法确定",
+        "断裂状态": "无法判断",
         "异常_未夹紧": "否",
         "异常_视频异常": "无法判断",
         "异常_爆炸性断裂": "否",
@@ -37064,9 +37064,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
           "1": "train",
-          "2": "val"
+          "2": "train",
+          "0": "val"
         },
         "conflicts": []
       },
@@ -37852,8 +37852,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "1": "train",
-          "2": "val"
+          "2": "train",
+          "1": "val"
         },
         "conflicts": []
       },
@@ -38240,9 +38240,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -39019,8 +39019,8 @@
         "partition": "development",
         "folds": {
           "0": "train",
-          "2": "train",
-          "1": "val"
+          "1": "train",
+          "2": "val"
         },
         "conflicts": []
       },
@@ -41349,9 +41349,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
-          "0": "train",
+          "1": "train",
           "2": "train",
-          "1": "val"
+          "0": "val"
         },
         "conflicts": []
       },
@@ -42513,9 +42513,9 @@
         "status": "provided",
         "partition": "development",
         "folds": {
+          "0": "train",
           "1": "train",
-          "2": "train",
-          "0": "val"
+          "2": "val"
         },
         "conflicts": []
       },

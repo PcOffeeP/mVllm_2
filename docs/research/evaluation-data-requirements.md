@@ -181,14 +181,16 @@ Blender 的[设计](/Users/pcoffeep/AgentPlayground/active-projects/BlenderTensi
 
 | 输入 | SHA-256 |
 | --- | --- |
-| `data/annotation-table-full.csv` | `2f046b0609f7f01c0bc5ca97e1802185f978ba5037731ae5546f1a86b6589a9b` |
+| `data/annotation-table-full.csv` | `c928bea3d769eb16ad55ed7d872a877a3b4fd327d0af5422bc2bb682c1ec354c` |
 | `data/splits/three-fold/test.json` | `26fc3070662b8ac2c8683a50bd8dea9c78a96162ad5e4c0e83a6afc454c7d8dc` |
-| `data/splits/three-fold/manifest.json` | `6114cb81d366de96608b397b5cb770e2a9e8288bca8bea856d0fbda196b6ad62` |
-| `data/split-inputs/source-groups-20261107.json` | `ce96febf1a41a15a4ecc9eba0e1256ebc5c7105f15c01c22afbca80130dde28b` |
+| `data/splits/three-fold/manifest.json` | `1ad84afb9a9eb122d6d7cdc13b78a975567a51667eaeacfabd5748c1055f6ae2` |
+| `data/split-inputs/source-groups-20261107.json` | `a640cd71746f508f9e904208a699b68391b54c2c5c0acb9a9ced19b0c46adaa7` |
 | Blender `outputs/index.json` | `820b8983d1c249ca7b655ebb4854cff59f6fcf217b8d2b283a720100846a0de8` |
 
 项目状态与边界还核对了[事实入口](../../docs/facts.yaml)、[TODO](../../docs/TODO.md)及[导航](../../docs/guide.md)。生成器能力来自静态文档读取，65 条画面及检查结果仅引用历史记录；本稿不声称当前模型运行、渲染、材料复核或用户验收已完成。
 
-2026-11-14 术语统一（三列单选的不确定值由“无法确定”改为“无法判断”）只改标注表现行写法与 CSV 字节，上表 21 个测试源的各项计数及本文其他统计数值均未变；变化仅限上述 CSV 的 SHA-256，`test.json`、`manifest.json`、来源组和 Blender 索引未变。
+2026-11-14 术语统一（三列单选的不确定值由“无法确定”改为“无法判断”）只改标注表现行写法与 CSV 字节，上表 21 个测试源的各项计数及本文其他统计数值均未变；当时变化仅限 CSV 的 SHA-256，`test.json`、`manifest.json`、来源组和 Blender 索引未变。
+
+2026-11-19 源表六处字段变更后 CSV 与来源组指纹更新如上，manifest 因重跑划分更新，test.json 逐字节未变。按新 CSV 复核第 2 节 21 个 test 源的计数未变：状态 16／1／0／4，模式 10／3／4／3／1，位置 12／3／1／4／1；未夹紧 0／21／0／0，视频异常 5／16／0／0，爆炸性断裂 0／21／0／0，伸长 11／3／7／0，颈缩 10／11／0／0，开裂 0／21／0／0，界面分离 2／19／0／0，断后脱夹 2／19／0／0。断裂状态实际取值域无“已断裂”，表中为显式保留的 0。
 
 **失效条件：** 标注 CSV、测试成员、来源关系、标签定义、Blender 索引/有效确认、模型实际输入或正式评分规则改变时，重核受影响统计与建议。发现同源交叉或新暴露时暂停相应素材资格并保留记录，不自动重划测试源。本文被已确认实施方案取代后，保留为调查依据，不作为运行或验收通过证明。Blender 绝对路径仅指本次已核查工作区，迁移机器或目录后须重新定位；Tensile 内部链接保持相对项目根可解析。

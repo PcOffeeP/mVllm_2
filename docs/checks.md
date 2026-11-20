@@ -17,18 +17,18 @@
 
 | 层 | 这一层管什么 | 检查项数量 | 绿·黄·红·孤儿 | 一句话结论 |
 |---|---|---|---|---|
-| 源数据（标注表、划分、裁剪区域 ROI） | 原始标注、数据划分、画面裁剪这些输入对不对 | 20 | 18·2·0·0 | 能跑、能过，但两处记录与当前文件对不上（内容等价，未列入第 4 节）。 |
+| 源数据（标注表、划分、裁剪区域 ROI） | 原始标注、数据划分、画面裁剪这些输入对不对 | 20 | 19·1·0·0 | L1-01 的标注表指纹与当前表一致（`c928bea3…c1ec354c`）；L1-02 的 6 项旧折快照与当前折不同，且无自动回读校验。 |
 | 子视频生成（把源视频切成候选片段那一步） | 片段怎么切、规则怎么派、批次怎么续跑 | 32 | 1·30·0·1 | 批次已退役，清单摘要检查在记录缺失时跳过，运行摘要无现行比较程序；整套检查需单独运行。 |
 | 人工审核（你看片打标签的界面） | 审核服务、ROI 决策、标注审核 | 16 | 15·1·0·0 | 批次已退役，标签组合筛选在记录缺失时跳过。 |
 | 模型评价（评分器与模型输入记录） | 评分器、帧来源链、清单转换、推理入口 | 17 | 15·0·0·2 | 在跑的这部分是好的；模型交付校验已删。 |
 | 文档与事实（`docs/facts.yaml` 那套「哪句话有出处」的记录） | 文档里的证据还对不对得上原文 | 6 | 3·1·1·1 | 校验程序已移植回 `script/checks/facts.py`，判定改为锚文本（`expect` 能否定位、行号只作提示），实测通过 206（记录行命中 192、位置已变 14）、原文消失 4、歧义 0；标题/锚点校验仍缺。 |
 | 仓库卫生（哪些文件该进版本库、哪些不该） | 仓库布局、旧路径、Git 忽略规则 | 43 | 19·20·0·4 | 19 项已真正执行并通过；20 项按未检出目录逐条具名跳过（18 项缺 `pipeline/`、2 项缺 `versioning/backup.py`）。 |
 
-六层合计 20+32+16+17+6+43=134；绿 71、黄 54、红 1、孤儿 8。
+六层合计 20+32+16+17+6+43=134；绿 72、黄 53、红 1、孤儿 8。
 
 ## 3. 主表：只列「需要你知道」的检查
 
-下面 24 行是项目负责人现在必须知道的检查。为避免术语拖住阅读，先说明四个词：文件指纹（文件内容算出来的一串字符，内容变一个字节就会变）、批次身份（这批产物是由哪几个输入、哪套规则生成的）、契约（人和程序之间约定好的规则）、校验器（检查这些规则有没有被遵守的程序）。本文只使用这四个核心术语。
+下面 25 行是项目负责人现在必须知道的检查。为避免术语拖住阅读，先说明四个词：文件指纹（文件内容算出来的一串字符，内容变一个字节就会变）、批次身份（这批产物是由哪几个输入、哪套规则生成的）、契约（人和程序之间约定好的规则）、校验器（检查这些规则有没有被遵守的程序）。本文只使用这四个核心术语。
 
 | 编号 | 它在管什么（人话，一句话） | 检查的输入 → 输出的判断 | 谁在跑 | 状态 | 怎么自己确认它现在是这个状态 |
 |---|---|---|---|---|---|
@@ -51,7 +51,8 @@
 | L1-13 | ROI 输出的画面尺寸、时长、方向 | ROI 输出媒体 → 几何、时间、方向符合要求才验收 | `script/roi/tests/test_core.py:328` | 绿 | 运行 `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/roi/tests`，该测试通过 |
 | L3-16 | 审核与评分的集成行为 | 集成测试集 → 82 项行为检查通过 | 默认 pytest；本次实测 728 项通过（另有 20 项具名跳过），其中集成 82 项 | 绿 | 运行默认 `pytest`，看到集成测试通过 |
 | L4-01 | 评分器检查身份字段和文件指纹格式 | 评分文件 → 身份字段存在、文件指纹格式正确 | `script/five_label_eval/score.py:91` | 绿 | 运行默认 `pytest` 中评价相关测试，或打开 `script/five_label_eval/score.py:91` 看校验逻辑 |
-| L1-01…L1-02 | 标注表与划分清单的历史记录是否还对应得上当前文件 | 记录中的文件指纹与当前文件 → 指纹一致 | 测试会跑，但记录本身在漂移 | 黄 | 打开 `data/split-inputs/source-groups-20261107.json:6` 与 `data/splits/three-fold/manifest.json:256`，比对记录中的文件指纹和当前文件 |
+| L1-01 | 来源分组记录的标注表指纹是否对应当前表 | 记录中的标注表指纹与当前表一致 | 成立（2026-11-20 实测） | 绿 | 打开 `data/split-inputs/source-groups-20261107.json:6`，比对 `label_csv_sha256` 与 `shasum -a 256 data/annotation-table-full.csv` 输出，均为 `c928bea3…c1ec354c` |
+| L1-02 | 划分清单输入指纹是否可追溯 | 清单输入指纹与生成时输入对应 | 5 项与当前文件一致，1 项因未提交文档修订不同；旧折可追溯，但无自动回读校验 | 黄 | 查看 `data/splits/three-fold/manifest.json:256` 的 `inputs`，按第 6 节 L1-02 比对 |
 | L2-01…L2-29 | 子视频生成全阶段的契约与身份校验 | 源视频、标注、规则 → 片段、覆盖、续跑、审计都符合规则 | 须单独运行该目录测试 | 黄 | 打开 `pyproject.toml` 第 19 行，看默认测试范围里没有 `script/subvideo_generation/tests` |
 | L3-08 | 审核页「标签组合待复核」筛选 | 批次核验记录与清单 → 摘要一致时筛选可用 | 审核页加载触发；核验记录缺失时静默跳过 | 黄 | 新批次生成后核对其记录与筛选 |
 | L3-15 | 审核服务与标注审核的测试 | 对应测试目录 → 45 + 10 项检查通过 | 默认 pytest；审核服务和标注审核测试均通过 | 绿 | 运行默认 `pytest`，收集审核服务 45 项、标注审核 10 项，全部通过 |
@@ -69,7 +70,7 @@
 
 4. **默认测试命令覆盖 8 个测试目录。** 默认范围实测收集 748 项，其中 728 项通过、20 项具名跳过、0 项失败；9 个测试目录中唯一不在默认范围的是 `script/subvideo_generation/tests`（337 项，需单独按需运行）。按实际执行数计算，默认覆盖 728/1085 ≈ 67.1%（1085 = 728 通过 + 20 跳过 + 337 未纳入默认范围）；子视频生成测试此前耗时超过 10 分钟仍未跑完，需要按需单独运行。
 
-5. **划分清单与 ROI 清单里记录的文件指纹，没有任何程序回读比对。** 指纹分别写入 `script/data_split/generate.py:530` 和 `script/roi/core.py:416`；只有测试会比对，生产链路不检查。影响是输入换了、产物没换也没人发现；本次已实证：`data/splits/three-fold/manifest.json:256` 起的 12 项输入记录中，4 项与当前文件对不上（`docs_label.md`、`generate.py`、`labels.csv` 内容已变；`docs_data-split-design.md` 已改名为 `docs/split/data-split-design.md` 且内容亦变），另 6 个 `old_fold_*` 快照从未入库，一直没人发现。修它要在划分和 ROI 的入口程序里加入回读比对：每次读取清单时，先核对清单里记录的文件指纹是否与磁盘当前文件一致；不一致时拒绝继续或要求重新生成。修好之后，输入文件悄悄被替换、重命名或内容变更时，程序会停下来要求确认，不会继续用旧清单跑。（2026 年 11 月补记，仅作登记、不新增检查项也不改计数：ROI 清单记录的是绝对路径，读取逻辑已改为「存在即用、缺失则按显式项目根解析 `data`/`script`/`docs` 相对后缀、两者皆无则报错」；本机 110 条源/输出路径全部原样可用，重定位路径由 20 例合成测试覆盖（`script/roi/tests/test_manifest_paths.py`）。）
+5. **划分清单与 ROI 清单里记录的文件指纹，没有任何程序回读比对。** 指纹分别写入 `script/data_split/generate.py:530` 和 `script/roi/core.py:416`；只有测试会比对，生产链路不检查。影响是输入换了、产物没换也没人发现；本次复核 `data/splits/three-fold/manifest.json:256` 起的 12 项输入：6 项 `old_fold_*` 是 2026-11-19 替换前旧折，`git show 51d647d:data/splits/three-fold/fold_*.json` 逐项复核 6/6 一致；6 项输入类中，`labels.csv`、`groups.json`、`test.json`、`docs/label.md`、`generate.py` 共 5 项与当前文件一致，`docs/split/data-split-design.md` 的记录与生成时提交 `51d647d` 及当前 HEAD 一致，但工作树有 6 行未提交修订，当前字节不同。清单在生成时点有效、未失效；该文档一经提交，记录与实际文件不同也无人发现。修它要在划分和 ROI 的入口程序里加入回读比对：每次读取清单时，先核对清单里记录的文件指纹是否与磁盘当前文件一致；不一致时拒绝继续或要求重新生成。修好之后，输入文件悄悄被替换、重命名或内容变更时，程序会停下来要求确认，不会继续用旧清单跑。（2026 年 11 月补记，仅作登记、不新增检查项也不改计数：ROI 清单记录的是绝对路径，读取逻辑已改为「存在即用、缺失则按显式项目根解析 `data`/`script`/`docs` 相对后缀、两者皆无则报错」；本机 110 条源/输出路径全部原样可用，重定位路径由 20 例合成测试覆盖（`script/roi/tests/test_manifest_paths.py`）。）
 
 6. **所有检查都靠人记得去跑。** 仓库没有 `.github` 目录（无持续集成），没有 `.pre-commit-config.yaml`，Git 钩子目录里只有 `*.sample` 样例文件。影响是检查跑没跑、什么时候跑、跑的结果是什么，全凭个人记忆；时间一长必然漏跑，问题积累到审计时才暴露。修它至少要加一项持续集成配置，在每次推送/合并请求时跑默认测试；再配一个提交前钩子，拦截明显会破坏契约的变更；对耗时的子视频生成测试可以单独放到 nightly 或手动触发。修好之后，检查会变成常规动作而不是记忆负担，基础破坏在提交前或合并前就能被拦住。
 
@@ -96,8 +97,8 @@
 
 | 编号 | 层 | 一句话说明 | 位置 | 触发方式 | 状态 |
 |---|---|---|---|---|---|
-| L1-01 | 源数据 | 分组记录的标注表文件指纹与当前表不符；已实测仅 44 个单元格从「无法确定」规范为「无法判断」，两版均为 111 行 × 28 列、表头逐字节相同、其余内容等价，不是真问题。 | `data/split-inputs/source-groups-20261107.json:6` | 查看记录并与当前标注表比对 | 黄 |
-| L1-02 | 源数据 | 划分清单 12 项输入中，`labels.csv`、`groups.json`、`test.json`、`docs_label.md`、`generate.py` 和对应 `docs/split/data-split-design.md` 的 `docs_data-split-design.md` 共 6 项与当前文件一致；6 项 `old_fold_*` 与当前折文件不同，记录的是替换前旧折指纹，均可用提交 `51d647d` 复核一致；因此清单未失效，但无自动回读校验。 | `data/splits/three-fold/manifest.json:256` | 查看清单 `inputs`，用 `shasum -a 256 docs/split/data-split-design.md docs/label.md script/data_split/generate.py data/split-inputs/source-groups-20261107.json data/annotation-table-full.csv data/splits/three-fold/*.json` 比对当前文件；对每个旧折执行例如 `git show 51d647d:data/splits/three-fold/fold_0_val.json > /tmp/old-fold-check.json; shasum -a 256 /tmp/old-fold-check.json`，与对应 `old_fold_0_val.json` 记录比对 | 黄 |
+| L1-01 | 源数据 | 分组记录的标注表指纹与当前表一致（2026-11-20 实测，`c928bea3…c1ec354c`）。2026-11-14 术语统一前后的历史核对中，仅 44 个单元格从「无法确定」规范为「无法判断」，两版均为 111 行 × 28 列、表头逐字节相同、其余内容等价，不是真问题。 | `data/split-inputs/source-groups-20261107.json:6` | 查看 `label_csv_sha256` 并与 `shasum -a 256 data/annotation-table-full.csv` 比对 | 绿 |
+| L1-02 | 源数据 | 12 项输入中，6 项 `old_fold_*` 是 2026-11-19 替换前旧折，实测与提交 `51d647d` 的旧折 6/6 一致；6 项输入类中 `labels.csv`、`groups.json`、`test.json`、`docs/label.md`、`generate.py` 共 5 项与当前文件一致，`docs/split/data-split-design.md` 记录与生成时提交及当前 HEAD 一致，但工作树有 6 行未提交修订，当前字节不同。清单在生成时点有效、未失效；无自动回读校验，文档提交后差异也无人发现。 | `data/splits/three-fold/manifest.json:256` | 查看清单 `inputs`，用 `shasum -a 256 docs/split/data-split-design.md docs/label.md script/data_split/generate.py data/split-inputs/source-groups-20261107.json data/annotation-table-full.csv data/splits/three-fold/test.json` 比对当前文件；用 `git show 51d647d:docs/split/data-split-design.md \| shasum -a 256` 和对每个旧折执行如 `git show 51d647d:data/splits/three-fold/fold_0_val.json \| shasum -a 256` 比对记录 | 黄 |
 | L1-03 | 源数据 | 缺少 ID、重复 ID、空标签、非法枚举或不合法标签组合必须拒绝。 | `script/data_split/tests/test_generate.py:132` | `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/data_split/tests` | 绿 |
 | L1-04 | 源数据 | 旧的不确定性术语归一化为「无法判断」。 | `script/data_split/tests/test_generate.py:153` | `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/data_split/tests` | 绿 |
 | L1-05 | 源数据 | 分组跨测试集边界、成员重复或缺失等声明必须拒绝。 | `script/data_split/tests/test_generate.py:167` | `PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider script/data_split/tests` | 绿 |
@@ -256,7 +257,7 @@
 | L6-42 | 仓库卫生 | Git 钩子目录只有 `*.sample` 样例（`git rev-parse --git-path hooks` 指向的目录）。 | 当前不存在：钩子目录仅含样例 | 无 | 孤儿 |
 | L6-43 | 仓库卫生 | `tests/test_verify_design_facts.py`、`tests/test_serve_validate_delivery.py` 与 `tests/test_environment_deployment.py` 已从索引移除，磁盘上也没有。 | 当前不存在：索引和磁盘均无 | 无 | 孤儿 |
 
-六层 20+32+16+17+6+43=134；绿 71、黄 54、红 1、孤儿 8。
+六层 20+32+16+17+6+43=134；绿 72、黄 53、红 1、孤儿 8。
 
 ## 7. 这份台账自己的失效条件
 
