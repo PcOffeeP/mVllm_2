@@ -31,7 +31,7 @@
      git push -u github work/<线名>
      gh pr create --draft --base feat/tensileagent-finetune --title "wip(lock): <简述>" --body-file docs/changes/<日期>-<工作线>-<对象>.md
      ```
-  3. **完工转正与保留期**：完成后在同一分支追加实际改动与「已完成 + 实际结果」并推送，先按 `.github/PULL_REQUEST_TEMPLATE.md` 更新 PR 正文（`gh pr edit`）以满足 `pr-template-check`，再执行 `gh pr ready` 转为 Ready for review；PR 合并或关闭后占坑自动释放。变更单自「已完成」记录之日起保留 7 天，过期文件可直接删除，不归档。
+  3. **完工转正与保留期**：完成后在同一分支追加实际改动与「已完成 + 实际结果」并推送，先按 `.github/PULL_REQUEST_TEMPLATE.md` 更新正式标题与 PR 正文（`gh pr edit --title "<正式标题>" --body-file <PR正文文件>`，去掉 `wip(lock):` 前缀以满足 `pr-template-check`），再执行 `gh pr ready` 转为 Ready for review；PR 合并或关闭后占坑自动释放。变更单自「已完成」记录之日起保留 7 天，过期文件可直接删除，不归档。
 
 ### 3. 准入检查与基线标准（合并前必须跑）
 
