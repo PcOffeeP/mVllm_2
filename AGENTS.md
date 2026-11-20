@@ -8,16 +8,16 @@
 
 ### Git 纪律
 
-- **PR 审查流**：每个独立任务从最新 `feat/tensileagent-finetune` 新建独立 worktree 与 `work/<线名>` 任务分支；在任务分支完成工作并跑通 1.4 节准入检查后，将 `work/<线名>` 推送到 `github` 并创建指向 `feat/tensileagent-finetune` 的 PR（`gh pr create --base feat/tensileagent-finetune`，按 `.github/PULL_REQUEST_TEMPLATE.md` 填写）。
+- **PR 审查流**：每个独立任务开始前先运行 `bash script/sync_and_clean.sh`（自动拉取最新 `github/feat/tensileagent-finetune`、同步主工作区并清理已合并的干净 `work/*` 残留），再从最新 `feat/tensileagent-finetune` 新建独立 worktree 与 `work/<线名>` 任务分支；在任务分支完成工作并跑通 1.4 节准入检查后，将 `work/<线名>` 推送到 `github` 并创建指向 `feat/tensileagent-finetune` 的 PR（`gh pr create --base feat/tensileagent-finetune`，按 `.github/PULL_REQUEST_TEMPLATE.md` 填写）。
 - **权限红线**：允许 Agent 推送自己的 `work/*` 任务分支并创建/更新 PR；**严禁** push `feat/tensileagent-finetune` 或 `main`，**严禁**自行合并 PR，也不要再本地 `--ff-only` 直接合并回主线。
-- **合并与同步**：PR 统一由用户在 GitHub 审查后以 **Create a merge commit** 合并，主线保留“任务信封”合并节点（`git log --first-parent` 一任务一行，展开可看分步提交）。合并后主工作区用 `git pull --ff-only github feat/tensileagent-finetune` 同步。
-- 定期核对本地短期分支与各 worktree 的状态；PR 合并后，在已获删除授权的范围内清理对应的 worktree 及本地/远程短期分支；保留主线、未合并或用途不明的分支。
+- **合并与自动清理**：PR 统一由用户在 GitHub 审查后以 **Create a merge commit** 合并，主线保留“任务信封”合并节点（`git log --first-parent` 一任务一行，展开可看分步提交）；远程 `work/*` 分支由 GitHub 仓库的 `Automatically delete head branches` 自动删除。
+- **本地清理预授权**：对已完全合并进 `github/feat/tensileagent-finetune` 且工作树完全干净的本地 `work/*` 分支及对应 worktree，已永久预授权 Agent 通过 `bash script/sync_and_clean.sh` 自动清理，无需逐次请示；主线、未合并、含未提交改动或用途不明的分支严禁删除。
 
 ## 并行工作管理
 
 ### 1.1 一个工作线一个 worktree
 
-- 新工作线使用 `git worktree add ../TensileAgent-Finetune-<线名> -b work/<线名>`；同一 worktree 内不得并行两个写入者。
+- 新建工作线前先运行 `bash script/sync_and_clean.sh` 同步主线并顺手清理已合并的干净 `work/*` worktree 与分支；再使用 `git worktree add ../TensileAgent-Finetune-<线名> -b work/<线名>` 创建独立工作树（同一 worktree 内不得并行两个写入者）。
 - 新建 worktree 后须核对 `git sparse-checkout list` 与主工作区一致（未检出 `pipeline/`、`versioning/`），避免多检出文件导致测试计数口径漂移。
 - 每条线使用独立 `work/<线名>` 分支，完工跑通准入检查后推送到 `github` 并向 `feat/tensileagent-finetune` 提交 PR，由用户在 GitHub 审查后以 Create a merge commit 合并。
 - 共享 worktree 会让各自的 `git status` 互相可见；一方执行 `git switch` 会连带改变另一方的工作树。
