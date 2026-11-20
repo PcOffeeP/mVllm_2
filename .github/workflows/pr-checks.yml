@@ -139,8 +139,8 @@ jobs:
             /tests/_repo_layout_probe.py
             /.github/
 
-      - name: Install system libraries for OpenCV
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq libgl1 libglib2.0-0
+      - name: Install system libraries for OpenCV and FFmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg libgl1 libglib2.0-0
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
