@@ -30,6 +30,14 @@ sha256sum data/sub_video/manifest.json data/splits/three-fold/*.json docs/label.
 
 按相对路径逐行比对 `sha256` 输出；任一行不一致就先定位差异，再决定是否启动服务。
 
+### 2.1 运行环境
+
+以下解释器和命令范围适用于训练机 `/home/liuyang/文档/TensileAgent-Finetune`：训练机侧所有 Python 命令均使用 `/home/liuyang/miniconda3/envs/agent/bin/python3.11`（Python 3.11.15），与 `pyproject.toml` 的 `requires-python = ">=3.11,<3.12"` 一致。训练机系统 `python3` 为 Python 3.10.12，不满足该版本约束，不得用于运行生成入口或脚本。
+
+训练机没有 `.venv`；训练机只运行生成、审计和审查服务，不运行测试。准入检查（默认 `pytest`）与 facts 校验器仍在本机（Mac）执行。
+
+训练机环境实测：`ffmpeg` 和 `ffprobe` 均为 4.4.2，且均在 PATH 中；32 核，可用内存约 122 GB；`~/文档`（`/home/liuyang/文档`）所在分区可用 536 GB；当前批次预估产物约 190 MiB。这套环境已具备，属既定条件，不构成开工阻塞项。
+
 ## 3. 一轮审查的完整步骤
 
 ### 3.1 生成
