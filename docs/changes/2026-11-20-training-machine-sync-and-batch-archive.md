@@ -1,6 +1,6 @@
 # 变更窗口声明：训练机同步与旧批次归档
 
-- 状态：同步与归档已完成；暂存副本删除待新批次生成、回传本机并通过全量哈希核对、正式准备开审后执行。
+- 状态：同步与归档已完成；暂存副本已于 2026-11-20 删除，见 §8。
 - 时间窗口：自 2026-11-20 起，完成同步、归档及核验后结束。
 - 动因：重标注与三折重跑后，训练机的 `script/` 落后 22 个文件且缺少 `--write-audit`，`docs/` 中 runbook 缺 §5.1，输入数据（标注表、6 个 fold 文件、`source-groups`、`roi/manifest.json`）均非当前版本。
 
@@ -85,5 +85,20 @@ git archive --format=tar HEAD script docs AGENTS.md pyproject.toml data/annotati
 ### 7. 遗留事实
 
 - 训练机 `$R` 不是 git 仓库（为同步副本目录，无 `.git`），训练机侧状态核对以 `sha256` 与 `data/` 下 mtime/大小快照为准，不使用 git 校验；「与 Git HEAD 一致」指按 Mac HEAD 的文件集合与哈希比对。
-- 归档暂存副本 `sub_video-retired-20261108/` 尚未删除；删除条件见状态行：新批次生成完成、经 runbook §5.1 回传本机并通过全量哈希核对、正式准备开审。
+- 归档暂存副本 `sub_video-retired-20261108/` 已于 2026-11-20 删除，见 §8。
 - 后续若在训练机运行 ROI 裁剪工具，依赖 `data/roi/decisions.json`（已补同步）与 `data/roi/manifest.json`。
+
+### 8. 暂存副本删除（2026-11-20）
+
+新批次已生成，已按 runbook §5.1 回传本机，全量哈希核对通过（1,633/1,633）；用户已合并 PR #2，「正式准备开审」条件达成。唯一删除的目录是 `/home/liuyang/pi-workspace-backup/tensile-20261120/sub_video-retired-20261108/`，其中两个子目录的文件如下：
+
+| 相对路径 | 字节数（B） | SHA-256 |
+| --- | ---: | --- |
+| `sub_video/manifest.json` | 10,511,341 | `6112f40df0ee2d50c334f6800cd4988dc2b572185801e9b18e35e7fcd5d746d1` |
+| `sub_video/summary.json` | 4,820 | `28e715288f4f50bb5ee21e037da1c73d64afae9bf5f68274442b405fc1449b22` |
+| `sub_video-plan/manifest.json` | 22,057,123 | `d3076c91c731cd5001de072457aecf49415cd68e8f3305544d4ade7cac8e2cd3` |
+| `sub_video-plan/summary.json` | 4,697 | `1390cfd5fb2f9d7ab66a878ef2b1e2939f704208608515a904166d1f34d2596f` |
+
+四个文件合计 32,577,981 B，删除后无法恢复。旧批次（1,621 个候选）与新批次（1,633 个候选）无关。删除后核对：训练机 `$R/data/sub_video/` 的 `manifest.json`（10,549,279 B）、`summary.json`（4,820 B）、`audit.json`（14,280 B）和 `videos/` 中的 1,633 个 mp4（合计 191,625,749 B）仍在，删除的是归档副本。
+
+`~/pi-workspace-backup/tensile-20261120/` 下的 `pre-sync-sha256.txt` 与同步备份目录（`data/`、`docs/`、`script/`、`logs/`），以及迁移前后的两份 sha256 清单均未删除。
