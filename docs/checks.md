@@ -18,13 +18,13 @@
 | 层 | 这一层管什么 | 检查项数量 | 绿·黄·红·孤儿 | 一句话结论 |
 |---|---|---|---|---|
 | 源数据（标注表、划分、裁剪区域 ROI） | 原始标注、数据划分、画面裁剪这些输入对不对 | 20 | 19·1·0·0 | L1-01 的标注表指纹与当前表一致（`c928bea3…c1ec354c`）；L1-02 的 6 项旧折快照与当前折不同，且无自动回读校验。 |
-| 子视频生成（把源视频切成候选片段那一步） | 片段怎么切、规则怎么派、批次怎么续跑 | 32 | 1·30·0·1 | 新批次已就位，可比较清单摘要，服务端尚未实测；运行摘要无现行比较程序；整套检查需单独运行。 |
-| 人工审核（你看片打标签的界面） | 审核服务、ROI 决策、标注审核 | 16 | 15·1·0·0 | 新批次核验记录已就位，可按标签组合筛出待复核候选；页面尚未实测。 |
+| 子视频生成（把源视频切成候选片段那一步） | 片段怎么切、规则怎么派、批次怎么续跑 | 32 | 2·29·0·1 | 新批次清单摘要的服务端比较已实测通过（`audit_current=true`）；运行摘要无现行比较程序；整套检查需单独运行。 |
+| 人工审核（你看片打标签的界面） | 审核服务、ROI 决策、标注审核 | 16 | 16·0·0·0 | 核验记录与清单摘要匹配，「标签组合待复核」筛选实测可用（63 个候选待复核）。 |
 | 模型评价（评分器与模型输入记录） | 评分器、帧来源链、清单转换、推理入口 | 17 | 15·0·0·2 | 在跑的这部分是好的；模型交付校验已删。 |
 | 文档与事实（`docs/facts.yaml` 那套「哪句话有出处」的记录） | 文档里的证据还对不对得上原文 | 6 | 3·1·1·1 | 校验程序已移植回 `script/checks/facts.py`，判定改为锚文本（`expect` 能否定位、行号只作提示），实测通过 206（记录行命中 182、位置已变 24）、原文消失 4、歧义 0；标题/锚点校验仍缺。 |
 | 仓库卫生（哪些文件该进版本库、哪些不该） | 仓库布局、旧路径、Git 忽略规则 | 43 | 19·20·0·4 | 19 项已真正执行并通过；20 项按未检出目录逐条具名跳过（18 项缺 `pipeline/`、2 项缺 `versioning/backup.py`）。 |
 
-六层合计 20+32+16+17+6+43=134；绿 72、黄 53、红 1、孤儿 8。
+六层合计 20+32+16+17+6+43=134；绿 74、黄 51、红 1、孤儿 8。
 
 ## 3. 主表：只列「需要你知道」的检查
 
@@ -32,7 +32,7 @@
 
 | 编号 | 它在管什么（人话，一句话） | 检查的输入 → 输出的判断 | 谁在跑 | 状态 | 怎么自己确认它现在是这个状态 |
 |---|---|---|---|---|---|
-| L2-30 | 审计记录里的清单摘要与当前清单是否一致 | 批次审计记录与清单 → 摘要一致 | 审核服务在加载核验记录时比较清单摘要。2026-11-20 新批次 `data/sub_video/audit.json` 已入库，其顶层 `manifest_sha256` 与清单实际 SHA-256 逐字节相等（`c7068663…c08ac0f`，2026-11-20 实测）；该比较逻辑尚未在本批次实际运行时验证。 | 黄 | 比对 `data/sub_video/audit.json` 的 `manifest_sha256` 与 `shasum -a 256 data/sub_video/manifest.json` 的输出；服务端比较仍待审核页实跑验证。 |
+| L2-30 | 审计记录里的清单摘要与当前清单是否一致 | 批次审计记录与清单 → 摘要一致 | 审核服务加载核验记录时比较清单摘要；2026-11-21 实测 `audit_current=true`，`data/sub_video/audit.json` 的 `manifest_sha256`、清单实际 SHA-256、bootstrap 返回值三者相等（`c7068663…c08ac0f`，全值 `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f`）。 | 绿 | 启动审核服务（`.venv/bin/python -m script.subvideo_review.server --project-root . serve --port 8765`）后 `curl -sS http://127.0.0.1:8765/api/bootstrap`，看 `audit_current` 为 `true`、`audit_status` 为 `current`；再比对 bootstrap 的 `manifest_sha256`、`data/sub_video/audit.json` 的 `manifest_sha256` 与 `shasum -a 256 data/sub_video/manifest.json` 三者相等。 |
 | L2-31 | 审计记录里的运行摘要是否属于当前批次 | 批次审计记录 → 运行摘要属于该批次 | 写盘入口仍在，但无现行生产程序读取或比较运行摘要 | 孤儿 | 用 `git grep run_summary_sha256` 核对写入及测试引用 |
 | L2-32 | 有没有程序负责生成和维护审计文件 | `script/subvideo_generation/generate.py` 的写文件动作 → 应当生成或维护 `audit.json` | 生成入口已具备写盘能力（`--write-audit` / `--replace-audit`，fail-closed + 原子写），有 29 例测试守住 | 绿 | 运行 `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q script/subvideo_generation/tests/test_audit_record_writes.py`，看到 29 例通过 |
 | L4-16 | 模型/服务交付时的批次身份对不对 | 交付产物与约定规则 → 身份一致才放行 | 没有；脚本已删除 | 孤儿 | 仓库里找不到 `scripts/serve_validate_delivery.py` |
@@ -54,7 +54,7 @@
 | L1-01 | 来源分组记录的标注表指纹是否对应当前表 | 记录中的标注表指纹与当前表一致 | 成立（2026-11-20 实测） | 绿 | 打开 `data/split-inputs/source-groups-20261107.json:6`，比对 `label_csv_sha256` 与 `shasum -a 256 data/annotation-table-full.csv` 输出，均为 `c928bea3…c1ec354c` |
 | L1-02 | 划分清单输入指纹是否可追溯 | 清单输入指纹与生成时输入对应 | 5 项与当前文件一致，1 项因未提交文档修订不同；旧折可追溯，但无自动回读校验 | 黄 | 查看 `data/splits/three-fold/manifest.json:256` 的 `inputs`，按第 6 节 L1-02 比对 |
 | L2-01…L2-29 | 子视频生成全阶段的契约与身份校验 | 源视频、标注、规则 → 片段、覆盖、续跑、审计都符合规则 | 须单独运行该目录测试 | 黄 | 打开 `pyproject.toml` 第 19 行，看默认测试范围里没有 `script/subvideo_generation/tests` |
-| L3-08 | 审核页「标签组合待复核」筛选 | 批次核验记录与清单 → 摘要一致时筛选可用 | 2026-11-20 新批次核验记录 `data/sub_video/audit.json` 已就位（记 `candidates_needing_attention=63`、`issue_counts` 两类），可支撑「标签组合待复核」筛选；筛选页面尚未在本批次实测运行。 | 黄 | 打开审核页，查看「标签组合待复核」是否列出 63 条，并核对 `audit.json` 的 `candidates_needing_attention` 与 `issue_counts`。 |
+| L3-08 | 审核页「标签组合待复核」筛选 | 批次核验记录与清单 → 摘要一致时筛选可用 | 核验记录就位且摘要匹配，`audit_issue_candidate_count=63`，筛选可用；2026-11-21 实测 `audit_current=true`，`audit.json` 的 `candidates_needing_attention=63`，bootstrap 候选里 `audit_issues` 非空的也为 63（`未断裂片段的断后脱夹需复核` 63、`未断裂与爆炸性断裂互斥` 15）。 | 绿 | 打开审核页 `http://127.0.0.1:8765`，`audit_current` 为 true 时「标签组合待复核」筛选可选、计数 63；或对比 `curl -sS http://127.0.0.1:8765/api/bootstrap` 的 `audit_issue_candidate_count` 与 `data/sub_video/audit.json` 的 `candidates_needing_attention` 是否同为 63。 |
 | L3-15 | 审核服务与标注审核的测试 | 对应测试目录 → 45 + 10 项检查通过 | 默认 pytest；审核服务和标注审核测试均通过 | 绿 | 运行默认 `pytest`，收集审核服务 45 项、标注审核 10 项，全部通过 |
 | L6-01…L6-39 | 仓库布局与忽略规则 | 仓库文件结构 → 布局符合扁平化规则、忽略规则覆盖到位 | 默认 `pytest` 会收集全部 63 个测试条目 | 19·20·0（绿·黄·红） | 运行默认 `pytest`，报告显示 `728 passed, 20 skipped`；加 `-rs` 可逐条看到 20 条跳过理由：18 条为 sparse-checkout 未检出 `pipeline/`、2 条为未检出 `versioning/backup.py` |
 
@@ -64,7 +64,7 @@
 
 1. **`docs/facts.yaml` 的 290 条证据里仍有 4 条原文消失。** 校验器已于 2026-11-19 移植回 `script/checks/facts.py`（默认报告模式、`--strict` 拦截），`docs/facts.yaml` 头部注释也已同步改写成「由该脚本核对」，不再声称「当前无自动校验器」。证据判定改为锚文本契约：以 `expect` 原文能否在目标文件中定位为准，`ref` 里的行号只作提示，正文移动导致行号变化不算错；只有原文被改写、被删除，或在同一文件中出现多处、无法唯一确定（单列为「歧义」）时才算问题。最近一次实测（`.venv/bin/python -m script.checks.facts --json`）的五类分布是：通过 206（记录行命中 182、位置已变 24）、原文消失 4、歧义 0、本机无法核对 80、结构错误 0，合计 290 条证据。影响是仍有 4 条证据与原文的连接断了：其 `expect` 在全文找不到，需要补回文件、改路径或删除条目。这 4 条属既有问题：DF-022、DF-027，以及 DF-047 的两条（`script/subvideo_review/static/app.js`、`script/subvideo_review/static/index.html`）；另有 80 条引用的路径在本机未检出（sparse-checkout），只能在原工作区或训练机上核对。标题与锚点校验仍未移植（台账 L5-06 记为孤儿）。修好之后，正文增删导致的行号移动不会再报错、也不需逐条改行号；只有原文被改写、被删除，或同一文件里出现多处命中无法唯一确定时，校验器才会在第一时间报错，而不是等到审计才发现。DF-044 的 `affects` 已修正，条目级结构错误实测为 0。
 
-2. **新批次已写入审计记录，两个摘要均已手工核对。** （2026-11-19 记录：旧批次的清单与核验记录已移除，当前无可查对象。）显式执行 `--audit-only --write-audit` 可写入；覆盖需 `--replace-audit`。批次身份或清单校验不通过时拒绝写入（fail-closed），写盘为原子替换，有 29 例测试覆盖。2026-11-20 新批次已产出 `data/sub_video/audit.json`；其 `manifest_sha256` 与 `manifest.json` 实际 SHA-256 相等，`generation_validation.run_summary_sha256` 与 `summary.json` 实际 SHA-256 相等。服务端清单摘要比较与页面筛选仍待本批次实测，L2-30、L3-08 仍记黄；无生产程序自动比较运行摘要，L2-31 仍为孤儿。
+2. **新批次 audit 已入库，服务端比较已实测通过。** （2026-11-19 记录：旧批次的清单与核验记录已移除，当前无可查对象。）显式执行 `--audit-only --write-audit` 可写入；覆盖需 `--replace-audit`。批次身份或清单校验不通过时拒绝写入（fail-closed），写盘为原子替换，有 29 例测试覆盖。2026-11-20 新批次已产出 `data/sub_video/audit.json`；其 `manifest_sha256` 与 `manifest.json` 实际 SHA-256 相等，`generation_validation.run_summary_sha256` 与 `summary.json` 实际 SHA-256 相等。2026-11-21 审核服务实跑实测：bootstrap 的 `audit_current=true`、`audit_status=current`，`audit.json` 的 `manifest_sha256`、清单实际 SHA-256 与 bootstrap 返回值三者逐字节相等；`audit_issue_candidate_count=63`，审核页「标签组合待复核」筛选可用，故 L2-30、L3-08 转绿。无生产程序自动比较运行摘要，L2-31 仍为孤儿。
 
 3. **仓库卫生 39 项检查已从「静默跳过」改为「19 项执行通过 + 20 项具名跳过」。** 两个文件原本在模块级 `pytest.importorskip("pipeline")`，条件不满足就整文件跳过，默认测试报告 `660 passed, 2 skipped`，这 39 项一个都没跑。现改为惰性依赖：不依赖 `pipeline` 的用例直接执行（`tests/test_layout_migration_guard.py` 的 T1/T2/T3/T5/T6 与 `tests/test_project_workspace.py` 的 Git 忽略用例，两文件共 43 个测试条目实测全通过）；真正依赖 `pipeline` 的 18 项用 `pytest.mark.skipif` 逐条具名跳过，理由写明「sparse-checkout 未检出 pipeline/」；`versioning/backup.py` 的 2 个豁免守卫改用 skip-worktree 探针区分「被 sparse-checkout 排除」（具名跳过）与「文件真丢失」（仍按原来的 `pytest.fail` 硬失败），因此硬失败守卫没有被放宽。实测默认 `pytest` 为 `728 passed, 20 skipped`、0 失败。仍存两点限制：（a）T3 的字面量扫描面在当前检出下只剩 `tests/` 的两个文件与根目录文件——`pipeline`/`versioning`/`finetune`/`delivery` 被 sparse-checkout 排除（HEAD 跟踪 116 个 `pipeline` 文件，磁盘上一个都没有），所以「旧布局字面量清零」的本机结论不等于全仓结论；同理 L6-08 在当前检出下没有可扫的备份模块，是通过但空转。（b）20 项跳过条目的断言本体（含 `tests/test_project_workspace.py` 里 12 处 `pytest.raises` 的 match 文案）在本机完全没有执行，只是计数可见，不等于已验证。要把这 20 项也真跑，需把 `/pipeline/`、`/versioning/` 加进 `git sparse-checkout` 白名单后重跑同一条命令，届时这些用例会自动转为执行。
 
@@ -151,7 +151,7 @@
 | L2-27 | 子视频生成 | 输入、批次模式或模式版本身份不同时拒绝续跑。 | `script/subvideo_generation/generate.py:196` | 续跑或完整批次审计时比较身份 | 黄 |
 | L2-28 | 子视频生成 | 运行期间输入或生成规则发生变化时中止。 | `script/subvideo_generation/generate.py:200` | 运行中的身份复核 | 黄 |
 | L2-29 | 子视频生成 | 完整批次审计比较 summary 与从 manifest 计算的摘要。 | `script/subvideo_generation/generate.py:820` | 显式执行完整批次审计 | 黄 |
-| L2-30 | 子视频生成 | 审核服务在加载核验记录时比较清单摘要。2026-11-20 新批次 `data/sub_video/audit.json` 已入库，其顶层 `manifest_sha256` 与清单实际 SHA-256 逐字节相等（`c7068663…c08ac0f`，2026-11-20 实测）；该比较逻辑尚未在本批次实际运行时验证，故仍记黄；自查：比对 `data/sub_video/audit.json` 的 `manifest_sha256` 与 `shasum -a 256 data/sub_video/manifest.json` 的输出。 | `script/subvideo_review/server.py:154` | 审核页加载核验记录 | 黄 |
+| L2-30 | 子视频生成 | 审核服务在加载核验记录时比较清单摘要；2026-11-21 实测 `audit_current=true`，`data/sub_video/audit.json` 的 `manifest_sha256`、清单实际 SHA-256（`c7068663…c08ac0f`）、bootstrap 返回值三者相等。 | `script/subvideo_review/server.py:154` | 审核页加载核验记录 | 绿 |
 | L2-31 | 子视频生成 | 运行摘要写盘入口仍在，但无现行生产读取或比较程序；`git grep run_summary_sha256` 仅命中生成入口和测试。2026-11-20 新批次 `data/sub_video/audit.json` 现已包含 `generation_validation.run_summary_sha256`，且与 `summary.json` 实际 SHA-256 相等（`4919c1b2…18a52ef`，手工核对通过）；仍无生产程序自动比较运行摘要，故保留孤儿。 | `script/subvideo_generation/generate.py:971` | 无现行生产比较触发 | 孤儿 |
 | L2-32 | 子视频生成 | 生成入口已具备审计记录写盘能力（`--write-audit` / `--replace-audit`，fail-closed + 原子写 + 显式覆盖 + 单锁临界区），有 29 例测试守住。2026-11-20 批次分两条命令执行：先生成（生成流程本身不写 audit），再执行 `--audit-only --write-audit`，以原子替换写入 `data/sub_video/audit.json`（14,280 B，schema `tensile-unified-sub-video-audit/1`）。`script/subvideo_generation/generate.py:1003-1004` 明确约束 `--write-audit requires --audit-only`。 | `script/subvideo_generation/generate.py:925`，写盘函数 `write_audit_record`；读取位置 `script/subvideo_review/server.py:154` | 显式执行 `--audit-only --write-audit`（覆盖需 `--replace-audit`），另有 29 例测试 | 绿 |
 
@@ -166,7 +166,7 @@
 | L3-05 | 人工审核 | 审核保存使用锁文件串行化。 | `script/subvideo_review/server.py:514` | 保存审核 | 绿 |
 | L3-06 | 人工审核 | 保存时先写同目录 .reviews- 临时文件再替换记录，并清理遗留临时文件。 | `script/subvideo_review/server.py:533` | 保存审核 | 绿 |
 | L3-07 | 人工审核 | 当前审核修订记录存于 reviews.json。 | `data/subvideo-review/reviews.json:1` | 审核服务读取 | 绿 |
-| L3-08 | 人工审核 | 2026-11-20 新批次核验记录 `data/sub_video/audit.json` 已就位（记 `candidates_needing_attention=63`、`issue_counts` 两类），可支撑「标签组合待复核」筛选；筛选页面尚未在本批次实测运行，故仍记黄。 | `script/subvideo_review/server.py:252`；`script/subvideo_review/README.md:11` | 审核页加载核验摘要 | 黄 |
+| L3-08 | 人工审核 | 核验记录就位且摘要匹配，`audit_issue_candidate_count=63`，筛选可用（2026-11-21 实测 `audit_current=true`，候选里 `audit_issues` 非空的 63 个，与 `audit.json` 的 `candidates_needing_attention` 一致）。 | `script/subvideo_review/server.py:252`；`script/subvideo_review/README.md:11` | 审核页加载核验摘要 | 绿 |
 | L3-09 | 人工审核 | 审核媒体读取时核对文件摘要。 | `script/subvideo_review/server.py:458` | 播放审核视频 | 绿 |
 | L3-10 | 人工审核 | 清单与规则等变更后停止使用原快照。 | `script/subvideo_review/server.py:385` | 审核服务操作 | 绿 |
 | L3-11 | 人工审核 | ROI 决策校验审核状态及批准条件。 | `script/roi/app.py:431` | 保存 ROI 决策 | 绿 |
@@ -257,7 +257,7 @@
 | L6-42 | 仓库卫生 | Git 钩子目录只有 `*.sample` 样例（`git rev-parse --git-path hooks` 指向的目录）。 | 当前不存在：钩子目录仅含样例 | 无 | 孤儿 |
 | L6-43 | 仓库卫生 | `tests/test_verify_design_facts.py`、`tests/test_serve_validate_delivery.py` 与 `tests/test_environment_deployment.py` 已从索引移除，磁盘上也没有。 | 当前不存在：索引和磁盘均无 | 无 | 孤儿 |
 
-六层 20+32+16+17+6+43=134；绿 72、黄 53、红 1、孤儿 8。
+六层 20+32+16+17+6+43=134；绿 74、黄 51、红 1、孤儿 8。
 
 ## 7. 这份台账自己的失效条件
 
@@ -268,3 +268,4 @@
 - `docs/facts.yaml` 的处理决定改变。（原列「或新批次清单与核验记录生成」一项已于 2026-11-20 发生，本台账已按该批次更新。）
 - 六层划分调整。
 - `pipeline/` 或 `versioning/` 被检出后，当前逐条具名跳过的 20 项恢复运行，需重跑并更新第 2 节仓库卫生层计数与第 4 节第 3 条。
+- 审核服务运行期状态变化（`data/sub_video/manifest.json` 或 `data/sub_video/audit.json` 被替换）时，须重跑第 3 节 L2-30、L3-08 的运行期实测。

@@ -114,7 +114,7 @@
   - 较历史 1,621 个候选增加的 12 个全部来自 `video_0040`：断裂模式由脆性改为半脆半韧，按[生成逻辑 §2](subvideo-current-logic.md) 的断前选窗规则，`pre` 由 3 个增至 15 个；其余 109 个来源逐源逐角色完全相同。
   - 先执行 `generate.py --verification basic --output-dir data/sub_video`，再执行 `generate.py --audit-only --write-audit --output-dir data/sub_video` 产出 `audit.json`；生成流程本身不写审计记录（`generate.py:1003-1004`：`--write-audit requires --audit-only`）。按[生成逻辑 §8](subvideo-current-logic.md)，`basic`／`none` 不提供任何帧对应证明。
   - 审计记录 `candidates_needing_attention=63`：63 条均有「未断裂片段的断后脱夹需复核」，其中 15 条兼有「未断裂与爆炸性断裂互斥」。`manifest_sha256`、`generation_validation.run_summary_sha256` 分别与清单、摘要实际哈希核对一致。
-- 旧批次归档完成：清单与摘要共 4 个文件，合计 32,577,981 B，曾移至训练机仓库外 `~/pi-workspace-backup/tensile-20261120/sub_video-retired-20261108/`，该暂存副本已于 2026-11-20 删除（删前逐个核对 sha256，见[训练机同步与旧批次归档](changes/2026-11-20-training-machine-sync-and-batch-archive.md) §8），删除后无法恢复。新批次生成、按 runbook §5.1 回传、全量哈希核对均已完成（1,633/1,633）；「正式准备开审」以本批清单入 Git 的 PR 合并为准，该 PR 已合并，删除条件（PR 已合并 + 新批次已回传并 1,633/1,633 全量核对）达成。
+- 旧批次归档完成：清单与摘要共 4 个文件，合计 32,577,981 B，曾移至训练机仓库外 `~/pi-workspace-backup/tensile-20261120/sub_video-retired-20261108/`，该暂存副本已于 2026-11-20 删除（删前逐个核对 sha256，见[训练机同步与旧批次归档](changes/2026-11-20-training-machine-sync-and-batch-archive.md) §8），删除后无法恢复。新批次生成、按 runbook §5.1 回传、全量哈希核对均已完成（1,633/1,633）；「正式准备开审」以本批清单入 Git 的 PR 合并为准，PR #2 已合并，删除条件（PR 已合并 + 新批次已回传并 1,633/1,633 全量核对）达成。
 
 ### 下一步
 
