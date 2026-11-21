@@ -74,7 +74,7 @@ generate.py --audit-only --write-audit --output-dir data/sub_video
 | `data/sub_video-plan/manifest.json` | 22,057,123 |
 | `data/sub_video-plan/summary.json` | 4,697 |
 
-新批次生成、按 runbook §5.1 回传本机、全量哈希核对均已完成。「正式准备开审」以本批清单入 Git 的 PR 合并为准；暂存副本尚未删除，待该 PR 合并后删除。
+新批次生成、按 runbook §5.1 回传本机、全量哈希核对均已完成（1,633/1,633）。「正式准备开审」以本批清单入 Git 的 PR 合并为准；该 PR 已合并，删除条件达成，上表 4 个文件（合计 32,577,981 B）的暂存副本已于 2026-11-20 删除，删前逐个核对 sha256，删除后无法恢复。过程与各文件哈希见[训练机同步与旧批次归档](2026-11-20-training-machine-sync-and-batch-archive.md) §8。
 
 ## 已完成与保留期
 
