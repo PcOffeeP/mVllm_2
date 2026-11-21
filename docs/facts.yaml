@@ -1,7 +1,7 @@
 # 项目设计与代码事实的单一入口。
 # active 表示条目在写明的适用范围内有效，不表示旧契约、旧实验或待落地裁决可直接用于本轮标注。
 # 本轮人工标注以 docs/label.md 为准；新旧边界见 DF-018，执行阶段见 docs/TODO.md。
-# 校验：校验器为 `script/checks/facts.py`（默认报告模式、`--strict` 拦截）。证据判定按锚文本契约：以 `expect` 原文能否在目标文件中定位为准，`ref` 里的行号只作提示，正文移动导致行号变化不算错；只有原文被改写、被删除，或在同一文件中出现多处、无法唯一确定（单列为「歧义」）时才算问题。汇总五类：通过（细分记录行命中／位置已变）、原文消失、歧义、本机无法核对、结构错误。当前实测（2026-11-20，`.venv/bin/python -m script.checks.facts --json`）：290 条证据中通过 206（记录行命中 182、位置已变 24）、原文消失 4、歧义 0、本机无法核对 80、结构错误 0。
+# 校验：校验器为 `script/checks/facts.py`（默认报告模式、`--strict` 拦截）。证据判定按锚文本契约：以 `expect` 原文能否在目标文件中定位为准，`ref` 里的行号只作提示，正文移动导致行号变化不算错；只有原文被改写、被删除，或在同一文件中出现多处、无法唯一确定（单列为「歧义」）时才算问题。汇总五类：通过（细分记录行命中／位置已变）、原文消失、歧义、本机无法核对、结构错误。当前实测（2026-11-21，`.venv/bin/python -m script.checks.facts --json`）：290 条证据中通过 206（记录行命中 180、位置已变 26）、原文消失 4、歧义 0、本机无法核对 80、结构错误 0。
 # evidence 行号复核（历史记录：该段按锚行号时期的口径逐条核对过行号与 expect；2026-11-19 起判定改为锚文本契约，行号不再作为判定依据，下列复核只说明当时核对过行号）：2026-11-14 本轮再次按当前工作树逐条复核了全部 evidence 的行号与 `expect`。本次受影响的被引文件类别：`script/five_label_eval/score.py`（当前 `five-label-score/3` 的 `truth_cell` 116–121、`combinations` 137、`field_metrics` 354–428、`def score` 450，全文 557 行）；`docs/design-test.md`（新增第 8 节、§6 测试规模数字改写、§1 措辞调整、§7.3 要点条目调整后全篇行号漂移）；两份已删文档 `docs/label-position-calibration.md` 与 `docs/migration-review-outline.md`（均于提交 `a5dd578` 删除）的引用改指现存替代；`docs/eval/input-record.md` 与 `docs/eval/output-contract.md`；`docs/TODO.md`、`docs/subvideo-current-logic.md` 与 `script/subvideo_generation/` 的规则登记和生成入口。另有个别行号因更早的上游提交（如 `045536c`）顺移。无法在本仓核对的条目见下方 `evidence_location` 说明。2026-11-16 本次片段层规则变更后已再次按当前工作树核对该段评分器行号。
 # evidence_location: 取值为 `original_worktree` 时表示该条**含**指向本工作区未检出路径的 evidence（`pipeline/`、`finetune/`、`versioning/`、`docs/results/` 等，本仓为 sparse-checkout，这些目录未检出），这部分的 evidence 无法在本仓核对原文与内容，同一 entry 的其余 evidence 仍可在本仓核对；出现原因即这批 evidence 取自原工作区/训练机的代码与结果记录。条目的结论仍有效，但不可在本仓核对的那部分须在原工作区/训练机核对后才可引用，不得当作本仓已核实的行号。
 # `misreadings` 段的 evidence 同样指向本仓未检出的路径，但该段结构没有 `evidence_location` 字段，其证据同样须在原工作区/训练机核对，且不计入任何自动核对覆盖范围。
@@ -993,7 +993,7 @@ facts:
     state: active
     topic: 数据与运行位置迁移到训练机
     claim: >
-      2026-11-14 用户确认（DEC-003 第 10 条）：子视频生成改在训练机执行，媒体产物留在训练机，落点 `~/文档/TensileAgent-Finetune`；清单与人工审查记录回传 Mac 并提交 Git；人工审查入口以 HTTP 提供，经 SSH 隧道访问，服务本身仍只监听回环。Mac 侧旧批次随之作废：`data/sub_video/videos` 待删除，`data/sub_video/manifest.json`、`summary.json`、`audit.json` 三个文件待标记作废；截至本条记录，这些路径仍在工作树中，未删除、未标记。训练机入口为 `ssh liuyang@100.70.83.68`；主机名 `dell-Precision-3660` 直接用会以错误用户名登录被拒。本条只记录迁移位置与待办状态，不表示迁移已完成。（2026-11-19：该批次已作废并删除，本条关于媒体在位的表述已失效，见 DF-050。）
+      2026-11-14 用户确认（DEC-003 第 10 条）：子视频生成改在训练机执行，媒体产物留在训练机，落点 `~/文档/TensileAgent-Finetune`；清单与人工审查记录回传 Mac 并提交 Git；人工审查入口以 HTTP 提供，经 SSH 隧道访问，服务本身仍只监听回环。Mac 侧旧批次随之作废：`data/sub_video/videos` 待删除，`data/sub_video/manifest.json`、`summary.json`、`audit.json` 三个文件待标记作废；截至本条记录，这些路径仍在工作树中，未删除、未标记。训练机入口为 `ssh liuyang@100.70.83.68`；主机名 `dell-Precision-3660` 直接用会以错误用户名登录被拒。本条只记录迁移位置与待办状态，不表示迁移已完成。（2026-11-19：该批次已作废并删除，本条关于媒体在位的表述已失效，见 DF-050。）（2026-11-20：新批次三份 JSON 已入库 `data/sub_video/`，旧批次归档暂存副本已删除，见 `docs/changes/2026-11-20-subvideo-batch2-regeneration.md`。）
     evidence:
       - ref: docs/decisions/0003-five-label-eval-scope.md:22
         expect: 子视频生成改在训练机执行、产物留训练机
@@ -1043,7 +1043,7 @@ facts:
     state: active
     topic: 本机媒体副本与 DEC-003 第 10 条实施口径
     claim: >
-      Mac 侧 `data/sub_video/videos` 实有 1,621 个 `.mp4`（186M），逐条 sha256 与 `data/sub_video/manifest.json` 中候选 `output.sha256` 一致（1621/1621，0 缺失、0 不符），与训练机上同目录逐条 sha256 相同，因此本机副本可直接用于人工审查。后续不再新增媒体回传，本机副本经哈希核对后用于本机审查；训练机仍为二次生成与媒体留存场所；清单与审核记录仍回传本机并提交 Git；本条不改变 DEC-003 第 10 条其余内容。DF-046 所记「Mac 侧旧批次作废：`data/sub_video/videos` 待删除」与实测不符：该目录当前内容与当前清单逐条一致，已不具备「旧批次」身份，按本条实施口径落实；DF-046 保留原记录，不就地改写。`data/sub_video/manifest.json` 文件 sha256 = `6112f40df0ee2d50c334f6800cd4988dc2b572185801e9b18e35e7fcd5d746d1`；`data/subvideo-review/reviews.json` sha256 = `23ee490ca67db5fa38c61f404755406536d665043985cf521072199522f58842`。该条「后续不再新增媒体回传」指不再按批次常规回传媒体，媒体默认留在训练机；后续批次需在本机审查时，媒体按 `docs/training-machine-review-runbook.md` §5.1「审查前媒体同步」单向同步（训练机→本机、仅待审批次的媒体目录、逐文件 `rsync` 禁 `--delete`、按清单 `output.sha256` 全量逐条核对、本机只增不删），属按需补充本机副本、不改变「清单与审核记录回传本机并提交 Git」，也不改变 DF-046 的其余内容。（2026-11-19：该批次已作废并删除，本条关于媒体在位的表述已失效，见 DF-050。）
+      Mac 侧 `data/sub_video/videos` 实有 1,621 个 `.mp4`（186M），逐条 sha256 与 `data/sub_video/manifest.json` 中候选 `output.sha256` 一致（1621/1621，0 缺失、0 不符），与训练机上同目录逐条 sha256 相同，因此本机副本可直接用于人工审查。后续不再新增媒体回传，本机副本经哈希核对后用于本机审查；训练机仍为二次生成与媒体留存场所；清单与审核记录仍回传本机并提交 Git；本条不改变 DEC-003 第 10 条其余内容。DF-046 所记「Mac 侧旧批次作废：`data/sub_video/videos` 待删除」与实测不符：该目录当前内容与当前清单逐条一致，已不具备「旧批次」身份，按本条实施口径落实；DF-046 保留原记录，不就地改写。`data/sub_video/manifest.json` 文件 sha256 = `6112f40df0ee2d50c334f6800cd4988dc2b572185801e9b18e35e7fcd5d746d1`；`data/subvideo-review/reviews.json` sha256 = `23ee490ca67db5fa38c61f404755406536d665043985cf521072199522f58842`。该条「后续不再新增媒体回传」指不再按批次常规回传媒体，媒体默认留在训练机；后续批次需在本机审查时，媒体按 `docs/training-machine-review-runbook.md` §5.1「审查前媒体同步」单向同步（训练机→本机、仅待审批次的媒体目录、逐文件 `rsync` 禁 `--delete`、按清单 `output.sha256` 全量逐条核对、本机只增不删），属按需补充本机副本、不改变「清单与审核记录回传本机并提交 Git」，也不改变 DF-046 的其余内容。（2026-11-19：该批次已作废并删除，本条关于媒体在位的表述已失效，见 DF-050。）（2026-11-20：上述「本机副本实有 1,621 个 `.mp4`、与清单逐条 sha256 一致、可直接用于人工审查」的状态已被 2026-11-20 新批次取代，清单与审计记录见 `data/sub_video/` 与 `docs/changes/2026-11-20-subvideo-batch2-regeneration.md`。）
     evidence:
       - ref: docs/training-machine-review-runbook.md:163
         expect: 'Mac 侧曾有 1,621 个 `.mp4`（186M）'
@@ -1091,7 +1091,7 @@ facts:
     state: active
     topic: 子视频统一批次已作废并删除，媒体与清单均不再存在
     claim: >
-      2026-11-19 子视频统一批次退役并删除，`data/sub_video/manifest.json`、`summary.json`、`audit.json` 及该批次历史记录（`superseded-20261113/` 下三份）均已删除，`data/sub_video/videos` 现为空目录，媒体与清单均不再存在；因此 DF-046 中「`data/sub_video/videos` 待删除、三个清单文件待标记作废、截至本条记录仍在工作树中」的在位表述已失效，DF-048 中「本机副本实有 1,621 个 `.mp4`、与清单逐条 sha256 一致、可直接用于人工审查」的在位表述亦已失效；两条原结论保留为当时记录，不再作为当前状态依据；新批次生成后以该批次自己的清单、摘要与核验记录为准。
+      2026-11-19 子视频统一批次退役并删除，`data/sub_video/manifest.json`、`summary.json`、`audit.json` 及该批次历史记录（`superseded-20261113/` 下三份）均已删除，`data/sub_video/videos` 现为空目录，媒体与清单均不再存在；因此 DF-046 中「`data/sub_video/videos` 待删除、三个清单文件待标记作废、截至本条记录仍在工作树中」的在位表述已失效，DF-048 中「本机副本实有 1,621 个 `.mp4`、与清单逐条 sha256 一致、可直接用于人工审查」的在位表述亦已失效；两条原结论保留为当时记录，不再作为当前状态依据；新批次生成后以该批次自己的清单、摘要与核验记录为准。（2026-11-20：上述「媒体与清单均不再存在」的状态已被 2026-11-20 新批次取代，清单与审计记录见 `data/sub_video/` 与 `docs/changes/2026-11-20-subvideo-batch2-regeneration.md`。）
     evidence:
       - ref: docs/training-machine-review-runbook.md:163
         expect: 该批次已退役，清单已删除，`data/sub_video/videos` 现为空目录
