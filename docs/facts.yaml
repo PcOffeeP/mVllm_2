@@ -461,7 +461,7 @@ facts:
       - ref: script/subvideo_generation/pilot/pilot.py:319
         expect: model_sampling_gate
       - ref: docs/design-test.md:241
-        expect: '## 8. 训练与测评衔接（F–I 阶段）'
+        expect: '## 8. 训练、测评与交付衔接（F–J 阶段）'
     established: 2026-11-08
     established_by: 用户确认先旧规则加严初裁、汇总后审查新规则；初裁工具代码及合成测试核对。原 evidence 指向的 `docs/migration-review-outline.md` 已于提交 `a5dd578` 删除，其 F–I 阶段与发布三问并入 `docs/design-test.md` 第 8 节（第 241 行起），该 ref 改指第 8 节标题
     supersedes: null
@@ -544,8 +544,8 @@ facts:
     evidence:
       - ref: script/subvideo_generation/generate.py:97
         expect: 'def load_inputs(root):'
-      - ref: script/subvideo_generation/generate.py:472
-        expect: 'def run(project_root, output_dir=None, *, plan_only=False, resume=False):'
+      - ref: script/subvideo_generation/generate.py:667
+        expect: 'def run(project_root, output_dir=None, *, plan_only=False, resume=False,'
       - ref: script/subvideo_generation/generate.py:802
         expect: 'def audit_outputs(project_root, output_dir, *, portable=False):'
       - ref: docs/TODO.md:141
@@ -1028,10 +1028,10 @@ facts:
         expect: 缺项留空，不补“否”
       - ref: script/subvideo_review/static/app.js:228
         expect: candidate.candidate_labels || candidate.candidate_reference
-      - ref: script/subvideo_review/static/app.js:230
-        expect: 已按生成标签预填，确认前为草稿
-      - ref: script/subvideo_review/static/index.html:137
-        expect: 源标签只供参考，不写入审核值
+      - ref: script/subvideo_review/static/app.js:278
+        expect: 已按生成标签预填为草稿
+      - ref: script/subvideo_review/static/index.html:162
+        expect: 每项下方注明源视频对应标注（仅供参考，不会写入审核值）
       - ref: script/subvideo_review/tests/test_app_dom.cjs:634
         expect: saved human revision overrides the candidate prefill
     established: 2026-11-14
