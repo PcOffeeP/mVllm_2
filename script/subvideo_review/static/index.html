@@ -37,6 +37,9 @@
 
         <div id="candidate-panel-body">
         <div class="filters" aria-label="候选筛选条件">
+          <label for="batch-filter">审核批次</label>
+          <select id="batch-filter"><option value="" selected>不按批次筛选</option></select>
+          <p id="batch-summary" hidden></p>
           <label for="scope-filter">数据划分</label>
           <select id="scope-filter" name="scope-filter">
             <option value="development" selected>开发集</option>

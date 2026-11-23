@@ -5,6 +5,8 @@
   const names = ["断裂状态", "断裂模式", "断裂位置", "异常情况.未夹紧", "异常情况.视频异常", "异常情况.爆炸性断裂", "断裂现象.伸长", "断裂现象.颈缩", "断裂现象.开裂", "断裂现象.界面分离", "断裂现象.断后脱夹"];
   const statusNames = {unreviewed: "未审核", draft: "草稿", confirmed: "已确认", returned: "已退回", question: "有疑问"};
   const state = {data: null, selected: null, latest: null, dirty: false, loading: false, sequence: 0, activeScope: "", exporting: false, lastSaveAt: 0};
+  const batchMembers = new Map();
+  let activeBatch = "";
   const controls = new Map();
   /* 历史标注/旧清单里的旧词只在显示层统一为「无法判断」；已存记录与源标注字节均不改写。 */
   const legacyUncertain = new Map([["无法确定", "无法判断"], ["无法识别", "无法判断"]]);
@@ -42,6 +44,7 @@
     const attention = byId("attention-filter").value;
     const search = byId("candidate-search").value.trim().toLowerCase();
     return state.data.candidates.filter((c) =>
+      (!activeBatch || batchMembers.get(activeBatch).has(c.candidate_id)) &&
       (!scope || scope === "all" || scope === c.scope) &&
       (!fold || fold === "all" || (c.scope === "development" && c.folds?.[foldId] === foldPartition)) &&
       (!attention || attention === "all" || (attention === "attention" && c.audit_issues?.length)) &&
@@ -54,6 +57,35 @@
     option.value = value;
     option.textContent = label;
     select.append(option);
+    return option;
+  }
+  async function loadBatches() {
+    const select = byId("batch-filter");
+    if (!select) return;
+    select.replaceChildren();
+    addOption(select, "", "不按批次筛选");
+    try {
+      const catalog = await request("/api/batches");
+      for (const batch of catalog.batches) {
+        const suffix = batch.selectable ? "" : `（待定，三折池 ${Object.values(batch.fold_pool_counts).join("/")}）`;
+        const option = addOption(select, batch.batch_id, `${batch.batch_id} · ${batch.name}${suffix}`);
+        option.disabled = !batch.selectable;
+        if (batch.selectable) batchMembers.set(batch.batch_id, new Set(batch.candidate_ids));
+      }
+    } catch (error) {
+      message(`批次加载失败：${error.message}。仍可按原方式审核。`, true);
+      return;
+    }
+    select.addEventListener("change", async () => {
+      if (state.dirty && !window.confirm("有尚未保存的判断，切换批次将丢弃这些输入。继续？")) {
+        select.value = activeBatch;
+        return;
+      }
+      activeBatch = select.value;
+      byId("scope-filter").value = state.activeScope = "all";
+      byId("fold-filter").value = "all";
+      await selectFirstFiltered();
+    });
   }
   function renderFilters() {
     const source = byId("source-filter");
@@ -97,6 +129,15 @@
       const empty = document.createElement("p");
       empty.textContent = "当前筛选没有候选。";
       list.append(empty);
+    }
+    const summary = byId("batch-summary");
+    if (summary) {
+      summary.hidden = !activeBatch;
+      if (activeBatch) {
+        const ids = batchMembers.get(activeBatch);
+        const confirmed = state.data.candidates.filter(c => ids.has(c.candidate_id) && c.review_status === "confirmed").length;
+        summary.textContent = `本批已审 ${confirmed} / 共 ${ids.size}`;
+      }
     }
     const count = byId("candidate-count");
     if (count) count.textContent = `${candidates.length} / ${state.data.candidates.length}`;
@@ -256,6 +297,7 @@
   }
   function setBusy(busy) {
     state.loading = busy;
+    if (byId("batch-filter")) byId("batch-filter").disabled = busy;
     byId("scope-filter").disabled = busy;
     byId("fold-filter").disabled = busy;
     ["save-draft", "confirm-review", "return-review", "question-review"].forEach((id) => { byId(id).disabled = busy || !state.selected; });
@@ -331,6 +373,9 @@
     }
     state.activeScope = scope.value;
     byId("source-filter").value = "";
+    await selectFirstFiltered();
+  }
+  async function selectFirstFiltered() {
     renderList();
     const candidates = filtered();
     if (candidates.length) {
@@ -510,6 +555,7 @@
     byId("video-player").addEventListener("loadeddata", () => setVideoState("loaded"));
     if (filtered().length) await selectCandidate(filtered()[0]);
     else { setBusy(false); message("清单没有可审核候选；可查看待处理来源。" ); }
+    await loadBatches();
   }
   document.addEventListener("DOMContentLoaded", () => start().catch((error) => {
     const node = byId("app-message");

@@ -1,0 +1,110 @@
+{
+  "schema": "subvideo-review-batches/v1",
+  "batches": [
+    {
+      "batch_id": "B0",
+      "name": "校准批",
+      "description": "仅取已登记的开发集片段。",
+      "status": "ready",
+      "selection": {
+        "type": "explicit_ids",
+        "ids": [
+          "video_0002_unclamped_01",
+          "video_0002_unclamped_02",
+          "video_0013_fracture_01",
+          "video_0013_pre_01",
+          "video_0014_fracture_01",
+          "video_0015_coverage_01",
+          "video_0017_fracture_01",
+          "video_0021_coverage_01",
+          "video_0026_fracture_01",
+          "video_0026_fracture_02",
+          "video_0026_fracture_03",
+          "video_0026_pre_01",
+          "video_0040_pre_01",
+          "video_0045_fracture_01",
+          "video_0045_pre_01",
+          "video_0050_coverage_01",
+          "video_0052_no_fracture_01",
+          "video_0052_no_fracture_02",
+          "video_0068_pre_01",
+          "video_0071_fracture_01",
+          "video_0074_fracture_01",
+          "video_0074_fracture_02",
+          "video_0074_pre_01",
+          "video_0074_post_01",
+          "video_0080_post_01",
+          "video_0080_post_02",
+          "video_0083_fracture_01",
+          "video_0099_fracture_01",
+          "video_0099_fracture_02",
+          "video_0106_fracture_01",
+          "video_0106_post_01",
+          "video_0106_post_02"
+        ]
+      },
+      "provenance": {
+        "source": "docs/TODO.md",
+        "section": "§6 下一步",
+        "decision_date": "2026-11-16",
+        "note": "采用已确认的 32 条候选名。"
+      }
+    },
+    {
+      "batch_id": "B1",
+      "name": "固定 test 集",
+      "description": "固定测试来源的全部候选。",
+      "status": "ready",
+      "selection": {
+        "type": "rule",
+        "scope": "test"
+      },
+      "provenance": {
+        "source": "docs/TODO.md",
+        "section": "§6 当前情况",
+        "decision_date": "2026-11-14",
+        "note": "仅作人工审核，不改变测试集用途。"
+      }
+    },
+    {
+      "batch_id": "B2",
+      "name": "每折 val 抽样",
+      "description": "每折计划抽取 60 条；只展示池大小。",
+      "status": "undefined",
+      "selection": {
+        "type": "rule",
+        "scope": "development",
+        "fold_roles": [
+          "val"
+        ],
+        "sample_per_fold": 60
+      },
+      "provenance": {
+        "source": "docs/TODO.md",
+        "section": "§4、§6",
+        "decision_date": "2026-11-20",
+        "note": "配额已登记，具体名单未定。"
+      }
+    },
+    {
+      "batch_id": "B3",
+      "name": "训练集",
+      "description": "开发来源在任一折为 train 的全部候选。",
+      "status": "ready",
+      "selection": {
+        "type": "rule",
+        "scope": "development",
+        "fold_roles": [
+          "train"
+        ],
+        "fold_match": "any"
+      },
+      "provenance": {
+        "source": "docs/TODO.md",
+        "section": "§4、§6",
+        "decision_date": "2026-11-20",
+        "note": "三折 train 取并集，不含固定 test。"
+      }
+    }
+  ]
+}
