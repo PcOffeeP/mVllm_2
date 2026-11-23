@@ -21,7 +21,7 @@
 | 子视频生成（把源视频切成候选片段那一步） | 片段怎么切、规则怎么派、批次怎么续跑 | 32 | 2·29·0·1 | 新批次清单摘要的服务端比较已实测通过（`audit_current=true`）；运行摘要无现行比较程序；整套检查需单独运行。 |
 | 人工审核（你看片打标签的界面） | 审核服务、ROI 决策、标注审核 | 16 | 16·0·0·0 | 核验记录与清单摘要匹配，「标签组合待复核」筛选实测可用（63 个候选待复核）。 |
 | 模型评价（评分器与模型输入记录） | 评分器、帧来源链、清单转换、推理入口 | 17 | 15·0·0·2 | 在跑的这部分是好的；模型交付校验已删。 |
-| 文档与事实（`docs/facts.yaml` 那套「哪句话有出处」的记录） | 文档里的证据还对不对得上原文 | 6 | 4·1·0·1 | 校验程序已移植回 `script/checks/facts.py`，判定改为锚文本（`expect` 能否定位、行号只作提示）；校验器实跑通过 210 条、原文消失 0、歧义 0；标题/锚点校验仍缺。 |
+| 文档与事实（`docs/facts.yaml` 那套「哪句话有出处」的记录） | 文档里的证据还对不对得上原文 | 6 | 4·1·0·1 | 校验程序已移植回 `script/checks/facts.py`，判定改为锚文本（`expect` 能否定位、行号只作提示）；校验器实跑通过 214 条、原文消失 0、歧义 0；标题/锚点校验仍缺。 |
 | 仓库卫生（哪些文件该进版本库、哪些不该） | 仓库布局、旧路径、Git 忽略规则 | 43 | 19·20·0·4 | 19 项已真正执行并通过；20 项按未检出目录逐条具名跳过（18 项缺 `pipeline/`、2 项缺 `versioning/backup.py`）。 |
 
 六层合计 20+32+16+17+6+43=134；绿 75、黄 51、红 0、孤儿 8。
@@ -37,7 +37,7 @@
 | L2-32 | 有没有程序负责生成和维护审计文件 | `script/subvideo_generation/generate.py` 的写文件动作 → 应当生成或维护 `audit.json` | 生成入口已具备写盘能力（`--write-audit` / `--replace-audit`，fail-closed + 原子写），有 29 例测试守住 | 绿 | 运行 `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q script/subvideo_generation/tests/test_audit_record_writes.py`，看到 29 例通过 |
 | L4-16 | 模型/服务交付时的批次身份对不对 | 交付产物与约定规则 → 身份一致才放行 | 没有；脚本已删除 | 孤儿 | 仓库里找不到 `scripts/serve_validate_delivery.py` |
 | L4-17 | 模型/服务有没有越界输出 | 服务响应与允许范围 → 不越界 | 没有；脚本已删除 | 孤儿 | 仓库里找不到 `scripts/serve_validate_no_oob.py` |
-| L5-01 | 文档证据的 `expect` 原文是否还能在文件中定位（行号只作提示） | `docs/facts.yaml` 的 ref 证据 → `expect` 原文可在目标文件定位，位置变化不算错 | `.venv/bin/python -m script.checks.facts --json`（2026-11-21 实测） | 绿 | 运行该 `--json` 命令，看 `totals.passed`（实测 210，其中记录行命中 184、位置已变 26）与 `totals.ambiguous`（实测 0）；`totals.passed_moved` 不再算失败 |
+| L5-01 | 文档证据的 `expect` 原文是否还能在文件中定位（行号只作提示） | `docs/facts.yaml` 的 ref 证据 → `expect` 原文可在目标文件定位，位置变化不算错 | `.venv/bin/python -m script.checks.facts --json`（2026-11-23 实测） | 绿 | 运行该 `--json` 命令，看 `totals.passed`（实测 214，其中记录行命中 165、位置已变 49）与 `totals.ambiguous`（实测 0）；`totals.passed_moved` 不再算失败 |
 | L5-02 | 文档证据的 expect 断言是否还成立 | `docs/facts.yaml` 的 expect 字段 → 断言内容仍与原文一致，或在全文多处出现无法唯一确定 | `.venv/bin/python -m script.checks.facts --json`（2026-11-21 实测） | 绿 | 运行该 `--json` 命令，看 `totals.gone` 与 `totals.ambiguous`：expect 原文均已可定位，原文消失 0 条；歧义 0 条（2026-11-21 实测，四条既有失效证据已重指改写后的原句，见 PR #9） |
 | L5-03 | 文档里写的仓库路径是否真实存在 | Markdown 中的仓库内路径 → 路径存在 | `.venv/bin/python -m script.checks.facts --check-doc-paths` | 黄 | 运行该命令，会看到 41 个受跟踪 Markdown「无法读取」后退出 1（sparse-checkout 未检出，尚给不出路径判定） |
 | L5-04 | 文档记录格式的状态取值是否合法 | `docs/facts.yaml` 的状态字段 → 取值在允许列表内 | `.venv/bin/python -m script.checks.facts --json`（2026-11-21 实测） | 绿 | 运行该 `--json` 命令，看 `structure_errors`：50 条 state 全部合法（此前记 49 条，系统计口径遗漏一条，按 `grep -c '^[[:space:]]*state:'` 实测为 50），DF-044 的 `affects` 已修正，`structure_errors` 实测为 0 |
@@ -62,7 +62,7 @@
 
 六件事按优先级排好了；时间只够做三件时，按 1、2、3 的顺序做。
 
-1. **`docs/facts.yaml` 的 290 条证据已全部可定位，原文消失 0 条。** 校验器已于 2026-11-19 移植回 `script/checks/facts.py`（默认报告模式、`--strict` 拦截），`docs/facts.yaml` 头部注释也已同步改写成「由该脚本核对」，不再声称「当前无自动校验器」。证据判定改为锚文本契约：以 `expect` 原文能否在目标文件中定位为准，`ref` 里的行号只作提示，正文移动导致行号变化不算错；只有原文被改写、被删除，或在同一文件中出现多处、无法唯一确定（单列为「歧义」）时才算问题。四条既有失效证据已于 2026-11-21 重指向改写后的原句（DF-022 章节标题改写、DF-027 函数签名扩参、DF-047 两条前端文案改写与整块删除）。最近一次实测（`.venv/bin/python -m script.checks.facts --json`）的五类分布是：通过 210（记录行命中 184、位置已变 26）、原文消失 0、歧义 0、本机无法核对 80、结构错误 0，合计 290 条证据。另有 80 条引用的路径在本机未检出（sparse-checkout），只能在原工作区或训练机上核对。标题与锚点校验仍未移植（台账 L5-06 记为孤儿）。修好之后，正文增删导致的行号移动不会再报错、也不需逐条改行号；只有原文被改写、被删除，或同一文件里出现多处命中无法唯一确定时，校验器才会在第一时间报错，而不是等到审计才发现。DF-044 的 `affects` 已修正，条目级结构错误实测为 0。
+1. **`docs/facts.yaml` 的 294 条证据已全部可定位，原文消失 0 条。** 校验器已于 2026-11-19 移植回 `script/checks/facts.py`（默认报告模式、`--strict` 拦截），`docs/facts.yaml` 头部注释也已同步改写成「由该脚本核对」，不再声称「当前无自动校验器」。证据判定改为锚文本契约：以 `expect` 原文能否在目标文件中定位为准，`ref` 里的行号只作提示，正文移动导致行号变化不算错；只有原文被改写、被删除，或在同一文件中出现多处、无法唯一确定（单列为「歧义」）时才算问题。四条既有失效证据已于 2026-11-21 重指向改写后的原句（DF-022 章节标题改写、DF-027 函数签名扩参、DF-047 两条前端文案改写与整块删除）。最近一次实测（`.venv/bin/python -m script.checks.facts --json`）的五类分布是：通过 214（记录行命中 165、位置已变 49）、原文消失 0、歧义 0、本机无法核对 80、结构错误 0，合计 294 条证据。另有 80 条引用的路径在本机未检出（sparse-checkout），只能在原工作区或训练机上核对。标题与锚点校验仍未移植（台账 L5-06 记为孤儿）。修好之后，正文增删导致的行号移动不会再报错、也不需逐条改行号；只有原文被改写、被删除，或同一文件里出现多处命中无法唯一确定时，校验器才会在第一时间报错，而不是等到审计才发现。DF-044 的 `affects` 已修正，条目级结构错误实测为 0。
 
 2. **新批次 audit 已入库，服务端比较已实测通过。** （2026-11-19 记录：旧批次的清单与核验记录已移除，当前无可查对象。）显式执行 `--audit-only --write-audit` 可写入；覆盖需 `--replace-audit`。批次身份或清单校验不通过时拒绝写入（fail-closed），写盘为原子替换，有 29 例测试覆盖。2026-11-20 新批次已产出 `data/sub_video/audit.json`；其 `manifest_sha256` 与 `manifest.json` 实际 SHA-256 相等，`generation_validation.run_summary_sha256` 与 `summary.json` 实际 SHA-256 相等。2026-11-21 审核服务实跑实测：bootstrap 的 `audit_current=true`、`audit_status=current`，`audit.json` 的 `manifest_sha256`、清单实际 SHA-256 与 bootstrap 返回值三者逐字节相等；`audit_issue_candidate_count=63`，审核页「标签组合待复核」筛选可用，故 L2-30、L3-08 转绿。无生产程序自动比较运行摘要，L2-31 仍为孤儿。
 
@@ -202,7 +202,7 @@
 
 | 编号 | 层 | 一句话说明 | 位置 | 触发方式 | 状态 |
 |---|---|---|---|---|---|
-| L5-01 | 文档与事实 | 证据 expect 原文可定位，本次实测通过 210 条（记录行命中 184、位置已变 26）；歧义 0 条。 | `script/checks/facts.py` | `--json` | 绿 |
+| L5-01 | 文档与事实 | 证据 expect 原文可定位，本次实测通过 214 条（记录行命中 165、位置已变 49）；歧义 0 条。 | `script/checks/facts.py` | `--json` | 绿 |
 | L5-02 | 文档与事实 | expect 原文均已可定位，原文消失 0 条；多处命中（歧义）0 条。 | `script/checks/facts.py` | `--json` | 绿 |
 | L5-03 | 文档与事实 | sparse-checkout 下 41 个受跟踪 Markdown 无法读取，尚不能判定路径。 | `script/checks/facts.py`；`script/checks/doc-path-allowlist.txt` | `--check-doc-paths` | 黄 |
 | L5-04 | 文档与事实 | 50 条 state 合法（此前记 49，系统计口径遗漏一条）；DF-044 的 affects 已修正，`structure_errors` 实测为 0。 | `script/checks/facts.py` | `--json` | 绿 |
