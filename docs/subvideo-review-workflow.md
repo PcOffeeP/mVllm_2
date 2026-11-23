@@ -27,15 +27,11 @@
 
 若用户认为参考值与画面不符，以本轮片段判断另记决定与理由。需要修改源标注或改变标签定义时，单独提出，不由片段审核回写。多人独立标注的一致性尚未验证，不能把本轮用户审核当作该项证据。
 
-## 3. 当前候选与仍待处理的来源
+## 3. 当前候选与测试入口
 
-**历史批次标注：** 本节以下关于批次数量、pending/held 状态与文件核对的段落属此前执行记录，对应已删除的 1,123 候选旧批次；本文开头的 1,621 候选也属已退役批次，后续以新批次清单为准。
+当前候选批次、审核进度与阻塞项以 [TODO](TODO.md)（DATA-HANDOFF 与 SUBVIDEO-HUMAN-REVIEW）及独立审核记录 `data/subvideo-review/reviews.json` 为准。历史上已删除的 1,123 候选批次与已退役的 1,621 候选批次不再在本文保留流水账。
 
-本轮生成结果记录（该旧批次结果文档已随提交 `9c54817` 删除）：89 个开发来源中，67 个生成 1,123 个候选，19 个 pending，3 个 held；`complete=false`。历史训练机记录对有输出的 67 个来源核对了源 → ROI 重放，对 1,123 个片段核对 ROI → 片段重放，842 条被窗口覆盖的标注锚点映射通过。这些是此前执行证据，本轮没有重跑两段真实媒体重放。
-
-本轮在原工作区另行核对 1,123 个唯一文件名与清单一一对应，全部文件 SHA 与清单一致，累计 122,626,625 字节；来源与 21 个 test 来源不交集。该核对只读文件身份，没有解码或观看。另运行并复跑两个子视频模块的合成测试，均为 46 passed，包含合成 H.264；不以单次耗时作为验收依据。这些检查不代表真实媒体画面或模型采样已验证。
-
-文件核对对象为原工作区 `data/subvideos/frame-aligned/manifest.json` 及其候选文件，口径为唯一候选 ID／文件名、逐文件 SHA-256、累计字节及来源与固定 test 成员交集；本次清单 SHA-256 为 `a2d4b79eddbdbe3ee2e3181d5f3326626b6f60fcdfdabdea4b5fbeb3ed712023`。当时复跑的合成测试文件（原 `script/subvideo_pilot/tests/test_independent.py`、`script/subvideo_pilot/tests/test_alignment_independent.py`）已随原目录 `script/subvideo_pilot/tests` 删除（该目录已不存在；pilot 代码现位于 `script/subvideo_generation/pilot/`，其测试已随原目录删除），上述 46 passed 属历史记录；原命令内容不可在当前检出重跑。当前仓库中可直接照抄运行的对应测试入口为：
+当前仓库中子视频生成与审核模块的合成测试入口为：
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
@@ -44,24 +40,7 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
   script/subvideo_review/tests
 ```
 
-对应入口分别为生成子视频的 `script/subvideo_generation/generate.py` 与视频审查的 `script/subvideo_review/server.py`。
-
-本轮文件身份与复跑日志分别保留在 `/private/tmp/tensile-subvideo-evidence-20261110/file-identity.json`、`/private/tmp/tensile-subvideo-evidence-20261110/synthetic-tests.log`，均为临时记录，不是长期归档或后续运行的稳定依赖；路径清理后不能仅凭本文恢复完整日志。
-
-| 待处理首个阻挡原因 | 来源数 |
-| --- | ---: |
-| 视频异常 | 13 |
-| 断裂模式暂不能对应当前窗口分支 | 2 |
-| 爆炸性标注需要新规则 | 2 |
-| 源断裂状态不确定 | 1 |
-| “视频异常”标注为未知 | 1 |
-| pending 合计 | 19 |
-
-这是按检查顺序记录的首个原因，不代表每源仅有一种问题；不得改标或丢弃来消除 pending。`video_0002`、`video_0015`、`video_0050` 是另计的 3 个 held，按用户决定暂不生成，保留原视频与记录，后续讨论用途。它们不混入 19 个 pending。
-
-下一轮规则需结合原标注与用户实际看片意见形成。已有技术检查不能判断剩余来源能否形成可靠片段，亦不能说明已生成片段的五类覆盖充分。
-
-2026-11-10 的历史规模记录：主 Agent 使用原项目 `.venv` 的 Python，在稳定任务工作树统一最终复跑评分模块 13 项、审核后台 18 项和独立整合 12 项，合计 43/43 通过；Node 合成 DOM 测试 1/1 通过，JavaScript 语法检查通过。另有工作台浏览器合成操作验证。完整复跑日志位于 `/private/tmp/tensile-subvideo-final-workbench-20261110/`，是临时记录、不是备份；测试文件运行前后摘要一致。上述 13 项、18 项、12 项是 2026-11-10 那次复跑的规模，不是当前规模；当前测试规模以[整体模型测评设计第 6 节](design-test.md)为准。原约 1,100 px 遮挡已修复，独立 reviewer 以纯色编号合成视频复验 1051、1100、1200、1201、1225、1250、1275、1280、1281、1300、1440、820、390 px 共 13 种离散宽度，均无覆盖或横向溢出，粘性工具条和长 SHA 正常；这只是合成界面复验，不覆盖所有连续宽度、真实片段人工审核、实际模型输入或模型效果。
+对应入口分别为生成子视频的 `script/subvideo_generation/generate.py` 与视频审查的 `script/subvideo_review/server.py`。当前全仓最新测试与检查规模见 [检查机制台账](checks.md) 与 [整体模型测评设计第 6 节](design-test.md)。
 
 ## 4. 真实事件与虚拟事件分别追踪
 

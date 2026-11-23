@@ -730,18 +730,16 @@ facts:
 
   - id: DF-034
     state: active
-    topic: 评测输入契约已拆分为 docs/eval/ 六个专题文件，索引页不再承载字段表
+    topic: 评测输入契约已拆分为 docs/eval/ 六个专题文件并由 README 统一索引
     claim: >
-      `docs/eval-input-contract.md` 已降级为索引页，不再内联字段表与取值表，只保留职责映射、阅读入口与合并顺序说明；契约内容拆分为 `docs/eval/` 下六个专题文件，各自职责为：`README.md`（范围界定、阅读顺序、改契约时要同步的对象清单、各文件失效条件）、`output-contract.md`（11 个叶字段与 5 个顶层键、四类边界样例、`predictions.jsonl` 必填项、关键词义、代码同步状态）、`prompt.md`（v1 正文位置、版本策略、冻结机制）、`inference-entry.md`（入口 CLI、身份字段、三态与 backend 边界）、`input-record.md`（四层画面谱系与四个帧索引）、`eval-subset.md`（画幅三档、报告必报项、分层抽样与冻结）。因此引用该契约须指向具体专题文件与章节；指向索引页的编号章节会失效（如判据④的四类边界用例应指 `output-contract.md` §2）。
+      原 `docs/eval-input-contract.md` 索引页已并入 `docs/eval/README.md`；契约内容拆分为 `docs/eval/` 下六个专题文件，各自职责为：`README.md`（范围界定、阅读顺序、改契约时要同步的对象清单、各文件失效条件）、`output-contract.md`（11 个叶字段与 5 个顶层键、四类边界样例、`predictions.jsonl` 必填项、关键词义、代码同步状态）、`prompt.md`（v1/v2 正文位置、版本策略、冻结机制）、`inference-entry.md`（入口 CLI、身份字段、三态与 backend 边界）、`input-record.md`（四层画面谱系与四个帧索引）、`eval-subset.md`（画幅三档、报告必报项、分层抽样与冻结）。因此引用该契约须指向具体专题文件与章节；指向原单文件索引页的编号章节会失效（如判据④的四类边界用例应指 `output-contract.md` §2）。
     evidence:
-      - ref: docs/eval-input-contract.md:1
-        expect: '# 评测输入契约（索引页）'
-      - ref: docs/eval-input-contract.md:5
-        expect: '本路径原为单文件长契约，现已拆分为 `docs/eval/` 专题文档集'
-      - ref: docs/eval-input-contract.md:7
-        expect: '| 专题文件 | 承担内容 | 何时读它 |'
       - ref: docs/eval/README.md:1
         expect: '# 评测输入契约 · 专题文档集'
+      - ref: docs/eval/README.md:7
+        expect: '原单文件长契约（`docs/eval-input-contract.md`）已并入本页'
+      - ref: docs/eval/README.md:11
+        expect: '| 专题文件 | 承担内容 | 何时读它 |'
       - ref: docs/eval/output-contract.md:43
         expect: '## 2. 四类边界样例'
       - ref: docs/eval/eval-subset.md:5
