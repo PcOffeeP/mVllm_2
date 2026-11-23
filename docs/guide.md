@@ -14,23 +14,47 @@
 
 ## 已有专题入口
 
+### 标签、ROI 与数据划分
+
 | 专题 | 文档及状态 |
 | --- | --- |
-| 人工标签 | [标签说明](label.md)：本轮人工标注依据；位置规则的典型样例校准及已有标注影响核对仍待完成。 |
-| 模型评价 | [整体模型测评设计](design-test.md)：已有设计初稿，仍需进一步确认；不代表评价工具、协议或真实模型测评已完成。 |
-| 项目架构 | [架构说明](../ARCHITECTURE.md)：系统和模块边界；使用时注意新旧链路及其适用范围。 |
-| 历史模型结果 | [模型清单](results/model-inventory.md)：用于追溯历史结果及其限制，不能替代本轮评价。 |
-| 跨机审查运行 | [训练机生成 + 本机 SSH 审查运行手册](training-machine-review-runbook.md)：跨机启动、自检、隧道、同步边界与收尾；一次性工作流记录，不构成生成/训练/发布授权。 |
-| 虚拟数据集交接 | [虚拟数据集交接契约](virtual-dataset-handoff-contract.md)：`BlenderTensileVideo` 向本仓交付虚拟候选数据集的跨仓契约与校验口径。 |
-| Agent 跨仓契约草案 | [Agent 视觉与交付契约草案](eval/agent-handoff-contract-draft.md)：本仓向 `TensileAgent` 交付新一代视觉模型（拟 `tensile-vlm/v5`）的跨仓契约草案；未冻结、不修改现有 `v4.1` 运行时。 |
+| 人工标签 | [标签说明](label.md)：本轮五类 11 叶字段人工标注依据。 |
+| 标签分布 | [整体标签分布](label-distribution.md)：110 条源视频标注的当前分布快照。 |
+| 位置样例校准 | [位置校准样例集](label-calibration/README.md)：`DEC-003` 第 7 条确认的 9 例位置校准参考图与说明。 |
+| 视频 ROI 裁剪 | [视频 ROI 裁剪规则](roi-rules.md)：ROI 裁剪、补边、审核与验收规则。 |
+| 数据划分 | [划分规则设计](split/data-split-design.md) · [本轮划分结果](split/data-split-result.md)：89 开发三折与 21 固定 test 划分规则及当前计数。 |
+
+### 子视频生成、审核与跨机运行
+
+| 专题 | 文档及状态 |
+| --- | --- |
+| 子视频生成 | [子视频生成与审核规则](subvideo-current-logic.md)：当前候选窗口选择、覆盖判据、未夹紧锚点与命名规则（受代码与测试锚定，路径不可改）。 |
+| 子视频审核衔接 | [子视频审核与评价衔接](subvideo-review-workflow.md)：审核记录规范、真实/虚拟追踪与评分衔接口径。 |
+| 跨机审查运行 | [训练机生成 + 本机 SSH 审查运行手册](training-machine-review-runbook.md)：跨机启动、自检、SSH 隧道、单向同步边界与收尾流程。 |
+
+### 模型评价、取证与跨仓契约
+
+| 专题 | 文档及状态 |
+| --- | --- |
+| 整体测评方案 | [整体模型测评方案](design-test.md)：五类离线评价体系、分母口径、失败处理与测试安排。 |
+| 评测输入契约与基座方案 | [评测专题目录](eval/README.md)：含 6 篇输入契约（输出/Prompt/入口/输入记录/评测子集）及 [基座模型测评方案](eval/base-model-eval-plan.md)。 |
 | 帧对应抽帧取证 | [帧对应抽帧取证](frame-correspondence-evidence.md)：设计已定、未实现。 |
+| 跨仓交接契约 | [虚拟数据集交接契约](virtual-dataset-handoff-contract.md)（`BlenderTensileVideo` → 本仓） · [Agent 视觉与交付契约草案](eval/agent-handoff-contract-draft.md)（本仓 → `TensileAgent`，未冻结）。 |
+
+### 检查台账、调研与变更窗口
+
+| 专题 | 文档及状态 |
+| --- | --- |
+| 检查机制台账 | [检查机制台账](checks.md)：全项目 134 处检查的位置、触发方式与快照状态。 |
+| 专项调研 | [测评数据覆盖与虚拟数据建议](research/evaluation-data-requirements.md) · [MiniCPM 视频加载核查](research/minicpm-video-loading.md) · [65 条虚拟视频溯源](research/virtual-video-provenance.md)。 |
+| 变更窗口声明 | `docs/changes/`：按 `AGENTS.md` 规范留存，自「已完成」记录之日起保留 7 天，期满直接删除。 |
+
+> 注：原 `mVllm_2` 冻结线的架构说明（`ARCHITECTURE.md`）与历史模型清单（`docs/results/model-inventory.md`）未在本 sparse-checkout 工作区检出；追溯历史信息请回原 `mVllm_2` 工作区。
 
 ## 待梳理或补充的专题
 
-以下专题尚未确认适用于本轮的完整设计或规则文档。已有历史材料或代码不自动构成本轮完整方案；后续应先梳理并确认，再补充入口。
+以下专题尚未形成适用于本轮的完整正式文档，后续应先梳理并确认再补充入口：
 
-- 视频 ROI。
-- 子视频生成。
 - 数据处理与新数据链路接入。
 - 模型训练。
 - 实际测评的执行、输入与结果记录，以及新评价设计和现有链路的衔接。

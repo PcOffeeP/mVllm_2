@@ -2,6 +2,28 @@
 
 **失效条件：** 任一专题文件改名或与其他专题合并；`script/five_label_eval/score.py` 的字段、取值或判定行改变（本文按 `VERSION = "five-label-score/3"` 核对）；后续若再次变更取值字面量而未复核下方的同步清单；`script/subvideo_review/server.py`、`script/data_split/generate.py`、`data/annotation-table-full.csv` 或 `docs/facts.yaml` 的对应位置改变。以上任一发生，本页的范围界定、阅读顺序与同步清单都须重新核对。
 
+## 目录索引
+
+原单文件长契约（`docs/eval-input-contract.md`）已并入本页，不再保留独立转发索引页；`docs/eval/` 现统一承载「评测输入契约（6 篇）」以及同属评测域的方案与跨仓草案（2 篇）：
+
+### 评测输入契约（6 篇）
+
+| 专题文件 | 承担内容 | 何时读它 |
+| --- | --- | --- |
+| [`README.md`](README.md)（本页） | 范围界定、阅读顺序、改契约时要同步的对象清单、各文件失效条件汇总 | 第一次进契约，或动手改动前确认要同步哪些对象 |
+| [`output-contract.md`](output-contract.md) | 11 个叶字段与 5 个顶层键、四类边界样例、`predictions.jsonl` 必填项、关键词义、代码同步状态 | 改字段或取值、判读模型输出格式、排查 `invalid`／`missing` |
+| [`prompt.md`](prompt.md) | 现行 v2 与历史 v1 prompt 正文位置、约束项与评分器行为对应、版本策略、冻结机制、术语同步待办 | 改 prompt 文本、升版本号、核对 `prompt_id` |
+| [`inference-entry.md`](inference-entry.md) | 推理入口 CLI 与拟定签名、身份字段口径、三态与重试、backend 边界、旧实现借鉴 | 接模型、跑批次、填身份字段、追查失败行 |
+| [`input-record.md`](input-record.md) | 四层画面谱系、四个帧索引、`source_start_frame` 命名陷阱、同序证据、四层一致性校验、逐层导出 | 抽帧、写输入记录、追溯帧号、核对实际输入 |
+| [`eval-subset.md`](eval-subset.md) | 画幅三档、报告必报项、`max_pixels` 与分档绑定、分层抽样与冻结、旧批次退流 | 划定评测子集、写评测报告、比较不同画幅结果 |
+
+### 同目录评测方案与跨仓草案（2 篇，非输入契约正文）
+
+| 文件 | 承担内容 |
+| --- | --- |
+| [`base-model-eval-plan.md`](base-model-eval-plan.md) | 基座模型三层测评实验方案与跑通判据（未实施） |
+| [`agent-handoff-contract-draft.md`](agent-handoff-contract-draft.md) | 向 `TensileAgent` 交付新一代视觉模型（拟 `tensile-vlm/v5`）的跨仓契约草案（未冻结） |
+
 ## 范围界定
 
 | 本集负责 | 不负责（去别处） |
