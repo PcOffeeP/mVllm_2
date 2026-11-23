@@ -18,6 +18,9 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
+from . import batches
+from .errors import ReviewError
+
 HERE = Path(__file__).resolve().parent
 # 单值字段的取值必须与 script/five_label_eval/score.py 的 SINGLES 逐项一致（含顺序），
 # 否则工作台会写入评分器不认的标签；这里保持字面量列表，便于静态核对。
@@ -34,12 +37,6 @@ OPTIONS = {
 }
 STATUSES = {"draft", "confirmed", "returned", "question"}
 STORE_SCHEMA = "tensile-subvideo-human-review/2"
-
-
-class ReviewError(ValueError):
-    def __init__(self, message, status=400):
-        super().__init__(message)
-        self.status = status
 
 
 def digest(data):
@@ -113,6 +110,10 @@ def confined_file(root, relative):
 class ReviewApp:
     def __init__(self, project_root, *, manifest=None, records=None, max_media_bytes=512 * 1024 * 1024):
         self.root = Path(project_root).resolve(strict=True)
+        try:
+            self.batch_definitions = batches.load_definitions(self.root / "data/subvideo-review/batches.json")
+        except FileNotFoundError:
+            self.batch_definitions = []
         self.file_signatures = {}
         self.manifest_path = Path(manifest) if manifest else self.root / "data/sub_video/manifest.json"
         if not self.manifest_path.is_absolute():
@@ -433,6 +434,13 @@ class ReviewApp:
         isolated = [r for r in rows if r.get("candidate_id") == candidate["candidate_id"] and not self.matches(r, candidate)]
         return {"latest": history[-1] if history else None, "history": history, "isolated_history": isolated}
 
+    def batch_catalog(self):
+        rows = []
+        for batch in self.batch_definitions:
+            row = {key: batch[key] for key in ("batch_id", "name", "description", "status", "provenance")}
+            rows.append({**row, "selectable": batch["status"] == "ready", **batches.select(batch, self.candidates)})
+        return {"schema": batches.SCHEMA, "candidate_total": len(self.candidates), "batches": rows}
+
     def bootstrap(self):
         self.assert_manifest()
         rows = self.read_store()
@@ -606,6 +614,8 @@ def handler_for(app):
                     name = "index.html" if url.path in ("/", "/index.html") else url.path[1:]
                     mime = {"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8"}[name]
                     self.respond(200, (HERE / "static" / name).read_bytes(), mime)
+                elif url.path == "/api/batches":
+                    self.respond(200, canonical(app.batch_catalog()))
                 elif url.path == "/api/bootstrap":
                     self.respond(200, canonical(app.bootstrap()))
                 elif url.path == "/api/reviews":

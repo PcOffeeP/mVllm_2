@@ -170,3 +170,5 @@ input::placeholder, textarea::placeholder { color: #748394; opacity: 1; }
 }
 @media (max-width: 1200px) { .media-and-reference { grid-template-columns: 1fr; } .media-column { position: static; } }
 @media (max-width: 780px) { .filters { grid-template-columns: 1fr; } .workspace.is-collapsed { grid-template-columns: 1fr; } .workspace.is-collapsed .panel-heading { flex-direction: row; } .workspace.is-collapsed #candidate-heading, .workspace.is-collapsed #candidate-count, .workspace.is-collapsed .panel-heading .button { writing-mode: horizontal-tb; } }
+
+#batch-summary { grid-column: 1 / -1; margin: 0; }

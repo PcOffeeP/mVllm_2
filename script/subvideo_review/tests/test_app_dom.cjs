@@ -102,12 +102,15 @@ const HARNESS_IDS = ["scope-filter", "fold-filter", "source-filter", "status-fil
   "candidate-count"];
 
 async function createHarness(overrides = {}) {
-  const ids = HARNESS_IDS;
+  /* 批次筛选（B0–B3）新增的控件不写进 HARNESS_IDS：既有静态交叉校验要求 HARNESS_IDS、
+     app.js 的 required 清单与 index.html 三处严格互等，红阶段（index.html 尚未改）提前塞进去会让
+     那条既有用例假红。需要这两个控件的用例用 overrides.extraIds 显式追加。 */
+  const ids = [...HARNESS_IDS, ...(overrides.extraIds || [])];
   const tags = {
     "pending-sources": "details", "source-reference": "details", "clip-sha": "details",
     "export-reviews": "button", "export-all-revisions": "button", "confirm-review": "button",
     "toggle-candidates": "button", "step-back": "button", "step-forward": "button",
-    "clip-progress": "input",
+    "clip-progress": "input", "batch-filter": "select",
   };
   const elements = new Map(ids.map((id) => [id, new Element(tags[id] || "div")]));
   elements.get("scope-filter").value = overrides.scope || "development";
@@ -126,6 +129,9 @@ async function createHarness(overrides = {}) {
   elements.get("clip-time").textContent = "0.00s / 0.00s";
   /* #candidate-count 的初值同样来自 index.html；JS 必须在每次 renderList() 后更新它。 */
   elements.get("candidate-count").textContent = "等待载入";
+  /* 批次筛选的初值来自 index.html 的静态声明：默认项 value="" 且被选中，#batch-summary 默认 hidden。 */
+  if (elements.has("batch-filter")) elements.get("batch-filter").value = "";
+  if (elements.has("batch-summary")) elements.get("batch-summary").hidden = true;
   /* #app-message 的每次写入都留痕：历史刷新失败这类「独立提示」可能与保存提示先后覆盖，
      只有看到整条提示流，才能既断言最终文案、又断言该提示确实出现过。 */
   const appMessage = elements.get("app-message");
@@ -258,6 +264,13 @@ async function createHarness(overrides = {}) {
         if (overrides.exportFailure === true) return {ok: false, status: 500, blob: async () => ({}), json: async () => ({error: "导出失败"})};
         if (overrides.exportFailure) return overrides.exportFailure;
         return {ok: true, status: 200, blob: async () => ({size: 0}), json: async () => ({})};
+      }
+      if (url === "/api/batches") {
+        /* 批次接口失败不得阻塞页面主流程：batchesFailure 让该请求 500。 */
+        if (overrides.batchesFailure) {
+          return {ok: false, status: 500, json: async () => ({error: "批次配置读取失败"})};
+        }
+        return {ok: true, status: 200, json: async () => ({schema: "subvideo-review-batches/v1", candidate_total: candidates.length, batches: [], ...overrides.batches})};
       }
       assert.equal(url, "/api/bootstrap");
       return {ok: true, json: async () => ({audit_current: true, audit_status: "current", audit_message: "已匹配当前清单", audit_issue_candidate_count: 0, token: "synthetic-token", manifest_sha256: "1".repeat(64), candidates, pending_sources: [
@@ -2774,4 +2787,195 @@ test("H3-1 no exactly-1200px breakpoint caps or scrolls the label column", () =>
   });
   assert.deepEqual(offenders, [],
     `1200px 会与 @media (max-width: 1200px) 的单列堆叠同时命中，标签列的限高/内滚必须写在 @media (min-width: 1201px) 内；实际在 min-width 恰为 1200px 的媒体块里发现 ${JSON.stringify(offenders)}`);
+});
+
+/* ---------------------------------------------------------------------------------------------
+ * 第七轮（批次筛选 B0–B3，先红后绿）：
+ *   S1 index.html 静态声明 #batch-filter（第一个 option 为 value="" 且 selected）与默认 hidden 的 #batch-summary；
+ *   S2 选择器按 /api/batches 渲染：默认项 + ready 批次可选 + undefined 批次 disabled 且带三折池大小；
+ *   S3 选中批次后列表只显示该批候选，并把 #scope-filter / #fold-filter 重置为 all
+ *      （默认「开发集」会把 B1 的 test 候选全滤掉）；
+ *   S3b 其余筛选（来源／审核状态／检查提示）继续叠加生效；
+ *   S4 #batch-summary 文案「本批已审 x / 共 n」；
+ *   S5 切回 "" 恢复完整列表与计数、summary 隐藏；
+ *   S6 /api/batches 失败不阻塞 bootstrap 与保存，选择器只留默认项。
+ * 断言只依赖合成 DOM，不发真实请求。
+ * ------------------------------------------------------------------------------------------- */
+
+/* 批次筛选需要的两个控件由各用例按需桩住（见 createHarness 的 overrides.extraIds 注释）。 */
+const BATCH_IDS = ["batch-filter", "batch-summary"];
+
+function batchPayload() {
+  const provenance = {source: "docs/TODO.md", section: "6. SUBVIDEO-HUMAN-REVIEW", note: "合成"};
+  return {
+    schema: "subvideo-review-batches/v1",
+    candidate_total: 4,
+    batches: [
+      {batch_id: "B1", name: "固定 test 集", description: "只含 test 候选", status: "ready", selectable: true,
+        candidate_count: 2, candidate_ids: ["fixed_a", "fixed_b"], missing_ids: [], fold_pool_counts: null, provenance},
+      {batch_id: "B2", name: "每折 val 抽样", description: "未定义完成", status: "undefined", selectable: false,
+        candidate_count: null, candidate_ids: [], missing_ids: [], fold_pool_counts: {"0": 432, "1": 440, "2": 447}, provenance},
+    ],
+  };
+}
+
+/* 四个候选：两个 test（B1）＋ 两个开发集（B2 池里 432/440/447 的真实规模只出现在文案断言里）。 */
+function batchCandidates() {
+  return [
+    candidate("fixed_a", {scope: "test", folds: {"0": "test", "1": "test", "2": "test"}}),
+    candidate("fixed_b", {scope: "test", folds: {"0": "test", "1": "test", "2": "test"}, review_status: "confirmed"}),
+    candidate("dev_a"),
+    candidate("dev_b", {review_status: "draft"}),
+  ];
+}
+
+function batchHarness(overrides = {}) {
+  return createHarness({extraIds: BATCH_IDS, candidates: batchCandidates(), batches: batchPayload(), ...overrides});
+}
+
+function batchOptions(elements) {
+  return elements.get("batch-filter").children.filter((node) => node instanceof Element && node.tagName === "OPTION");
+}
+
+function optionByValue(elements, value) {
+  return batchOptions(elements).find((node) => node.value === value) || null;
+}
+
+/* S1：静态结构。首个 option 必须同时是 value="" 与 selected，否则浏览器会把某个批次当默认选择。 */
+test("S1 index.html declares a batch filter with a selected empty default option and a hidden batch summary", () => {
+  const marker = 'id="batch-filter"';
+  const start = htmlText.indexOf(marker);
+  assert.ok(start >= 0, `static/index.html 应声明 <select ${marker}>（批次筛选控件），实际未找到`);
+  const selectEnd = htmlText.indexOf("</select>", start);
+  assert.ok(selectEnd > start, `static/index.html 的 #batch-filter 应是带 </select> 的 select，实际索引 ${selectEnd}`);
+  const block = htmlText.slice(start, selectEnd);
+  const firstOption = /<option\b[^>]*>/.exec(block);
+  assert.ok(firstOption, `static/index.html 的 #batch-filter 应至少有一个 <option>，实际片段为「${block.slice(0, 120)}」`);
+  assert.match(firstOption[0], /value=""/,
+    `#batch-filter 的第一个 option 必须是 value="" 的默认项（不按批次筛选），实际为「${firstOption[0]}」`);
+  assert.match(firstOption[0], /\bselected\b/,
+    `#batch-filter 的第一个 option 必须带 selected，否则页面初值会落到某个批次上；实际为「${firstOption[0]}」`);
+  assert.match(block.slice(firstOption.index + firstOption[0].length), /不按批次|全部批次/,
+    `#batch-filter 默认项文案应表达「不按批次筛选」，实际片段为「${block.slice(firstOption.index)}」`);
+
+  const summaryStart = htmlText.indexOf('id="batch-summary"');
+  assert.ok(summaryStart >= 0, "static/index.html 应声明 #batch-summary（批次统计文案），实际未找到");
+  const tagStart = htmlText.lastIndexOf("<", summaryStart);
+  const tagEnd = htmlText.indexOf(">", summaryStart);
+  const summaryTag = htmlText.slice(tagStart, tagEnd + 1);
+  assert.match(summaryTag, /\bhidden\b/,
+    `#batch-summary 必须默认 hidden（未选批次时不显示批次统计），实际标签为「${summaryTag}」`);
+});
+
+/* S2：选择器内容——默认项 + ready 可选 + undefined disabled 且带三折池大小。 */
+test("S2 the batch filter offers the default option, ready batches, and disabled undefined ones with fold pool sizes", async () => {
+  const {elements} = await batchHarness();
+  const options = batchOptions(elements);
+
+  assert.ok(options.length >= 3,
+    `#batch-filter 应有默认项与两个批次 option，实际 ${options.length} 个（${JSON.stringify(options.map((node) => node.value))}）`);
+  assert.equal(options[0].value, "",
+    `#batch-filter 的第一个 option 必须是 value="" 的默认项，实际为「${options[0].value}」`);
+  assert.match(options[0].textContent, /不按批次/,
+    `默认项文案应表达「不按批次筛选」，实际为「${options[0].textContent}」`);
+
+  const ready = optionByValue(elements, "B1");
+  assert.ok(ready, `ready 批次 B1 应渲染为 option，实际 option 取值为 ${JSON.stringify(options.map((node) => node.value))}`);
+  assert.ok(!ready.disabled, "ready 批次必须可选（不得 disabled）");
+  assert.match(ready.textContent, /固定 test 集/,
+    `ready 批次的 option 文案应带批次名，实际为「${ready.textContent}」`);
+
+  const undefinedBatch = optionByValue(elements, "B2");
+  assert.ok(undefinedBatch, "undefined 批次 B2 也应出现在选择器里（让人看到它还不可选）");
+  assert.equal(undefinedBatch.disabled, true,
+    `undefined 批次必须渲染为 disabled option，实际 disabled=${undefinedBatch.disabled}`);
+  assert.match(undefinedBatch.textContent, /432\/440\/447/,
+    `undefined 批次的 option 文案应带上三折池大小「432/440/447」，实际为「${undefinedBatch.textContent}」`);
+});
+
+/* S3：选中批次后只显示该批候选，并把数据划分／三折筛选重置为 all。 */
+test("S3 selecting a batch shows only its candidate ids and resets the scope and fold filters", async () => {
+  const {elements} = await batchHarness();
+  assert.deepEqual(visibleIds(elements), ["dev_a", "dev_b"],
+    `默认「开发集」筛选下应只显示开发候选，实际为 ${JSON.stringify(visibleIds(elements))}`);
+
+  elements.get("batch-filter").value = "B1";
+  await fire(elements, "batch-filter", "change");
+
+  assert.equal(elements.get("scope-filter").value, "all",
+    `选中批次后 #scope-filter 必须重置为 all，否则默认「开发集」会把 B1 的 test 候选全滤掉；实际为「${elements.get("scope-filter").value}」`);
+  assert.equal(elements.get("fold-filter").value, "all",
+    `选中批次后 #fold-filter 必须重置为 all；实际为「${elements.get("fold-filter").value}」`);
+  assert.deepEqual(visibleIds(elements), ["fixed_a", "fixed_b"],
+    `选中 B1 后候选列表只应显示该批 candidate_ids，实际为 ${JSON.stringify(visibleIds(elements))}`);
+});
+
+/* S3b：批次筛选与其余筛选叠加，不吞掉审核状态筛选。 */
+test("S3b the status filter still narrows the candidate list inside a selected batch", async () => {
+  const {elements} = await batchHarness();
+  elements.get("batch-filter").value = "B1";
+  await fire(elements, "batch-filter", "change");
+
+  elements.get("status-filter").value = "confirmed";
+  await fire(elements, "status-filter", "change");
+
+  assert.deepEqual(visibleIds(elements), ["fixed_b"],
+    `批次内的审核状态筛选必须继续生效（B1 里只有 fixed_b 已确认），实际为 ${JSON.stringify(visibleIds(elements))}`);
+});
+
+/* S4：#batch-summary 文案与显隐。 */
+test("S4 the batch summary reports confirmed over total for the selected batch", async () => {
+  const {elements} = await batchHarness();
+  assert.equal(elements.get("batch-summary").hidden, true,
+    "未按批次筛选时 #batch-summary 必须保持 hidden（行为与改动前一致）");
+
+  elements.get("batch-filter").value = "B1";
+  await fire(elements, "batch-filter", "change");
+
+  const summary = elements.get("batch-summary");
+  assert.equal(summary.hidden, false, "选中批次后应显示 #batch-summary");
+  assert.match(summary.textContent, /已审 1\s*\/\s*共 2/,
+    `#batch-summary 应显示「本批已审 x / 共 n」（B1 里 fixed_b 已确认、共 2 条），实际为「${summary.textContent}」`);
+});
+
+/* S5：切回默认项后一切回到现状。 */
+test("S5 selecting the empty batch restores the full list, the count, and hides the summary", async () => {
+  const {elements} = await batchHarness();
+  elements.get("batch-filter").value = "B1";
+  await fire(elements, "batch-filter", "change");
+
+  elements.get("batch-filter").value = "";
+  await fire(elements, "batch-filter", "change");
+
+  assert.deepEqual(visibleIds(elements), ["fixed_a", "fixed_b", "dev_a", "dev_b"],
+    `切回「不按批次筛选」后候选列表应恢复完整（顺序与候选顺序一致），实际为 ${JSON.stringify(visibleIds(elements))}`);
+  assert.equal(elements.get("candidate-count").textContent, "4 / 4",
+    `切回默认项后计数应恢复「4 / 4」，实际为「${elements.get("candidate-count").textContent}」`);
+  assert.equal(elements.get("batch-summary").hidden, true,
+    "切回「不按批次筛选」后 #batch-summary 必须重新隐藏");
+});
+
+/* S6：批次接口失败不阻塞主流程。 */
+test("S6 a failing batches endpoint keeps bootstrap and saving usable with only the default option", async () => {
+  const harness = await batchHarness({batchesFailure: true});
+  const {elements, requests} = harness;
+
+  const options = batchOptions(elements);
+  assert.equal(options.length, 1,
+    `批次接口失败时选择器只应保留默认项，实际 ${options.length} 个（${JSON.stringify(options.map((node) => node.value))}）`);
+  assert.equal(options[0].value, "");
+  assert.equal(elements.get("batch-filter").value, "",
+    `批次接口失败后选择器取值应停在默认项，实际为「${elements.get("batch-filter").value}」`);
+  assert.ok(harness.messages.some((text) => /批次/.test(text)),
+    `批次接口失败应给出可读提示（不得静默），实际消息流为 ${JSON.stringify(harness.messages)}`);
+
+  assert.deepEqual(visibleIds(elements), ["dev_a", "dev_b"],
+    `批次接口失败不得影响 bootstrap 渲染的候选列表，实际为 ${JSON.stringify(visibleIds(elements))}`);
+
+  await fire(elements, "save-draft", "click");
+
+  assert.equal(postRequests(requests).length, 1,
+    `批次接口失败不得阻塞保存，实际 POST 次数为 ${postRequests(requests).length}`);
+  assert.match(elements.get("app-message").textContent, /已保存/,
+    `保存仍应给出成功提示，实际为「${elements.get("app-message").textContent}」`);
 });
