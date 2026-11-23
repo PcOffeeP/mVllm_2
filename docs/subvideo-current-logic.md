@@ -118,3 +118,5 @@ video_0107_coverage_01.mp4
 `--jobs N`（默认 1，即串行）按来源并行裁剪：来源彼此独立，主要耗时是 ffmpeg 子进程。结果仍按来源 ID 顺序回收合并，`manifest.json` 与 `summary.json` 的顺序和内容与串行一致；清单只由主流程（单写者）写入，worker 只返回结果、不写清单。任一来源抛出未预期异常时整批失败，错误消息包含该来源 ID，磁盘上的清单保持可解析（原子写入，不留半截文件）。`--jobs` 可与 `--plan-only` 组合；`--verification`／`--jobs` 与 `--videos-dir`、`--audit-only` 不能组合。同一输出目录续跑（`--resume`）时，验证档位必须与批次记录一致，否则拒绝。
 
 **失效条件：**一旦下游依赖帧对应证明、时间戳证据或 `full_decode` 标记（例如发布前校验改读 `frame_preserving_replay`、训练或评价接入自动判定帧对应），或 ffmpeg／ffprobe 工具链、ROI 生成方式、窗口规划规则变化后需要重新核对证据时，本节关于 `basic`／`none` 的结论不再成立，必须重新评估，或改用 `--verification full` 重新生成该批次。
+
+**帧对应取证边界：** 抽帧留证（不做像素比对）的取证范围与样例另见[帧对应取证](frame-correspondence-evidence.md)；该取证不等于帧级重放通过，`basic`／`none` 批次仍不提供帧对应证明。
