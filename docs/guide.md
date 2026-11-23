@@ -23,6 +23,7 @@
 | 跨机审查运行 | [训练机生成 + 本机 SSH 审查运行手册](training-machine-review-runbook.md)：跨机启动、自检、隧道、同步边界与收尾；一次性工作流记录，不构成生成/训练/发布授权。 |
 | 虚拟数据集交接 | [虚拟数据集交接契约](virtual-dataset-handoff-contract.md)：`BlenderTensileVideo` 向本仓交付虚拟候选数据集的跨仓契约与校验口径。 |
 | Agent 跨仓契约草案 | [Agent 视觉与交付契约草案](eval/agent-handoff-contract-draft.md)：本仓向 `TensileAgent` 交付新一代视觉模型（拟 `tensile-vlm/v5`）的跨仓契约草案；未冻结、不修改现有 `v4.1` 运行时。 |
+| 帧对应抽帧取证 | [帧对应抽帧取证](frame-correspondence-evidence.md)：设计已定、未实现。 |
 
 ## 待梳理或补充的专题
 
