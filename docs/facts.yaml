@@ -1104,6 +1104,30 @@ facts:
     supersedes: DF-046 的「videos 待删除、清单三件待标记作废、仍在工作树中」部分；DF-048 的「本机副本实有 1,621 个 .mp4 且可直接用于人工审查」部分
     affects: [data, ops]
 
+  - id: DF-051
+    state: active
+    topic: 帧对应抽帧取证（设计已定、未实现）
+    claim: >
+      以一次运行实际输入的那组帧为锚点（DF-044：单请求 8 帧），按 DF-041 的实际方向读映射，不据遗留节点名反推方向。
+      输入帧记录、清单映射的片段身份和各级媒体摘要共同绑定按次取证对象，不按批次绑定。
+      DF-024 的两段严格重放提供机器证明，抽帧图是人工可查证据，不替代 full 收据。
+      DF-032 的批次身份由输入身份与规则指纹组成；取证不改变审计分层，也不改变 basic／none 的 no_frame_level_replay 等既有禁令。
+    evidence:
+      - ref: docs/frame-correspondence-evidence.md:5
+        expect: '抽帧取证是独立环节，不属于 `subvideo_generation`，也不属于 `checks`。'
+      - ref: docs/frame-correspondence-evidence.md:11
+        expect: '锚点是一次模型运行实际输入的那组帧'
+      - ref: docs/frame-correspondence-evidence.md:16
+        expect: '从 `L3` 模型输入帧回溯到 `L2` 子视频、`L1` ROI 和 `L0` 原视频。'
+      - ref: docs/frame-correspondence-evidence.md:41
+        expect: '`full` 收据（机器证明）与本次抽帧取证（人工可查证据）**互不替代**。'
+      - ref: docs/eval/input-record.md:189
+        expect: '抽帧取证工具按本表方向读取映射。'
+    established: 2026-11-23
+    established_by: 用户确认设计，见 DEC-005。
+    supersedes: null
+    affects: [eval, contract]
+
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
     correct: 旧候选链路中，子窗口按事件时刻重新裁剪，可以落在不同事件阶段，父子窗口状态不同并不自动构成矛盾。本轮人工标注仍需按各自片段的可见证据判断，不能仅凭父子关系自动验真。
