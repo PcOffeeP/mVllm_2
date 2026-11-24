@@ -6,7 +6,7 @@
 
 - **源级输入**：110 个真实源视频（89 开发三折 + 21 固定 test），当前源标注表 [data/annotation-table-full.csv](../data/annotation-table-full.csv)（SHA-256 `c928bea3…c1ec354c`）与 ROI 清单 [data/roi/manifest.json](../data/roi/manifest.json)（110/110 `success`，2026-11-20 重扫）已就位。
 - **候选子视频批次**：第 2 批（`basic` 档）已于 2026-11-20 在训练机生成并回传，共 **1,633 条**候选（开发集 1,319、固定 test 314），三份清单（`manifest.json`、`summary.json`、`audit.json`）已入库，本机媒体逐条 SHA-256 核对 `1,633/1,633` 一致。
-- **人工审核进度**（以 [reviews.json](../data/subvideo-review/reviews.json) 实测为准）：本批次身份有效确认 **347 / 1,633**（B0 校准批 `32/32`、B1 固定 test 批 `314/314`、清单外试审 `1` 条），未审核 **1,286** 条，草稿／疑问／退回均为 0。当前阻塞在 **B2 每折 val 抽样规则待确认**。
+- **人工审核进度**（以 [reviews.json](../data/subvideo-review/reviews.json) 实测为准）：本批次身份有效确认 **347 / 1,633**（B0 校准批 `32/32`、B1 固定 test 批 `314/314`、清单外试审 `1` 条），未审核 **1,286** 条，草稿／疑问／退回均为 0。**B2 每折 val 抽样 60 条（共 180 条）已定稿并置为 `ready`**，可直接开审。
 - **尚未启动项**：真实模型训练、真实 GPU 推理、正式模型评测、数据发布与旧 `versioning` 晋级接入均**未执行**；源标注表发现的疑似错标已登记在 `§8 SOURCE-RELABEL`，当前暂不改表。
 
 | 编号与代号 | 任务名称 | 当前状态 | 当前关键进展／下一步 |
@@ -14,8 +14,8 @@
 | [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径与 6 篇输入契约已就位；待定模型名单、样本充分性与正式阈值 |
 | [3. EVAL-VERSIONING](#3-eval-versioning--按新评价设计更新-versioning-评价与晋级门槛) | 更新 `versioning` 评价与晋级门槛 | 待处理 | 依赖 `EVAL-DESIGN` 定稿与真实测评证据 |
 | [4. DATA-HANDOFF](#4-data-handoff--梳理新标注到数据生成的衔接方案) | 梳理新标注到数据生成的衔接方案 | 进行中 | 1,633 条新批次已回传核验；审核进度移交 `§6`，待定虚拟视频切分策略与发布衔接 |
-| [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 未开始 | B0/B1 已审完，尚未按新批次（1,633 条）产出分层表与候选清单草稿 |
-| [6. SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段) | 人工审核新批次候选片段 | 进行中 | **当前主线**：B0（32/32）与 B1（314/314）已完成；待确认 B2 抽样规则后推进 B2 → B3 |
+| [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 进行中 | 已产出子视频 1,633 条分层统计与 B2 抽样草稿 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)（非冻结集，属子视频侧，区别于 `docs/eval/` 整体模型测评契约）；待确认冻结口径 |
+| [6. SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段) | 人工审核新批次候选片段 | 进行中 | **当前主线**：B0（32/32）与 B1（314/314）已完成；**B2（180 条）已就绪待审** → B3 |
 | [7. MAPPING-NODE-RENAME](#7-mapping-node-rename--重命名映射节点消除-source_to_media-的方向误读) | 重命名映射节点 | 已解决（2026-11-24） | 已改用 `clip_to_model_input`／`clip_to_roi`／`roi_to_original`（`five-label-input-record/3`，显式拒绝旧 v2），见 `DF-052` |
 | [8. SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正) | 源标注待改清单与集中修正 | 等待确认／未开始 | 已登记 7 源 9 字段（均为 test 源）；暂不改表，建议 B2/B3 审完后集中复核 |
 | [1. LABEL-ANNOTATION](#1-label-annotation--确认标签基准并进行人工标注) | 确认标签基准并进行人工标注 | 已解决（2026-11-07） | 110 条源标注与材料类型补全已完成；后续修正由 `§8` 跟踪 |
@@ -166,7 +166,7 @@
 
 ## 5. EVAL-SUBSET — 从新批次候选子视频构建测评候选子集
 
-**状态：** 未开始；仅登记任务与选取口径，尚未产出任何分层表或候选清单草稿。当前第 2 批（1,633 条）已就位，人工审核已推进至 B0（32/32）与 B1（314/314），见 [§6 SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段)。
+**状态：** 进行中。2026-11-24 已基于第 2 批（1,633 条）产出子视频全量分层覆盖统计、63 条待关注优先核验清单与 B2 180 条人工审核抽样名单草稿，见 [子视频候选分层与 B2 抽样草稿（非冻结集）](subvideo-eval-subset-draft.md)（属子视频侧分层与审核抽样，区别于 `docs/eval/` 下的整体模型测评契约）；尚未进入正式冻结阶段。
 
 ### 目标
 
@@ -174,24 +174,25 @@
 
 ### 当前进展
 
-- **当前生效批次基线（第 2 批，1,633 条）**：开发集 1,319 条、固定 test 314 条；核验记录 `data/sub_video/audit.json` 标记 `candidates_needing_attention: 63`。
+- **全量 1,633 条分层统计草稿已产出（2026-11-24）**：见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)（非冻结集，子视频侧分层与审核抽样）。开发集 1,319 条、固定 test 314 条；三个画幅档在全部（`881/448/304`，`55/29/26` 源）、开发集（`791/308/220`，`48/21/20` 源）与固定 test（`90/140/84`，`7/8/6` 源）下均有样本且来源数均 ≥ 6；仅 `no_fracture`（2 源）与 `unclamped`（1 源）< 3 源，已标明仅报个案与计数。核验记录 `data/sub_video/audit.json` 的 **63 条**待关注候选中 26 条已确认（B1 23 + B0 3），其余 37 条已 100% 纳入 B2 优先核验。
 - **已退役批次历史对照（仅追溯）**：已退役批次的清单与摘要已删除，历史角色计数为 `pre` 813、`fracture` 576、`post` 127、`coverage` 93、`no_fracture` 9、`unclamped` 3；已退役批次已删除的核验记录曾标记 `candidates_needing_attention: 54` 的候选优先纳入并优先核验。
-- **确定性分层覆盖口径**：本阶段（候选清单草稿）的分层维度为「片段角色（`pre`／`fracture`／`post`／`coverage`／`no_fracture`／`unclamped`）× 五类标签 × 画幅三档（`w_le_200`／`w_200_400`／`w_gt_400`）」，层内不随机抽样——逐层列全候选或按可复算规则选取。画幅三档定义与 [评测子集专题](eval/eval-subset.md) §1、§5 一致，三档须各有样本；§5 的层内随机抽样与「断裂现象（有／无）」属**后续冻结阶段**口径，本阶段不预设；虚拟来源按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 6 条不纳入本轮主评价，本阶段暂不预设 `real/virtual` 分层口径。
-- **前置状态**：位置校准已按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 7 条收敛至 [样例集](label-calibration/README.md) 9 例；B0 与 B1 人工审核已完成，尚未基于最新清单与审核记录产出分层表。
+- **确定性分层覆盖口径**：本阶段（候选清单草稿）的分层维度为「片段角色（`pre`／`fracture`／`post`／`coverage`／`no_fracture`／`unclamped`）× 五类标签 × 画幅三档（`w_le_200`／`w_200_400`／`w_gt_400`）」，画幅三档定义与 [评测子集专题](eval/eval-subset.md) §1、§5 一致，三档须各有样本；§5 的正式冻结随机抽样与「断裂现象（有／无）」留待**后续冻结阶段**；虚拟来源按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 6 条不纳入本轮主评价，本阶段暂不预设 `real/virtual` 分层口径。
 
 ### 下一步
 
-- [ ] 基于当前第 2 批清单（1,633 条）与已审核记录，按「片段角色 × 五类标签 × 画幅三档」列出分层表，标明每层候选数与可用来源数。
-- [ ] 按画幅三档统计候选分布，确认每档都有样本；某档来源数 < 3 时只报个案与计数。
-- [ ] 按当前批次 `data/sub_video/audit.json`（63 条待关注候选）列出优先核验清单。
-- [ ] 产出候选清单草稿（含生成方式、来源与清单摘要），交用户确认后再讨论冻结。
+- [x] 基于当前第 2 批清单（1,633 条）与已审核记录，按「片段角色 × 五类标签 × 画幅三档」列出分层表，标明每层候选数与可用来源数（见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §2）。
+- [x] 按画幅三档统计候选分布，确认每档都有样本；来源数 < 3 的层（`no_fracture` 2 源、`unclamped` 1 源）已明示只报个案与计数。
+- [x] 按当前批次 `data/sub_video/audit.json`（63 条待关注候选）列出优先核验清单（见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §3）。
+- [x] 产出候选清单草稿（含生成方式、来源、清单 SHA-256 与 B2 180 条抽样名单），明确标注「非冻结集」。
+- [ ] 待 B2 人工审核完成后，结合真实片段标签分布与用户确认冻结时的选取比例、每层最小样本数与冻结时点。
 
 ### 完成标准
 
-- [ ] 分层表覆盖全部片段角色、五类标签与三个画幅档，并写明每层选取理由。
-- [ ] 三个画幅档均有样本，档位归属按 [评测子集专题](eval/eval-subset.md) 的区间判据核对。
-- [ ] 当前批次核验记录中的重点候选（63 条）已在清单中标出。
-- [ ] 候选清单草稿可追溯（生成方式、来源、摘要），并明确标注「非冻结集」。
+- [x] 分层表覆盖全部片段角色、五类标签与三个画幅档，并写明每层选取理由（见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)）。
+- [x] 三个画幅档均有样本，档位归属按 [评测子集专题](eval/eval-subset.md) 的区间判据核对。
+- [x] 当前批次核验记录中的重点候选（63 条）已在清单中标出。
+- [x] 候选清单草稿可追溯（生成方式、来源、摘要），并明确标注「非冻结集」。
+- [ ] 用户审阅草稿并确认是否进入后续冻结阶段。
 
 ### 等待确认
 
@@ -201,13 +202,13 @@
 ### 限制与关联
 
 - 本任务不运行模型、不评分、不发布数据；候选清单草稿不等于测评真值，也不改变固定测试集的用途界限。
-- 关联 [评测子集专题](eval/eval-subset.md)、[§2 EVAL-DESIGN](#2-eval-design--设计并确认评价体系)、[§6 SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段)。
+- 关联 [评测子集专题](eval/eval-subset.md)、[子视频候选分层与 B2 抽样草稿](subvideo-eval-subset-draft.md)、[§2 EVAL-DESIGN](#2-eval-design--设计并确认评价体系)、[§6 SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段)。
 
 ---
 
 ## 6. SUBVIDEO-HUMAN-REVIEW — 人工审核新批次候选片段
 
-**状态：** 进行中（**当前主线任务**）。B0 校准批已完成 `32/32`（2026-11-23），B1 固定 test 批已完成 `314/314`（2026-11-24，PR #16 合并）；本批次身份有效确认累计 **347 / 1,633**（B0 32 条 + B1 314 条 + B0 清单外试审 `video_0050_coverage_02` 1 条），草稿 0、疑问 0、退回 0，未审核 **1,286 / 1,633**。当前阻塞于 **B2 抽样规则待确认**。
+**状态：** 进行中（**当前主线任务**）。B0 校准批已完成 `32/32`（2026-11-23），B1 固定 test 批已完成 `314/314`（2026-11-24，PR #16 合并）；本批次身份有效确认累计 **347 / 1,633**（B0 32 条 + B1 314 条 + B0 清单外试审 `video_0050_coverage_02` 1 条），草稿 0、疑问 0、退回 0，未审核 **1,286 / 1,633**。**B2 每折 val 抽样 60 条（共 180 条）已按用户确认规则生成并切为 `ready`**，可直接开审。
 
 ### 目标
 
@@ -216,7 +217,7 @@
 ### 当前进展
 
 - **实测数字口径（2026-11-24）**：以 [reviews.json](../data/subvideo-review/reviews.json)（SHA-256 `c2a0ab5df72023de2527a3bf0a35ade758ffd3da994eac5563d4a21bb38cb3c8`）及当前批次清单（`manifest_sha256` = `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f`）为准：不可变修订总数 397 条 = 本批次身份 360 条（对应 347 条有效确认候选）+ 旧批次身份 37 条（属历史隔离记录，不计入有效进度，不改写、不删除）。
-- **审核工具与批次选择已就绪**：[审核工具](../script/subvideo_review/README.md)打开候选时按候选标签预填 11 项作为草稿初值，确认仍须人工点击（DF-047），源标签只作另列参考、不参与预填，不回写生成清单或源标注；`audit.json` 经身份核对后提供 63 条重点提示。PR #14（2026-11-23）已支持按批次选片（[batches.json](../data/subvideo-review/batches.json)）：`B0`、`B1`、`B3`（1,319 条开发集）均为 `ready`；`B2`（每折 val 抽样 60 条，三折 val 池分别为 `432 / 440 / 447` 条）当前为 `status: undefined`，页面暂不返回候选，须先定抽样规则。
+- **审核工具与批次选择已就绪**：[审核工具](../script/subvideo_review/README.md)打开候选时按候选标签预填 11 项作为草稿初值，确认仍须人工点击（DF-047），源标签只作另列参考、不参与预填，不回写生成清单或源标注；`audit.json` 经身份核对后提供 63 条重点提示。`B0`（32 条）、`B1`（314 条）、`B2`（180 条 `explicit_ids`：三折 val 池 `432 / 440 / 447` 各抽 60 条未审候选，全收 37 条未审待关注、100% 覆盖 87 个未审开发源，详见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §4）、`B3`（1,319 条开发集）在 [batches.json](../data/subvideo-review/batches.json) 中均已为 `ready`。
 - **审核方法约定**：按来源聚簇连续审核；采用「两遍填法」（第一遍按画面给值，第二遍复核不确定与组合冲突项）；隔批做防漂移抽检。
 - **历史规则与旧批次说明**：2026-11-16 起片段层模式／位置删除「无」，改按第 4 节证据门槛判断并按断裂状态分层评分（[DEC-004](decisions/0004-fragment-label-no-value-removal.md)、DF-049）；旧 1,621 批次的 18 条已确认候选（含 10 条旧值修订及早期 `video_0001` 试审）均随批次切换自然隔离为历史记录。生成层旧规则写入的「无」在审核展示与预填时映射为「无法判断」并提示，不改写清单字节。
 
@@ -242,25 +243,21 @@
   - `video_0099`：`video_0099_fracture_01`、`video_0099_fracture_02`
   - `video_0106`：`video_0106_fracture_01`、`video_0106_post_01`、`video_0106_post_02`
 - [x] B1 固定 test 批已审完并入库（314/314 已确认，2026-11-24，PR #16）：test 划分内未审核 0 条，草稿／疑问／退回均为 0；审核中发现的疑似源表错标已登记至 [§8 SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正)。
-- [ ] **当前批次 B2（每折 val 抽样 60 条）**：先由用户确认三折 val 抽样规则（三折池规模 `432 / 440 / 447`），按规则生成每折 60 条的固定候选名单后，在 `data/subvideo-review/batches.json` 中改为 `selection.type = "explicit_ids"` 登记名单、切换 `status` 为 `ready` 并同步更新批次守卫测试（切勿沿用 `rule` 直接改 `ready`，否则 `batches.py` 不读 `sample_per_fold`，会返回三折 val 并集即全部 1,319 条开发候选），再启动人工审核。
-- [ ] B3 开发集三折 train 全量（1,319 条开发池中扣除已审项）：在 B2 之后推进，每批完成后同步进度与遗留问题。
+- [ ] **当前批次 B2（每折 val 新抽 60 条，共 180 条，已 `ready`）**：规则已于 2026-11-24 确认并以 `explicit_ids` 写入 `data/subvideo-review/batches.json`（`seed=20261124`，不含已审 33 条，全收 37 条未审待关注，详见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §4）；在审核页选 B2 推进人工看片确认。
+- [ ] B3 开发集三折 train 全量（`batches.json` 返回全部 1,319 条开发候选，审核时在页面按状态筛选跳过已确认项）：在 B2 之后推进，每批完成后同步进度与遗留问题。
 - [ ] 建立防漂移抽检记录（抽检片段、复看结论与差异处理）。
 
 ### 完成标准
 
-- [ ] B0、B1、B2、B3 各批完成并有可核对的审核记录（截至 2026-11-24：B0、B1 已完成，B2、B3 未完成）。
+- [ ] B0、B1、B2、B3 各批完成并有可核对的审核记录（截至 2026-11-24：B0、B1 已完成，B2 已就绪待审，B3 未完成）。
 - [ ] 审阅中发现的重复问题已归纳，需要改规则的已提交确认。
 - [ ] 全部拟发布片段的审核记录均可追溯到片段、来源与生成身份；未审片段不发布。
-
-### 等待确认
-
-- B2 每折 val 抽样 60 条的具体抽样规则（分层维度、是否去重／排除 B0 已审候选、随机种子与来源聚簇顺序）。
 
 ### 限制与关联
 
 - 本节与 `data/subvideo-review/reviews.json` 是人工审核进度的唯一权威入口。
 - 审核由用户本人看画面执行，不以机器核验代替；本任务不运行模型、不训练、不测评，测试集候选仅参与看片与标签审核，不因此授权模型测试或用于训练。
-- **守卫提示**：`script/subvideo_review/tests/test_batches.py` 直接解析本节 `### 下一步` 中的 32 条 B0 候选名并与 `batches.json` 对账，调整本节时不得破坏该分组列表格式。
+- **守卫提示**：`script/subvideo_review/tests/test_batches.py` 直接解析本节 `### 下一步` 中的 32 条 B0 候选名及 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §4.3 中的 180 条 B2 候选名并与 `batches.json` 对账，调整清单时须同步保持格式一致。
 
 ---
 
