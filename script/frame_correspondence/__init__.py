@@ -4,17 +4,21 @@ from __future__ import annotations
 from .cli import main
 from .evidence import (
     build_evidence_manifest,
+    count_candidate_runs,
     ensure_output_outside_git_repo,
     extract_evidence_bundle,
     render_index_markdown,
+    validate_output_path,
 )
 from .extractor import (
     AutoFrameExtractor,
     FfmpegFrameExtractor,
     FrameExtractor,
+    L3ImageResolution,
     MetadataOnlyExtractor,
     OpenCVFrameExtractor,
     build_extractor,
+    resolve_l3_image,
 )
 from .loader import (
     filter_records,
@@ -41,6 +45,7 @@ __all__ = [
     "FfmpegFrameExtractor",
     "FrameExtractionResult",
     "FrameExtractor",
+    "L3ImageResolution",
     "MAPPING_DIRECTIONS",
     "MetadataOnlyExtractor",
     "OpenCVFrameExtractor",
@@ -49,6 +54,7 @@ __all__ = [
     "RUN_INDEX_SCHEMA",
     "build_evidence_manifest",
     "build_extractor",
+    "count_candidate_runs",
     "ensure_output_outside_git_repo",
     "extract_evidence_bundle",
     "filter_records",
@@ -57,4 +63,6 @@ __all__ = [
     "load_subvideo_manifest",
     "main",
     "render_index_markdown",
+    "resolve_l3_image",
+    "validate_output_path",
 ]

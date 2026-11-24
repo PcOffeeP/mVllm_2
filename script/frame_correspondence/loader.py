@@ -49,6 +49,28 @@ def _validate_v3_record_strict(record: dict[str, Any], location: str) -> None:
                     f"{location}: frames[{order}] contains deprecated key {forbidden_frame_key!r}; "
                     "use 'original_source_frame_index'"
                 )
+        for required_index_key in (
+            "display_order",
+            "clip_frame_index",
+            "roi_frame_index",
+            "original_source_frame_index",
+        ):
+            if required_index_key not in frame:
+                raise EvidenceError(
+                    f"{location}: frames[{order}] missing required key {required_index_key!r} "
+                    "(use explicit null when unverified, never omit)"
+                )
+        clip_idx = frame["clip_frame_index"]
+        if isinstance(clip_idx, bool) or not isinstance(clip_idx, int) or clip_idx < 0:
+            raise EvidenceError(
+                f"{location}: frames[{order}].clip_frame_index must be a non-negative integer, got {clip_idx!r}"
+            )
+        for nullable_key in ("roi_frame_index", "original_source_frame_index"):
+            val = frame[nullable_key]
+            if val is not None and (isinstance(val, bool) or not isinstance(val, int) or val < 0):
+                raise EvidenceError(
+                    f"{location}: frames[{order}].{nullable_key} must be a non-negative integer or null, got {val!r}"
+                )
         mapping = frame.get("frame_index_mapping")
         if not isinstance(mapping, dict):
             raise EvidenceError(f"{location}: frames[{order}].frame_index_mapping must be an object")

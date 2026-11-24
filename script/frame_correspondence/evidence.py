@@ -12,7 +12,7 @@ from .extractor import (
     FrameExtractor,
     MetadataOnlyExtractor,
     build_extractor,
-    resolve_l3_image_path,
+    resolve_l3_image,
     resolve_layer_media_path,
     sha256_file,
 )
@@ -47,23 +47,89 @@ def ensure_output_outside_git_repo(output_dir: Path | str) -> Path:
     return resolved
 
 
+def validate_output_path(path: Path, output_root: Path, *, allow_existing_symlink: bool = False) -> Path:
+    """Ensure a target directory or file stays inside output_root and outside any Git repo."""
+    resolved_root = ensure_output_outside_git_repo(output_root)
+    if not allow_existing_symlink:
+        cur = path
+        while cur != output_root and cur != resolved_root and cur != cur.parent:
+            if cur.is_symlink():
+                raise EvidenceError(
+                    f"refusing to traverse or write through symlink {cur}; "
+                    f"output paths must stay inside {resolved_root}"
+                )
+            cur = cur.parent
+    resolved_target = path.resolve()
+    if not resolved_target.is_relative_to(resolved_root):
+        raise EvidenceError(
+            f"resolved output path {resolved_target} escapes output root {resolved_root}"
+        )
+    ensure_output_outside_git_repo(resolved_target)
+    return resolved_target
+
+
 def _safe_slug(value: str, fallback: str) -> str:
     cleaned = SAFE_SLUG_RE.sub("_", value.strip()).strip("._-")
     if not cleaned or cleaned in (".", ".."):
         return fallback
-    return cleaned[:96]
+    return cleaned[:80]
 
 
-def _run_slug_for_record(record: dict[str, Any], *, disambiguate: bool = False) -> str:
+def _run_slug_for_record(record: dict[str, Any]) -> str:
+    """Collision-free run slug always incorporating raw (run_id, input_id) hash."""
     run_id = record_run_id(record)
     input_id = str(record.get("input_id") or "")
-    short_hash = hashlib.sha256(input_id.encode("utf-8")).hexdigest()[:12]
+    identity_payload = json.dumps(
+        {"run_id": run_id, "input_id": input_id},
+        sort_keys=True,
+        ensure_ascii=False,
+    ).encode("utf-8")
+    short_hash = hashlib.sha256(identity_payload).hexdigest()[:12]
     if run_id:
-        base = _safe_slug(run_id, f"run_{short_hash}")
-        return f"{base}__{short_hash}" if disambiguate else base
-    if input_id.startswith("input@sha256:") and len(input_id) >= len("input@sha256:") + 12:
-        return f"input_{input_id.split(':', 1)[1][:12]}"
-    return f"input_{short_hash}"
+        base = _safe_slug(run_id, "run")
+        return f"{base}__{short_hash}"
+    return f"input__{short_hash}"
+
+
+def _clip_slug_for_id(candidate_id: str, fallback: str) -> str:
+    base = _safe_slug(candidate_id, fallback)
+    if base != candidate_id:
+        suffix = hashlib.sha256(candidate_id.encode("utf-8")).hexdigest()[:8]
+        return f"{base}__{suffix}"
+    return base
+
+
+def _check_existing_manifest_identity(
+    manifest_path: Path,
+    *,
+    run_id: str | None,
+    input_id: str,
+    candidate_id: str,
+) -> None:
+    """Refuse silent overwrite if an existing manifest belongs to a different binding."""
+    if not manifest_path.exists():
+        return
+    try:
+        existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise EvidenceError(
+            f"refusing to overwrite unreadable existing evidence manifest at {manifest_path}: {exc}"
+        ) from exc
+    if not isinstance(existing, dict):
+        raise EvidenceError(f"refusing to overwrite non-object manifest at {manifest_path}")
+    existing_rr = existing.get("run_record") if isinstance(existing.get("run_record"), dict) else {}
+    existing_ci = existing.get("clip_identity") if isinstance(existing.get("clip_identity"), dict) else {}
+    existing_identity = (
+        existing_rr.get("run_id"),
+        existing_rr.get("input_id"),
+        existing_ci.get("candidate_id"),
+    )
+    current_identity = (run_id, input_id, candidate_id)
+    if existing_identity != current_identity:
+        raise EvidenceError(
+            f"refusing to overwrite existing evidence manifest at {manifest_path}: "
+            f"existing binding {existing_identity!r} != current binding {current_identity!r}"
+        )
 
 
 def _positive_number(value: Any) -> float | None:
@@ -104,20 +170,21 @@ def _extract_manifest_tier_and_limitations(
     subvideo_manifest: dict[str, Any] | None,
     candidate_entry: dict[str, Any] | None,
 ) -> tuple[str | None, list[str]]:
-    if not subvideo_manifest:
+    if not subvideo_manifest or candidate_entry is None:
         return None, []
     tiers: list[str] = []
     limitations: list[str] = []
 
     manifest_ver = subvideo_manifest.get("verification") or {}
+    cand_output = candidate_entry.get("output") if isinstance(candidate_entry.get("output"), dict) else {}
+    cand_out_ver = cand_output.get("verification") if isinstance(cand_output.get("verification"), dict) else {}
+    cand_ver = candidate_entry.get("verification") if isinstance(candidate_entry.get("verification"), dict) else {}
+
     for raw_tier in (
         manifest_ver.get("mode"),
         subvideo_manifest.get("verification_mode"),
-        (candidate_entry.get("verification") or {}).get("mode") if isinstance(candidate_entry, dict) else None,
-        (candidate_entry.get("output") or {}).get("verification", {}).get("mode")
-        if isinstance(candidate_entry, dict) and isinstance(candidate_entry.get("output"), dict)
-        and isinstance(candidate_entry["output"].get("verification"), dict)
-        else None,
+        cand_ver.get("mode"),
+        cand_out_ver.get("mode"),
     ):
         tier = _normalize_audit_tier(raw_tier)
         if tier:
@@ -138,7 +205,9 @@ def _build_proof_boundaries(
     record: dict[str, Any],
     *,
     subvideo_manifest: dict[str, Any] | None = None,
+    subvideo_binding: dict[str, Any] | None = None,
     candidate_entry: dict[str, Any] | None = None,
+    extra_limitations: list[str] | None = None,
 ) -> dict[str, Any]:
     record_tiers: list[str] = []
     for source in (record, record.get("batch_audit"), record.get("run_metadata")):
@@ -149,16 +218,26 @@ def _build_proof_boundaries(
             if tier:
                 record_tiers.append(tier)
 
-    manifest_tier, manifest_limitations = _extract_manifest_tier_and_limitations(
-        subvideo_manifest, candidate_entry
-    )
-    all_tiers = list(record_tiers)
-    if manifest_tier:
-        all_tiers.append(manifest_tier)
-
     limitations: list[str] = []
     limitations.extend(_extract_record_limitations(record))
-    limitations.extend(manifest_limitations)
+    if extra_limitations:
+        limitations.extend(extra_limitations)
+
+    all_tiers = list(record_tiers)
+    binding = subvideo_binding or {}
+    if binding.get("provided"):
+        if binding.get("binding_verified") is True:
+            manifest_tier, manifest_limitations = _extract_manifest_tier_and_limitations(
+                subvideo_manifest, candidate_entry
+            )
+            if manifest_tier:
+                all_tiers.append(manifest_tier)
+            limitations.extend(manifest_limitations)
+        else:
+            if not binding.get("candidate_found"):
+                limitations.append("subvideo_manifest_candidate_not_found_tier_not_inherited")
+            if binding.get("record_manifest_sha256_match") is False:
+                limitations.append("subvideo_manifest_sha256_mismatch_tier_not_inherited")
 
     if len(set(all_tiers)) > 1:
         limitations.append("audit_tier_conflict_conservatively_downgraded")
@@ -215,13 +294,13 @@ def _bind_manifests(
 ) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any]]:
     cid = str(record["candidate_id"])
     candidate_entry = None
-    subvideo_binding: dict[str, Any] = {"provided": False}
+    subvideo_binding: dict[str, Any] = {"provided": False, "binding_verified": False}
     if subvideo_manifest is not None:
         candidate_entry = subvideo_manifest["candidates_by_id"].get(cid)
         record_manifest_sha = record.get("manifest_sha256")
         manifest_sha_match = (
             record_manifest_sha == subvideo_manifest["sha256"]
-            if isinstance(record_manifest_sha, str)
+            if isinstance(record_manifest_sha, str) and record_manifest_sha.strip()
             else None
         )
         if isinstance(candidate_entry, dict):
@@ -232,12 +311,14 @@ def _bind_manifests(
                     f"{cid}: subvideo manifest output.sha256 {cand_sha} != "
                     f"record.clip_sha256 {record.get('clip_sha256')}"
                 )
+        binding_verified = (candidate_entry is not None) and (manifest_sha_match is not False)
         subvideo_binding = {
             "provided": True,
             "manifest_path": subvideo_manifest["path"],
             "manifest_sha256": subvideo_manifest["sha256"],
             "record_manifest_sha256_match": manifest_sha_match,
             "candidate_found": candidate_entry is not None,
+            "binding_verified": binding_verified,
         }
 
     source_video_id = _derive_source_video_id(record, candidate_entry)
@@ -272,10 +353,18 @@ def _relative_posix(path: Path | None, base_dir: Path) -> str | None:
     return path.resolve().relative_to(base_dir.resolve()).as_posix()
 
 
+def _cached_sha256(path: Path, cache: dict[Path, str | None]) -> str | None:
+    key = path.resolve()
+    if key not in cache:
+        cache[key] = sha256_file(key)
+    return cache[key]
+
+
 def build_evidence_manifest(
     record: dict[str, Any],
     *,
     target_dir: Path,
+    output_root: Path | None = None,
     extractor: FrameExtractor,
     mode: str = "extract_images",
     subvideo_manifest: dict[str, Any] | None = None,
@@ -283,20 +372,24 @@ def build_evidence_manifest(
     media_root: Path | None = None,
     l3_frames_dir: Path | None = None,
     input_records_dir: Path | None = None,
+    allow_unscoped_l3_fallback: bool = True,
+    digest_cache: dict[Path, str | None] | None = None,
 ) -> dict[str, Any]:
     """Resolve four-layer correspondence for one run/clip and optionally extract PNGs."""
+    boundary_root = ensure_output_outside_git_repo(output_root if output_root is not None else target_dir)
+    validate_output_path(target_dir, boundary_root)
+
     cid = str(record["candidate_id"])
+    run_id = record_run_id(record)
+    input_id = str(record["input_id"])
+    run_slug = _run_slug_for_record(record)
+
     candidate_entry, subvideo_binding, roi_binding = _bind_manifests(
         record,
         subvideo_manifest=subvideo_manifest,
         roi_manifest=roi_manifest,
     )
     source_video_id = _derive_source_video_id(record, candidate_entry)
-    proof_boundaries = _build_proof_boundaries(
-        record,
-        subvideo_manifest=subvideo_manifest,
-        candidate_entry=candidate_entry,
-    )
 
     lineage_media = record["lineage_media"]
     resolved_video_paths: dict[str, Path | None] = {
@@ -308,7 +401,35 @@ def build_evidence_manifest(
         for layer in ("l0", "l1", "l2")
     }
 
+    # Verify disk SHA-256 once per resolved video path before any decoding in extract_images mode.
+    cache = digest_cache if digest_cache is not None else {}
+    observed_digests: dict[str, str | None] = {}
+    digest_matches: dict[str, bool | None] = {}
+    extra_limitations: list[str] = []
+    for layer_key in ("l0", "l1", "l2"):
+        recorded_sha = (lineage_media.get(layer_key) or {}).get("sha256")
+        resolved_path = resolved_video_paths[layer_key]
+        if mode != "metadata_only" and resolved_path is not None and resolved_path.is_file():
+            obs = _cached_sha256(resolved_path, cache)
+            observed_digests[layer_key] = obs
+            match = (obs == recorded_sha) if (obs is not None and isinstance(recorded_sha, str)) else False
+            digest_matches[layer_key] = match
+            if not match:
+                extra_limitations.append(f"{layer_key}_disk_sha256_mismatch")
+        else:
+            observed_digests[layer_key] = None
+            digest_matches[layer_key] = None
+
+    proof_boundaries = _build_proof_boundaries(
+        record,
+        subvideo_manifest=subvideo_manifest,
+        subvideo_binding=subvideo_binding,
+        candidate_entry=candidate_entry,
+        extra_limitations=extra_limitations,
+    )
+
     frames_dir = target_dir / "frames"
+    validate_output_path(frames_dir, boundary_root)
     skipped_layers: list[dict[str, Any]] = []
     counts = {"extracted": 0, "copied": 0, "skipped": 0, "metadata_only": 0}
     l3_image_digests: dict[str, str | None] = {}
@@ -321,6 +442,7 @@ def build_evidence_manifest(
         orig_idx = frame["original_source_frame_index"]
         record_pts = frame.get("pts_seconds")
         image_name = frame.get("image")
+        expected_l3_sha = frame.get("image_sha256") or frame.get("sha256")
 
         mapping_raw = frame["frame_index_mapping"]
         mapping_with_direction = {
@@ -333,10 +455,15 @@ def build_evidence_manifest(
 
         layers_out: dict[str, dict[str, Any]] = {}
 
-        # --- L3: actual model input frame ---
-        l3_source_path = resolve_l3_image_path(
+        # --- L3: actual model input frame (run-bound, never substituted by L2) ---
+        l3_resolution = resolve_l3_image(
             image_name,
             candidate_id=cid,
+            run_id=run_id,
+            input_id=input_id,
+            run_slug=run_slug,
+            expected_sha256=expected_l3_sha,
+            allow_unscoped_shared_fallback=allow_unscoped_l3_fallback,
             l3_frames_dir=l3_frames_dir,
             input_records_dir=input_records_dir,
             media_root=media_root,
@@ -344,16 +471,17 @@ def build_evidence_manifest(
         l3_target_path = frames_dir / f"order_{order:03d}_L3_model_input.png"
         if mode == "metadata_only":
             l3_res = FrameExtractionResult(status="metadata_only", backend="metadata_only")
-            l3_sha = sha256_file(l3_source_path) if l3_source_path and l3_source_path.is_file() else None
-        elif l3_source_path is None or not l3_source_path.is_file():
+            l3_sha = l3_resolution.observed_sha256
+        elif l3_resolution.path is None or not l3_resolution.path.is_file():
             l3_res = FrameExtractionResult(
                 status="skipped",
                 backend=None,
-                skip_reason=f"l3_image_not_found_no_l2_substitution: {l3_source_path}",
+                skip_reason=l3_resolution.skip_reason or "l3_image_not_found_no_l2_substitution",
             )
             l3_sha = None
         else:
-            l3_res = extractor.copy_l3_image(l3_source_path, l3_target_path)
+            validate_output_path(l3_target_path, boundary_root)
+            l3_res = extractor.copy_l3_image(l3_resolution.path, l3_target_path)
             l3_sha = l3_res.image_sha256
 
         counts[l3_res.status] += 1
@@ -376,8 +504,11 @@ def build_evidence_manifest(
             "timestamp_seconds": record_pts,
             "timestamp_source": "record_pts_seconds" if record_pts is not None else "unavailable",
             "media_sha256": l3_sha,
+            "recorded_sha256": expected_l3_sha if isinstance(expected_l3_sha, str) else None,
+            "observed_sha256": l3_sha,
+            "binding_basis": l3_resolution.binding_basis,
             "source_image": image_name,
-            "source_image_path": str(l3_source_path) if l3_source_path else None,
+            "source_image_path": str(l3_resolution.path) if l3_resolution.path else None,
             "extracted_image": _relative_posix(l3_res.output_path, target_dir),
             "extracted_image_sha256": l3_res.image_sha256,
             "extraction_status": l3_res.status,
@@ -394,8 +525,10 @@ def build_evidence_manifest(
         for layer_key, layer_tag, role, frame_idx, file_tag in layer_specs:
             media_entry = lineage_media[layer_key]
             resolved_path = resolved_video_paths[layer_key]
-            media_sha = media_entry.get("sha256")
+            recorded_sha = media_entry.get("sha256")
             declared_sha = media_entry.get("declared_sha256")
+            observed_sha = observed_digests[layer_key]
+            digest_match = digest_matches[layer_key]
             fps = media_entry.get("fps")
 
             if frame_idx is None:
@@ -420,7 +553,10 @@ def build_evidence_manifest(
                     "frame_index": None,
                     "timestamp_seconds": None,
                     "timestamp_source": "unavailable",
-                    "media_sha256": media_sha,
+                    "media_sha256": recorded_sha,
+                    "recorded_sha256": recorded_sha,
+                    "observed_sha256": observed_sha,
+                    "digest_match_on_disk": digest_match,
                     "declared_sha256": declared_sha,
                     "media_path": str(resolved_path) if resolved_path else media_entry.get("path"),
                     "extracted_image": None,
@@ -440,7 +576,17 @@ def build_evidence_manifest(
                     backend=None,
                     skip_reason=f"{layer_tag.lower()}_media_file_missing: {resolved_path}",
                 )
+            elif digest_match is False:
+                res = FrameExtractionResult(
+                    status="skipped",
+                    backend=None,
+                    skip_reason=(
+                        f"{layer_tag.lower()}_disk_sha256_mismatch: "
+                        f"observed={observed_sha} != recorded={recorded_sha}"
+                    ),
+                )
             else:
+                validate_output_path(target_png, boundary_root)
                 res = extractor.extract_video_frame(resolved_path, frame_idx, target_png)
 
             counts[res.status] += 1
@@ -467,7 +613,10 @@ def build_evidence_manifest(
                 "frame_index": frame_idx,
                 "timestamp_seconds": ts_val,
                 "timestamp_source": ts_src,
-                "media_sha256": media_sha,
+                "media_sha256": recorded_sha,
+                "recorded_sha256": recorded_sha,
+                "observed_sha256": observed_sha,
+                "digest_match_on_disk": digest_match,
                 "declared_sha256": declared_sha,
                 "media_path": str(resolved_path) if resolved_path else media_entry.get("path"),
                 "extracted_image": _relative_posix(res.output_path, target_dir),
@@ -488,7 +637,6 @@ def build_evidence_manifest(
             }
         )
 
-    run_id = record_run_id(record)
     media_digests: dict[str, Any] = {}
     for layer_key in ("l0", "l1", "l2"):
         entry = lineage_media[layer_key]
@@ -499,6 +647,9 @@ def build_evidence_manifest(
             "resolved_path": str(resolved_path) if resolved_path else None,
             "file_present": bool(resolved_path and resolved_path.is_file()),
             "sha256": entry.get("sha256"),
+            "recorded_sha256": entry.get("sha256"),
+            "observed_sha256": observed_digests[layer_key],
+            "digest_match_on_disk": digest_matches[layer_key],
             "declared_sha256": entry.get("declared_sha256"),
             "fps": entry.get("fps"),
             "total_frames": entry.get("total_frames"),
@@ -523,11 +674,11 @@ def build_evidence_manifest(
         "run_record": {
             "record_schema": record["record_schema"],
             "run_id": run_id,
-            "binding_run_key": run_id or record["input_id"],
+            "binding_run_key": run_id or input_id,
             "request_id": record.get("request_id"),
             "model_id": record.get("model_id"),
             "prompt_id": record.get("prompt_id"),
-            "input_id": record["input_id"],
+            "input_id": input_id,
             "manifest_sha256": record.get("manifest_sha256"),
             "frame_count_convention": record.get("frame_count_convention", "decoded"),
             "frame_count": len(record["frames"]),
@@ -615,8 +766,8 @@ def render_index_markdown(manifest: dict[str, Any]) -> str:
             "- `clip_to_roi`: `L2->L1`（片段帧号 + `source_start_frame` → ROI 帧号）",
             "- `roi_to_original`: `L1->L0`（ROI 帧号 → 原始源视频帧号，受记录级 `verification.method` 约束）",
             "",
-            "| 层级 | 角色 | SHA-256（实测） | Declared SHA-256 | FPS | 总帧数 | 文件路径 |",
-            "| --- | --- | --- | --- | ---: | ---: | --- |",
+            "| 层级 | 角色 | Recorded SHA-256 | Observed SHA-256（盘面） | Declared SHA-256 | FPS | 总帧数 | 文件路径 |",
+            "| --- | --- | --- | --- | --- | ---: | ---: | --- |",
         ]
     )
 
@@ -624,13 +775,14 @@ def render_index_markdown(manifest: dict[str, Any]) -> str:
         entry = md[key]
         if key == "l3":
             lines.append(
-                f"| `{tag}` | `{entry['role']}` | 逐帧 PNG（无单文件容器） | — | — | {entry['frame_count']} | 见下表 |"
+                f"| `{tag}` | `{entry['role']}` | 逐帧 PNG（无单文件容器） | 见下表 | — | — | {entry['frame_count']} | 见下表 |"
             )
         else:
             lines.append(
-                f"| `{tag}` | `{entry['role']}` | {_fmt_cell(entry['sha256'])} | "
-                f"{_fmt_cell(entry['declared_sha256'])} | {_fmt_cell(entry['fps'])} | "
-                f"{_fmt_cell(entry['total_frames'])} | {_fmt_cell(entry['resolved_path'] or entry['recorded_path'])} |"
+                f"| `{tag}` | `{entry['role']}` | {_fmt_cell(entry['recorded_sha256'])} | "
+                f"{_fmt_cell(entry['observed_sha256'])} | {_fmt_cell(entry['declared_sha256'])} | "
+                f"{_fmt_cell(entry['fps'])} | {_fmt_cell(entry['total_frames'])} | "
+                f"{_fmt_cell(entry['resolved_path'] or entry['recorded_path'])} |"
             )
 
     lines.extend(
@@ -696,6 +848,15 @@ def render_index_markdown(manifest: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def count_candidate_runs(records: list[dict[str, Any]]) -> dict[str, int]:
+    """Count distinct (run_id, input_id) identities per candidate_id across a record set."""
+    by_candidate: dict[str, set[tuple[str | None, str]]] = {}
+    for rec in records:
+        cid = str(rec["candidate_id"])
+        by_candidate.setdefault(cid, set()).add((record_run_id(rec), str(rec["input_id"])))
+    return {cid: len(identities) for cid, identities in by_candidate.items()}
+
+
 def extract_evidence_bundle(
     records: list[dict[str, Any]],
     *,
@@ -708,10 +869,12 @@ def extract_evidence_bundle(
     media_root: Path | None = None,
     l3_frames_dir: Path | None = None,
     input_records_dir: Path | None = None,
+    candidate_run_counts: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Extract per-run/clip evidence_manifest.json + index.md into output_dir outside Git."""
     out_root = ensure_output_outside_git_repo(output_dir)
     out_root.mkdir(parents=True, exist_ok=True)
+    validate_output_path(out_root, out_root, allow_existing_symlink=True)
 
     active_extractor: FrameExtractor
     if extractor is not None:
@@ -721,31 +884,49 @@ def extract_evidence_bundle(
     else:
         active_extractor = build_extractor(mode, backend=backend)
 
-    # Disambiguate run slug if multiple records share the same (run_id, candidate_id).
-    key_counts: dict[tuple[str, str], int] = {}
-    for rec in records:
-        pair = (_run_slug_for_record(rec, disambiguate=False), str(rec["candidate_id"]))
-        key_counts[pair] = key_counts.get(pair, 0) + 1
-
-    used_dirs: set[Path] = set()
+    run_counts = candidate_run_counts if candidate_run_counts is not None else count_candidate_runs(records)
+    digest_cache: dict[Path, str | None] = {}
+    used_dirs: dict[Path, tuple[str | None, str, str]] = {}
     entries: list[dict[str, Any]] = []
 
     for index, rec in enumerate(records):
         cid = str(rec["candidate_id"])
-        clip_slug = _safe_slug(cid, f"clip_{index:03d}")
-        base_run_slug = _run_slug_for_record(rec, disambiguate=False)
-        run_slug = _run_slug_for_record(rec, disambiguate=key_counts[(base_run_slug, cid)] > 1)
-        target_dir = (out_root / run_slug / clip_slug).resolve()
-        if not target_dir.is_relative_to(out_root):
-            raise EvidenceError(f"resolved target directory {target_dir} escapes output root {out_root}")
-        if target_dir in used_dirs:
-            target_dir = (out_root / f"{run_slug}_{index:03d}" / clip_slug).resolve()
-        used_dirs.add(target_dir)
+        run_id = record_run_id(rec)
+        input_id = str(rec["input_id"])
+        identity = (run_id, input_id, cid)
+
+        clip_slug = _clip_slug_for_id(cid, f"clip_{index:03d}")
+        run_slug = _run_slug_for_record(rec)
+        raw_target_dir = out_root / run_slug / clip_slug
+        target_dir = validate_output_path(raw_target_dir, out_root)
+
+        if target_dir in used_dirs and used_dirs[target_dir] != identity:
+            alt_raw = out_root / f"{run_slug}_{index:03d}" / clip_slug
+            target_dir = validate_output_path(alt_raw, out_root)
+        elif target_dir in used_dirs:
+            raise EvidenceError(
+                f"duplicate record identity {identity!r} in input batch maps to the same output directory {target_dir}"
+            )
+        used_dirs[target_dir] = identity
+
+        manifest_path = target_dir / "evidence_manifest.json"
+        index_path = target_dir / "index.md"
+        validate_output_path(manifest_path, out_root)
+        validate_output_path(index_path, out_root)
+        _check_existing_manifest_identity(
+            manifest_path,
+            run_id=run_id,
+            input_id=input_id,
+            candidate_id=cid,
+        )
+
         target_dir.mkdir(parents=True, exist_ok=True)
+        validate_output_path(target_dir, out_root)
 
         manifest = build_evidence_manifest(
             rec,
             target_dir=target_dir,
+            output_root=out_root,
             extractor=active_extractor,
             mode=mode,
             subvideo_manifest=subvideo_manifest,
@@ -753,10 +934,12 @@ def extract_evidence_bundle(
             media_root=media_root,
             l3_frames_dir=l3_frames_dir,
             input_records_dir=input_records_dir,
+            allow_unscoped_l3_fallback=(run_counts.get(cid, 1) <= 1),
+            digest_cache=digest_cache,
         )
 
-        manifest_path = target_dir / "evidence_manifest.json"
-        index_path = target_dir / "index.md"
+        validate_output_path(manifest_path, out_root)
+        validate_output_path(index_path, out_root)
         manifest_path.write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
@@ -787,7 +970,9 @@ def extract_evidence_bundle(
         "records_processed": len(entries),
         "entries": entries,
     }
-    (out_root / "run_index.json").write_text(
+    run_index_path = out_root / "run_index.json"
+    validate_output_path(run_index_path, out_root)
+    run_index_path.write_text(
         json.dumps(run_index, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )

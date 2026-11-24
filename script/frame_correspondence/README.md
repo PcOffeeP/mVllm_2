@@ -48,7 +48,7 @@
 | `--subvideo-manifest` | 可选，绑定子视频清单以核对 `clip_sha256` 并继承批次 `audit_tier` / `no_frame_level_replay` 限制 |
 | `--roi-manifest` | 可选，绑定 ROI 清单以核对 `l1` 摘要及记录 `recipe_hash` |
 | `--media-root` | 可选，跨机或相对路径场景下定位 L0/L1/L2/L3 媒体的根目录 |
-| `--l3-frames-dir` | 可选，存放已落盘的 L3 模型输入 PNG 的根目录（缺失时标记跳过，绝不用 L2 伪造 L3） |
+| `--l3-frames-dir` | 可选，存放已落盘的 L3 模型输入 PNG 的根目录（优先匹配运行级子目录 `<dir>/<run_id>/<candidate_id>/<image>` 或帧级 `image_sha256`；同候选跨次歧义或缺失时标记跳过，绝不用 L2 顶替） |
 | `--extract-images` / `--metadata-only` | 互斥模式；默认 `--extract-images`，`--metadata-only` 仅落盘元数据清单与 `index.md` |
 | `--backend` | 抽帧后端：`auto`（默认，优先 `ffmpeg`，不可用时退回 `opencv` 顺序解码）、`ffmpeg`、`opencv` |
 

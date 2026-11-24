@@ -33,9 +33,12 @@ from script.frame_correspondence import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-L0_SHA = "c" * 64
-L1_SHA = "b" * 64
-L2_SHA = "a" * 64
+L0_BYTES = b"synthetic-l0-source-video-bytes"
+L1_BYTES = b"synthetic-l1-roi-video-bytes"
+L2_BYTES = b"synthetic-l2-subvideo-bytes"
+L0_SHA = hashlib.sha256(L0_BYTES).hexdigest()
+L1_SHA = hashlib.sha256(L1_BYTES).hexdigest()
+L2_SHA = hashlib.sha256(L2_BYTES).hexdigest()
 MANIFEST_SHA = "d" * 64
 RECEIPT_SHA = "e" * 64
 
@@ -303,11 +306,11 @@ def test_valid_v3_four_layer_resolution_and_outputs(tmp_path: Path) -> None:
     (media_root / "videos").mkdir(parents=True)
     (media_root / "roi" / "videos").mkdir(parents=True)
     (media_root / "sub_video" / "videos").mkdir(parents=True)
-    (media_root / "videos" / "video_0001.mp4").write_bytes(b"l0")
-    (media_root / "roi" / "videos" / "video_0001.mp4").write_bytes(b"l1")
-    (media_root / "sub_video" / "videos" / "video_0001_fracture_01.mp4").write_bytes(b"l2")
+    (media_root / "videos" / "video_0001.mp4").write_bytes(L0_BYTES)
+    (media_root / "roi" / "videos" / "video_0001.mp4").write_bytes(L1_BYTES)
+    (media_root / "sub_video" / "videos" / "video_0001_fracture_01.mp4").write_bytes(L2_BYTES)
 
-    l3_dir = tmp_path / "l3_frames" / "video_0001_fracture_01"
+    l3_dir = tmp_path / "l3_frames" / "run-20261124-01" / "video_0001_fracture_01"
     l3_dir.mkdir(parents=True)
     for idx in range(1, 4):
         (l3_dir / f"frame_{idx:03d}.png").write_bytes(f"L3_PNG_{idx}".encode("utf-8"))
@@ -346,9 +349,13 @@ def test_valid_v3_four_layer_resolution_and_outputs(tmp_path: Path) -> None:
     assert manifest["run_record"]["input_id"] == record["input_id"]
     assert manifest["clip_identity"]["candidate_id"] == "video_0001_fracture_01"
     assert manifest["clip_identity"]["clip_sha256"] == L2_SHA
-    assert manifest["media_digests"]["l0"]["sha256"] == L0_SHA
-    assert manifest["media_digests"]["l1"]["sha256"] == L1_SHA
-    assert manifest["media_digests"]["l2"]["sha256"] == L2_SHA
+    assert manifest["media_digests"]["l0"]["recorded_sha256"] == L0_SHA
+    assert manifest["media_digests"]["l0"]["observed_sha256"] == L0_SHA
+    assert manifest["media_digests"]["l0"]["digest_match_on_disk"] is True
+    assert manifest["media_digests"]["l1"]["recorded_sha256"] == L1_SHA
+    assert manifest["media_digests"]["l1"]["observed_sha256"] == L1_SHA
+    assert manifest["media_digests"]["l2"]["recorded_sha256"] == L2_SHA
+    assert manifest["media_digests"]["l2"]["observed_sha256"] == L2_SHA
 
     # Anchored strictly on the 3 input frames in display_order
     assert len(manifest["frames"]) == 3
@@ -397,8 +404,8 @@ def test_per_run_isolation_for_same_clip(tmp_path: Path) -> None:
     assert run_index["records_processed"] == 2
     paths = [e["evidence_manifest"] for e in run_index["entries"]]
     assert len(set(paths)) == 2
-    assert "run-alpha/" in paths[0]
-    assert "run-beta/" in paths[1]
+    assert paths[0].startswith("run-alpha__")
+    assert paths[1].startswith("run-beta__")
 
 
 # --------------------------------------------------------------------------- #
@@ -491,7 +498,7 @@ def test_missing_media_and_partial_layer_skip_never_fabricates_images(tmp_path: 
     # Provide ONLY L2 media file; L0, L1 videos and L3 PNGs are absent
     media_root = tmp_path / "partial_media"
     (media_root / "sub_video" / "videos").mkdir(parents=True)
-    (media_root / "sub_video" / "videos" / "video_0001_fracture_01.mp4").write_bytes(b"l2-only")
+    (media_root / "sub_video" / "videos" / "video_0001_fracture_01.mp4").write_bytes(L2_BYTES)
 
     rec = make_v3_record(media_root=media_root, clip_indices=(0, 30))
     out_dir = tmp_path / "out_partial"
@@ -651,9 +658,9 @@ def test_source_replay_mapping_and_media_root_relocation(tmp_path: Path) -> None
     (media_root / "videos").mkdir(parents=True)
     (media_root / "roi" / "videos").mkdir(parents=True)
     (media_root / "sub_video" / "videos").mkdir(parents=True)
-    (media_root / "videos" / "video_0002.mp4").write_bytes(b"l0")
-    (media_root / "roi" / "videos" / "video_0002.mp4").write_bytes(b"l1")
-    (media_root / "sub_video" / "videos" / "video_0002_post_01.mp4").write_bytes(b"l2")
+    (media_root / "videos" / "video_0002.mp4").write_bytes(L0_BYTES)
+    (media_root / "roi" / "videos" / "video_0002.mp4").write_bytes(L1_BYTES)
+    (media_root / "sub_video" / "videos" / "video_0002_post_01.mp4").write_bytes(L2_BYTES)
 
     rec = make_v3_record(
         candidate_id="video_0002_post_01",
@@ -910,3 +917,303 @@ def test_cli_main_and_subprocess_smoke(tmp_path: Path) -> None:
     )
     assert proc_bad.returncode == 2
     assert "five-label-input-record/3" in proc_bad.stderr
+
+
+# --------------------------------------------------------------------------- #
+# 6. Regression tests for Codex PR #21 review findings (BLOCKING 1-6 + ADV 7)
+# --------------------------------------------------------------------------- #
+
+def test_disk_sha256_mismatch_skips_decoding_and_records_observed_digest(tmp_path: Path) -> None:
+    """Finding 1: never decode a tampered L0/L1/L2 video and attach old SHA-256."""
+    media_root = tmp_path / "tampered_media"
+    (media_root / "videos").mkdir(parents=True)
+    (media_root / "roi" / "videos").mkdir(parents=True)
+    (media_root / "sub_video" / "videos").mkdir(parents=True)
+    (media_root / "videos" / "video_0001.mp4").write_bytes(L0_BYTES)
+    tampered_l1 = b"TAMPERED-L1-VIDEO-BYTES"
+    (media_root / "roi" / "videos" / "video_0001.mp4").write_bytes(tampered_l1)
+    (media_root / "sub_video" / "videos" / "video_0001_fracture_01.mp4").write_bytes(L2_BYTES)
+
+    rec = make_v3_record(media_root=media_root, clip_indices=(0, 30))
+    out_dir = tmp_path / "out_tampered"
+    fake = FakeFrameExtractor()
+
+    run_index = extract_evidence_bundle(
+        [rec],
+        output_dir=out_dir,
+        mode="extract_images",
+        extractor=fake,
+        media_root=media_root,
+    )
+    manifest = json.loads((out_dir / run_index["entries"][0]["evidence_manifest"]).read_text(encoding="utf-8"))
+
+    # L1 was NOT decoded (2 frames x 2 intact layers L0 & L2 = 4 calls, never 6)
+    assert len(fake.calls) == 4
+    called_files = {name for name, _, _ in fake.calls}
+    assert "video_0001_fracture_01.mp4" in called_files
+    # L0 shares filename video_0001.mp4 with L1, so check extracted counts directly
+    assert manifest["media_digests"]["l1"]["recorded_sha256"] == L1_SHA
+    assert manifest["media_digests"]["l1"]["observed_sha256"] == hashlib.sha256(tampered_l1).hexdigest()
+    assert manifest["media_digests"]["l1"]["digest_match_on_disk"] is False
+    assert manifest["media_digests"]["l0"]["digest_match_on_disk"] is True
+    assert manifest["media_digests"]["l2"]["digest_match_on_disk"] is True
+    assert "l1_disk_sha256_mismatch" in manifest["proof_boundaries"]["active_limitations"]
+
+    for frame in manifest["frames"]:
+        assert frame["layers"]["l1"]["extraction_status"] == "skipped"
+        assert "l1_disk_sha256_mismatch" in frame["layers"]["l1"]["skip_reason"]
+        assert frame["layers"]["l1"]["extracted_image"] is None
+        assert frame["layers"]["l1"]["recorded_sha256"] == L1_SHA
+        assert frame["layers"]["l1"]["observed_sha256"] == hashlib.sha256(tampered_l1).hexdigest()
+        assert frame["layers"]["l2"]["extraction_status"] == "extracted"
+        assert frame["layers"]["l0"]["extraction_status"] == "extracted"
+
+
+def test_l3_multi_run_ambiguity_skipped_and_run_scoped_or_sha256_bound(tmp_path: Path) -> None:
+    """Finding 2: multi-run same candidate must not silently reuse unscoped shared L3 PNGs."""
+    rec_a = make_v3_record(candidate_id="clip_shared", run_id="run-A", clip_indices=(0,))
+    rec_b = make_v3_record(candidate_id="clip_shared", run_id="run-B", clip_indices=(10,))
+
+    # Case 1: Only unscoped shared directory exists -> BOTH runs must skip L3 (even when filtered!)
+    shared_l3 = tmp_path / "shared_l3"
+    (shared_l3 / "clip_shared").mkdir(parents=True)
+    (shared_l3 / "clip_shared" / "frame_001.png").write_bytes(b"SHARED_AMBIGUOUS")
+
+    jsonl_path = write_jsonl(tmp_path / "two_runs.jsonl", [rec_a, rec_b])
+    out_filtered = tmp_path / "out_filtered_ambig"
+    rc = main(
+        [
+            "--input-records",
+            str(jsonl_path),
+            "--output-dir",
+            str(out_filtered),
+            "--run-id",
+            "run-A",
+            "--l3-frames-dir",
+            str(shared_l3),
+            "--extract-images",
+        ]
+    )
+    assert rc == 0
+    idx = json.loads((out_filtered / "run_index.json").read_text(encoding="utf-8"))
+    m_a = json.loads((out_filtered / idx["entries"][0]["evidence_manifest"]).read_text(encoding="utf-8"))
+    assert m_a["frames"][0]["layers"]["l3"]["extraction_status"] == "skipped"
+    assert "l3_image_ambiguous_across_runs" in m_a["frames"][0]["layers"]["l3"]["skip_reason"]
+    assert m_a["frames"][0]["layers"]["l3"]["extracted_image"] is None
+
+    # Case 2: Run-scoped subdirectories exist -> each run copies its own L3 PNG
+    scoped_l3 = tmp_path / "scoped_l3"
+    (scoped_l3 / "run-A" / "clip_shared").mkdir(parents=True)
+    (scoped_l3 / "run-B" / "clip_shared").mkdir(parents=True)
+    (scoped_l3 / "run-A" / "clip_shared" / "frame_001.png").write_bytes(b"PNG_FROM_RUN_A")
+    (scoped_l3 / "run-B" / "clip_shared" / "frame_001.png").write_bytes(b"PNG_FROM_RUN_B")
+
+    out_scoped = tmp_path / "out_scoped"
+    run_idx = extract_evidence_bundle(
+        [rec_a, rec_b],
+        output_dir=out_scoped,
+        mode="extract_images",
+        extractor=FakeFrameExtractor(),
+        l3_frames_dir=scoped_l3,
+    )
+    ma = json.loads((out_scoped / run_idx["entries"][0]["evidence_manifest"]).read_text(encoding="utf-8"))
+    mb = json.loads((out_scoped / run_idx["entries"][1]["evidence_manifest"]).read_text(encoding="utf-8"))
+    assert ma["frames"][0]["layers"]["l3"]["extraction_status"] == "copied"
+    assert ma["frames"][0]["layers"]["l3"]["binding_basis"] == "run_scoped_directory"
+    assert ma["frames"][0]["layers"]["l3"]["observed_sha256"] == hashlib.sha256(b"PNG_FROM_RUN_A").hexdigest()
+    assert mb["frames"][0]["layers"]["l3"]["extraction_status"] == "copied"
+    assert mb["frames"][0]["layers"]["l3"]["observed_sha256"] == hashlib.sha256(b"PNG_FROM_RUN_B").hexdigest()
+
+    # Case 3: Per-frame image_sha256 uniquely binds even in shared directory, and rejects mismatch
+    rec_sha_ok = make_v3_record(candidate_id="clip_shared", run_id="run-C", clip_indices=(0,))
+    rec_sha_ok["frames"][0]["image_sha256"] = hashlib.sha256(b"SHARED_AMBIGUOUS").hexdigest()
+    rec_sha_bad = make_v3_record(candidate_id="clip_shared", run_id="run-D", clip_indices=(0,))
+    rec_sha_bad["frames"][0]["image_sha256"] = "0" * 64
+
+    out_sha = tmp_path / "out_sha_bound"
+    idx_sha = extract_evidence_bundle(
+        [rec_sha_ok, rec_sha_bad],
+        output_dir=out_sha,
+        mode="extract_images",
+        extractor=FakeFrameExtractor(),
+        l3_frames_dir=shared_l3,
+    )
+    m_ok = json.loads((out_sha / idx_sha["entries"][0]["evidence_manifest"]).read_text(encoding="utf-8"))
+    m_bad = json.loads((out_sha / idx_sha["entries"][1]["evidence_manifest"]).read_text(encoding="utf-8"))
+    assert m_ok["frames"][0]["layers"]["l3"]["extraction_status"] == "copied"
+    assert m_ok["frames"][0]["layers"]["l3"]["binding_basis"] == "frame_sha256_verified"
+    assert m_bad["frames"][0]["layers"]["l3"]["extraction_status"] == "skipped"
+    assert "l3_image_sha256_mismatch" in m_bad["frames"][0]["layers"]["l3"]["skip_reason"]
+
+
+def test_ffmpeg_does_not_reuse_stale_existing_png_on_empty_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Finding 3: ffmpeg returning 0 without emitting a frame must never report stale PNG."""
+    fake_bin = tmp_path / "ffmpeg"
+    fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    video = tmp_path / "clip.mp4"
+    video.write_bytes(b"video")
+
+    out_png = tmp_path / "out" / "existing_frame.png"
+    out_png.parent.mkdir(parents=True)
+    out_png.write_bytes(b"STALE_OLD_PNG_BYTES")
+
+    def fake_run_no_output(cmd, capture_output, text):
+        # Simulate ffmpeg returning exit code 0 when select=eq(n,9999) matches nothing
+        assert Path(cmd[-1]) != out_png  # must decode into a fresh temp file, never directly to out_png
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run_no_output)
+    extractor = FfmpegFrameExtractor(ffmpeg_bin=str(fake_bin))
+    res = extractor.extract_video_frame(video, 9999, out_png)
+    assert res.status == "skipped"
+    assert res.output_path is None
+    assert "ffmpeg_decode_failed" in (res.skip_reason or "")
+    # Stale file untouched and temp dir cleaned up
+    assert out_png.read_bytes() == b"STALE_OLD_PNG_BYTES"
+    assert [p.name for p in out_png.parent.iterdir()] == ["existing_frame.png"]
+
+
+def test_rejects_symlink_escape_and_nested_git_inside_output_dir(tmp_path: Path) -> None:
+    """Finding 4: reject symlink escapes into Git repo and nested .git dirs under output_dir."""
+    from script.frame_correspondence.evidence import _run_slug_for_record
+
+    rec = make_v3_record(candidate_id="clip_sec", run_id="run-sec", clip_indices=(0,))
+    run_slug = _run_slug_for_record(rec)
+
+    # Case 1: Symlink inside output_dir pointing into Git repo
+    out_symlink = tmp_path / "out_symlink"
+    out_symlink.mkdir()
+    (out_symlink / run_slug).symlink_to(REPO_ROOT)
+    with pytest.raises(EvidenceError, match="symlink|escapes|inside Git"):
+        extract_evidence_bundle([rec], output_dir=out_symlink, mode="metadata_only")
+
+    # Case 2: Nested .git repository inside output_dir/<run_slug>
+    out_nested_git = tmp_path / "out_nested_git"
+    (out_nested_git / run_slug / ".git").mkdir(parents=True)
+    with pytest.raises(EvidenceError, match="inside Git repository"):
+        extract_evidence_bundle([rec], output_dir=out_nested_git, mode="metadata_only")
+
+
+def test_colliding_run_ids_get_distinct_dirs_and_existing_manifest_overwrite_rejected(
+    tmp_path: Path,
+) -> None:
+    """Finding 5: 'run/a' vs 'run_a' never collide; conflicting existing manifest refuses overwrite."""
+    rec_slash = make_v3_record(candidate_id="clip_x", run_id="run/a", clip_indices=(0,))
+    rec_under = make_v3_record(candidate_id="clip_x", run_id="run_a", clip_indices=(0,))
+    out_dir = tmp_path / "out_collision"
+
+    # Run in two separate invocations targeting the same output_dir (simulates --run-id filtering)
+    idx1 = extract_evidence_bundle([rec_slash], output_dir=out_dir, mode="metadata_only")
+    idx2 = extract_evidence_bundle([rec_under], output_dir=out_dir, mode="metadata_only")
+
+    p1 = idx1["entries"][0]["evidence_manifest"]
+    p2 = idx2["entries"][0]["evidence_manifest"]
+    assert p1 != p2
+    assert (out_dir / p1).is_file()
+    assert (out_dir / p2).is_file()
+
+    # Now tamper with an existing manifest's binding identity and verify re-run refuses overwrite
+    manifest_file = out_dir / p1
+    tampered = json.loads(manifest_file.read_text(encoding="utf-8"))
+    tampered["run_record"]["run_id"] = "different-other-run"
+    manifest_file.write_text(json.dumps(tampered), encoding="utf-8")
+
+    with pytest.raises(EvidenceError, match="refusing to overwrite existing evidence manifest"):
+        extract_evidence_bundle([rec_slash], output_dir=out_dir, mode="metadata_only")
+
+
+@pytest.mark.parametrize("omitted_key", ["roi_frame_index", "original_source_frame_index", "clip_frame_index"])
+def test_missing_frame_index_key_raises_evidence_error_and_cli_exit_2(
+    tmp_path: Path, omitted_key: str
+) -> None:
+    """Finding 6: omitted index key in unverified record must return exit 2, never KeyError."""
+    bad = make_v3_record(method="unverified", clip_indices=(0,))
+    del bad["frames"][0][omitted_key]
+    bad_path = write_jsonl(tmp_path / f"omit_{omitted_key}.jsonl", [bad])
+
+    with pytest.raises(EvidenceError, match=omitted_key):
+        load_input_records(bad_path)
+
+    rc = main(
+        [
+            "--input-records",
+            str(bad_path),
+            "--output-dir",
+            str(tmp_path / f"out_{omitted_key}"),
+            "--metadata-only",
+        ]
+    )
+    assert rc == 2
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "script.frame_correspondence",
+            "--input-records",
+            str(bad_path),
+            "--output-dir",
+            str(tmp_path / f"sub_out_{omitted_key}"),
+            "--metadata-only",
+        ],
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 2
+    assert omitted_key in proc.stderr
+
+
+def test_unmatched_subvideo_manifest_never_upgrades_audit_tier_to_full(tmp_path: Path) -> None:
+    """Finding 7 (Advisory): only inherit audit_tier when candidate AND manifest_sha256 match."""
+    # Case 1: manifest_sha256 mismatch -> must NOT inherit 'full'
+    rec = make_v3_record(candidate_id="clip_tier", clip_indices=(0,))
+    sv_wrong_sha = tmp_path / "sv_full_wrong_sha.json"
+    sv_wrong_sha.write_text(
+        json.dumps(
+            {
+                "schema": "tensile-unified-sub-video-manifest/1",
+                "verification": {"mode": "full"},
+                "candidates": [
+                    {
+                        "candidate_id": "clip_tier",
+                        "source_video_id": "video_0001",
+                        "output": {"sha256": L2_SHA},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    sv_loaded = load_subvideo_manifest(sv_wrong_sha)
+    assert sv_loaded["sha256"] != rec["manifest_sha256"]
+
+    out_wrong = tmp_path / "out_wrong_manifest"
+    idx_wrong = extract_evidence_bundle(
+        [rec],
+        output_dir=out_wrong,
+        mode="metadata_only",
+        subvideo_manifest=sv_loaded,
+    )
+    m_wrong = json.loads((out_wrong / idx_wrong["entries"][0]["evidence_manifest"]).read_text(encoding="utf-8"))
+    assert m_wrong["clip_identity"]["subvideo_manifest_binding"]["binding_verified"] is False
+    assert m_wrong["proof_boundaries"]["audit_tier"] == "unknown"
+    assert "subvideo_manifest_sha256_mismatch_tier_not_inherited" in m_wrong["proof_boundaries"]["active_limitations"]
+
+    # Case 2: manifest_sha256 matches AND candidate matches -> inherits 'full' cleanly
+    rec_matching = make_v3_record(candidate_id="clip_tier", clip_indices=(0,))
+    rec_matching["manifest_sha256"] = sv_loaded["sha256"]
+    out_match = tmp_path / "out_match_manifest"
+    idx_match = extract_evidence_bundle(
+        [rec_matching],
+        output_dir=out_match,
+        mode="metadata_only",
+        subvideo_manifest=sv_loaded,
+    )
+    m_match = json.loads((out_match / idx_match["entries"][0]["evidence_manifest"]).read_text(encoding="utf-8"))
+    assert m_match["clip_identity"]["subvideo_manifest_binding"]["binding_verified"] is True
+    assert m_match["proof_boundaries"]["audit_tier"] == "full"
+    assert m_match["proof_boundaries"]["no_frame_level_replay"] is False
+    assert m_match["proof_boundaries"]["replaces_full_receipt"] is False
