@@ -242,7 +242,7 @@
   - `video_0099`：`video_0099_fracture_01`、`video_0099_fracture_02`
   - `video_0106`：`video_0106_fracture_01`、`video_0106_post_01`、`video_0106_post_02`
 - [x] B1 固定 test 批已审完并入库（314/314 已确认，2026-11-24，PR #16）：test 划分内未审核 0 条，草稿／疑问／退回均为 0；审核中发现的疑似源表错标已登记至 [§8 SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正)。
-- [ ] **当前批次 B2（每折 val 抽样 60 条）**：先由用户确认三折 val 抽样规则（三折池规模 `432 / 440 / 447`），落入 `data/subvideo-review/batches.json` 并将 B2 状态由 `undefined` 切换为 `ready` 后，再启动人工审核。
+- [ ] **当前批次 B2（每折 val 抽样 60 条）**：先由用户确认三折 val 抽样规则（三折池规模 `432 / 440 / 447`），按规则生成每折 60 条的固定候选名单后，在 `data/subvideo-review/batches.json` 中改为 `selection.type = "explicit_ids"` 登记名单、切换 `status` 为 `ready` 并同步更新批次守卫测试（切勿沿用 `rule` 直接改 `ready`，否则 `batches.py` 不读 `sample_per_fold`，会返回三折 val 并集即全部 1,319 条开发候选），再启动人工审核。
 - [ ] B3 开发集三折 train 全量（1,319 条开发池中扣除已审项）：在 B2 之后推进，每批完成后同步进度与遗留问题。
 - [ ] 建立防漂移抽检记录（抽检片段、复看结论与差异处理）。
 
@@ -350,7 +350,7 @@
 
 - **历史划分指纹保留**：`data/splits/three-fold/manifest.json` 的 `inputs."labels.csv".sha256` 记录的是 2026-11-19 生成划分时的历史指纹（`c928bea3…c1ec354c`），检查项 L1-02（见 [checks.md](checks.md)）当前为黄灯；改表后应保留历史划分清单，另在变更单与 `docs/facts.yaml` DF-033 追加新 CSV 指纹，不为消黄改写历史划分清单（若全部改动均在固定 test，开发三折亦无需重跑）。
 - **源级统计与文档同步**：同步更新 [整体标签分布](label-distribution.md)、[划分设计](split/data-split-design.md)、[测评数据覆盖建议](research/evaluation-data-requirements.md) 与 `data/split-inputs/source-groups-20261107.json` 的来源指纹。
-- **事实链与规则边界**：在 `docs/facts.yaml` DF-033 的标注表 SHA 链（`9970d259…` → `2f046b06…` → `c928bea3…`）追加新 SHA，不就地覆盖旧值；显式写明 `docs/label.md` 与 DF-049 中「源标注层不动」仅指片段层删除「无」不连带改源表，而非禁止修正源表错标。
+- **事实链与规则边界**：在 `docs/facts.yaml` DF-033 的标注表 SHA 链（`9970d259…` → `2f046b06…` → `c928bea3…`）追加新 SHA，不就地覆盖旧值；在变更单与 `docs/facts.yaml` 中显式写明 `docs/label.md` 与 DF-049 的「源标注层不动」仅指片段层删除「无」不连带改源表，而非禁止修正源表错标——**切勿为此顺手编辑 `docs/label.md`**（审核身份包含该文件字节哈希 `label_rules_sha256`，哪怕只改说明文字，重启审核服务后也会将全部 347 条现有确认记录归入历史）。
 - **ROI 清单评估**：明确是否重扫 `data/roi/manifest.json`（重扫只刷标签快照与指纹、不重编码视频；不重扫则清单快照滞后），将取舍写入变更单。
 - **红线（严禁重生成子视频）**：无论源表如何修正，**不得因此重生成 `data/sub_video/` 清单或重新生成已审片段**。单改 CSV 不会使已确认的 347 条审核记录失效；但改表后直接对当前批次跑 `--audit-only` 会因输入身份指纹不符而拒跑，复验当前批次须使用生成时的输入快照。
 
@@ -375,7 +375,7 @@
 ### 完成结果
 
 - 按用户确认的 [标签说明](label.md) 完成 110 条源视频五类标签标注；无法定位精确断裂帧的视频按 DF-013 记录时间上下界，不视为漏标。
-- 第二轮成果位于 `data/`：[标注表](../data/annotation-table-full.csv) 及 [原视频副本](../data/videos)，CSV 视频路径以项目根目录为基准；材料类型已按唯一视频 ID 和文件名从 `data/source/annotations/all_videos_tag.csv` 补全。
+- 第二轮成果位于 `data/`：[标注表](../data/annotation-table-full.csv) 及本地原视频目录 `data/videos/`（媒体不入 Git，目录约定见 [data/README.md](../data/README.md)），CSV 视频路径以项目根目录为基准；材料类型已按唯一视频 ID 和文件名从 `data/source/annotations/all_videos_tag.csv` 补全。
 - 用户确认本轮无需维护旧原视频与旧子视频的对应关系。
 
 ### 历史验证记录（2026-11-07 本机基线）
