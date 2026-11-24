@@ -4,8 +4,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import shutil
+import tempfile
 from typing import Any
 
 from .extractor import (
@@ -35,11 +38,20 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _is_git_repo_dir(path: Path) -> bool:
+    """Detect normal Git repos (.git dir), worktrees (.git file), and bare Git repos."""
+    if (path / ".git").exists():
+        return True
+    if (path / "HEAD").is_file() and (path / "objects").is_dir() and (path / "refs").is_dir():
+        return True
+    return False
+
+
 def ensure_output_outside_git_repo(output_dir: Path | str) -> Path:
-    """Reject output directories inside any Git repository/worktree per DEC-005."""
+    """Reject output directories inside any Git repository, worktree, or bare repo per DEC-005."""
     resolved = Path(output_dir).expanduser().resolve()
     for ancestor in (resolved, *resolved.parents):
-        if (ancestor / ".git").exists():
+        if _is_git_repo_dir(ancestor):
             raise EvidenceError(
                 f"output directory {resolved} is inside Git repository {ancestor}; "
                 "DEC-005 forbids writing frame-correspondence evidence outputs into Git"
@@ -66,6 +78,20 @@ def validate_output_path(path: Path, output_root: Path, *, allow_existing_symlin
         )
     ensure_output_outside_git_repo(resolved_target)
     return resolved_target
+
+
+def _atomic_write_text(path: Path, text: str, *, output_root: Path) -> None:
+    """Write UTF-8 text via a fresh temp file + os.replace so hard-linked inodes are never truncated."""
+    validate_output_path(path, output_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    validate_output_path(path.parent, output_root)
+    tmp_dir = Path(tempfile.mkdtemp(dir=path.parent, prefix=".tmp_write_"))
+    tmp_file = tmp_dir / path.name
+    try:
+        tmp_file.write_text(text, encoding="utf-8")
+        os.replace(tmp_file, path)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def _safe_slug(value: str, fallback: str) -> str:
@@ -238,6 +264,8 @@ def _build_proof_boundaries(
                 limitations.append("subvideo_manifest_candidate_not_found_tier_not_inherited")
             if binding.get("record_manifest_sha256_match") is False:
                 limitations.append("subvideo_manifest_sha256_mismatch_tier_not_inherited")
+            elif binding.get("record_manifest_sha256_match") is None:
+                limitations.append("subvideo_manifest_record_sha256_missing_tier_not_inherited")
 
     if len(set(all_tiers)) > 1:
         limitations.append("audit_tier_conflict_conservatively_downgraded")
@@ -274,10 +302,13 @@ def _build_proof_boundaries(
 
 def _derive_source_video_id(
     record: dict[str, Any],
-    candidate_entry: dict[str, Any] | None,
+    verified_candidate_entry: dict[str, Any] | None,
 ) -> str | None:
-    if isinstance(candidate_entry, dict) and isinstance(candidate_entry.get("source_video_id"), str):
-        return candidate_entry["source_video_id"]
+    if (
+        isinstance(verified_candidate_entry, dict)
+        and isinstance(verified_candidate_entry.get("source_video_id"), str)
+    ):
+        return verified_candidate_entry["source_video_id"]
     if isinstance(record.get("source_video_id"), str) and record["source_video_id"].strip():
         return record["source_video_id"].strip()
     l0 = (record.get("lineage_media") or {}).get("l0")
@@ -311,7 +342,8 @@ def _bind_manifests(
                     f"{cid}: subvideo manifest output.sha256 {cand_sha} != "
                     f"record.clip_sha256 {record.get('clip_sha256')}"
                 )
-        binding_verified = (candidate_entry is not None) and (manifest_sha_match is not False)
+        # Strict manifest binding: requires BOTH candidate hit AND explicit manifest_sha256 match.
+        binding_verified = (candidate_entry is not None) and (manifest_sha_match is True)
         subvideo_binding = {
             "provided": True,
             "manifest_path": subvideo_manifest["path"],
@@ -321,7 +353,8 @@ def _bind_manifests(
             "binding_verified": binding_verified,
         }
 
-    source_video_id = _derive_source_video_id(record, candidate_entry)
+    verified_candidate_entry = candidate_entry if subvideo_binding.get("binding_verified") else None
+    source_video_id = _derive_source_video_id(record, verified_candidate_entry)
     roi_binding: dict[str, Any] = {"provided": False}
     if roi_manifest is not None:
         roi_entry = roi_manifest["videos_by_id"].get(source_video_id) if source_video_id else None
@@ -344,7 +377,7 @@ def _bind_manifests(
             "recipe_hash": roi_entry.get("recipe_hash") if isinstance(roi_entry, dict) else None,
         }
 
-    return candidate_entry, subvideo_binding, roi_binding
+    return verified_candidate_entry, subvideo_binding, roi_binding
 
 
 def _relative_posix(path: Path | None, base_dir: Path) -> str | None:
@@ -372,6 +405,7 @@ def build_evidence_manifest(
     media_root: Path | None = None,
     l3_frames_dir: Path | None = None,
     input_records_dir: Path | None = None,
+    allow_run_only_l3_fallback: bool = True,
     allow_unscoped_l3_fallback: bool = True,
     digest_cache: dict[Path, str | None] | None = None,
 ) -> dict[str, Any]:
@@ -384,12 +418,12 @@ def build_evidence_manifest(
     input_id = str(record["input_id"])
     run_slug = _run_slug_for_record(record)
 
-    candidate_entry, subvideo_binding, roi_binding = _bind_manifests(
+    verified_candidate_entry, subvideo_binding, roi_binding = _bind_manifests(
         record,
         subvideo_manifest=subvideo_manifest,
         roi_manifest=roi_manifest,
     )
-    source_video_id = _derive_source_video_id(record, candidate_entry)
+    source_video_id = _derive_source_video_id(record, verified_candidate_entry)
 
     lineage_media = record["lineage_media"]
     resolved_video_paths: dict[str, Path | None] = {
@@ -424,7 +458,7 @@ def build_evidence_manifest(
         record,
         subvideo_manifest=subvideo_manifest,
         subvideo_binding=subvideo_binding,
-        candidate_entry=candidate_entry,
+        candidate_entry=verified_candidate_entry,
         extra_limitations=extra_limitations,
     )
 
@@ -455,7 +489,7 @@ def build_evidence_manifest(
 
         layers_out: dict[str, dict[str, Any]] = {}
 
-        # --- L3: actual model input frame (run-bound, never substituted by L2) ---
+        # --- L3: actual model input frame (run/input-bound, never substituted by L2) ---
         l3_resolution = resolve_l3_image(
             image_name,
             candidate_id=cid,
@@ -463,6 +497,7 @@ def build_evidence_manifest(
             input_id=input_id,
             run_slug=run_slug,
             expected_sha256=expected_l3_sha,
+            allow_run_only_fallback=allow_run_only_l3_fallback,
             allow_unscoped_shared_fallback=allow_unscoped_l3_fallback,
             l3_frames_dir=l3_frames_dir,
             input_records_dir=input_records_dir,
@@ -857,6 +892,15 @@ def count_candidate_runs(records: list[dict[str, Any]]) -> dict[str, int]:
     return {cid: len(identities) for cid, identities in by_candidate.items()}
 
 
+def count_candidate_run_input_ids(records: list[dict[str, Any]]) -> dict[tuple[str, str | None], int]:
+    """Count distinct input_id values per (candidate_id, run_id) across a record set."""
+    by_pair: dict[tuple[str, str | None], set[str]] = {}
+    for rec in records:
+        key = (str(rec["candidate_id"]), record_run_id(rec))
+        by_pair.setdefault(key, set()).add(str(rec["input_id"]))
+    return {key: len(input_ids) for key, input_ids in by_pair.items()}
+
+
 def extract_evidence_bundle(
     records: list[dict[str, Any]],
     *,
@@ -870,10 +914,15 @@ def extract_evidence_bundle(
     l3_frames_dir: Path | None = None,
     input_records_dir: Path | None = None,
     candidate_run_counts: dict[str, int] | None = None,
+    candidate_run_input_counts: dict[tuple[str, str | None], int] | None = None,
 ) -> dict[str, Any]:
-    """Extract per-run/clip evidence_manifest.json + index.md into output_dir outside Git."""
+    """Extract per-run/clip evidence_manifest.json + index.md into output_dir outside Git.
+
+    Performs full pre-flight validation of every record's target paths, duplicate identities,
+    existing manifest bindings, and optional manifest digests BEFORE creating directories or
+    writing any files so a later error never corrupts prior outputs.
+    """
     out_root = ensure_output_outside_git_repo(output_dir)
-    out_root.mkdir(parents=True, exist_ok=True)
     validate_output_path(out_root, out_root, allow_existing_symlink=True)
 
     active_extractor: FrameExtractor
@@ -885,9 +934,15 @@ def extract_evidence_bundle(
         active_extractor = build_extractor(mode, backend=backend)
 
     run_counts = candidate_run_counts if candidate_run_counts is not None else count_candidate_runs(records)
-    digest_cache: dict[Path, str | None] = {}
+    run_input_counts = (
+        candidate_run_input_counts
+        if candidate_run_input_counts is not None
+        else count_candidate_run_input_ids(records)
+    )
+
+    # --- Phase 1: Pure pre-flight validation (zero writes, zero mkdir, zero extraction) ---
     used_dirs: dict[Path, tuple[str | None, str, str]] = {}
-    entries: list[dict[str, Any]] = []
+    planned: list[tuple[dict[str, Any], Path, Path, Path]] = []
 
     for index, rec in enumerate(records):
         cid = str(rec["candidate_id"])
@@ -911,6 +966,7 @@ def extract_evidence_bundle(
 
         manifest_path = target_dir / "evidence_manifest.json"
         index_path = target_dir / "index.md"
+        validate_output_path(target_dir / "frames", out_root)
         validate_output_path(manifest_path, out_root)
         validate_output_path(index_path, out_root)
         _check_existing_manifest_identity(
@@ -919,6 +975,25 @@ def extract_evidence_bundle(
             input_id=input_id,
             candidate_id=cid,
         )
+        # Validate manifest digest conflicts before touching disk.
+        _bind_manifests(
+            rec,
+            subvideo_manifest=subvideo_manifest,
+            roi_manifest=roi_manifest,
+        )
+        planned.append((rec, target_dir, manifest_path, index_path))
+
+    run_index_path = out_root / "run_index.json"
+    validate_output_path(run_index_path, out_root)
+
+    # --- Phase 2: Execution and atomic writes ---
+    out_root.mkdir(parents=True, exist_ok=True)
+    digest_cache: dict[Path, str | None] = {}
+    entries: list[dict[str, Any]] = []
+
+    for rec, target_dir, manifest_path, index_path in planned:
+        cid = str(rec["candidate_id"])
+        run_id = record_run_id(rec)
 
         target_dir.mkdir(parents=True, exist_ok=True)
         validate_output_path(target_dir, out_root)
@@ -934,17 +1009,21 @@ def extract_evidence_bundle(
             media_root=media_root,
             l3_frames_dir=l3_frames_dir,
             input_records_dir=input_records_dir,
+            allow_run_only_l3_fallback=(run_input_counts.get((cid, run_id), 1) <= 1),
             allow_unscoped_l3_fallback=(run_counts.get(cid, 1) <= 1),
             digest_cache=digest_cache,
         )
 
-        validate_output_path(manifest_path, out_root)
-        validate_output_path(index_path, out_root)
-        manifest_path.write_text(
+        _atomic_write_text(
+            manifest_path,
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
+            output_root=out_root,
         )
-        index_path.write_text(render_index_markdown(manifest), encoding="utf-8")
+        _atomic_write_text(
+            index_path,
+            render_index_markdown(manifest),
+            output_root=out_root,
+        )
 
         entries.append(
             {
@@ -970,10 +1049,9 @@ def extract_evidence_bundle(
         "records_processed": len(entries),
         "entries": entries,
     }
-    run_index_path = out_root / "run_index.json"
-    validate_output_path(run_index_path, out_root)
-    run_index_path.write_text(
+    _atomic_write_text(
+        run_index_path,
         json.dumps(run_index, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
+        output_root=out_root,
     )
     return run_index

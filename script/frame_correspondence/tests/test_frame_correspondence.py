@@ -1217,3 +1217,222 @@ def test_unmatched_subvideo_manifest_never_upgrades_audit_tier_to_full(tmp_path:
     assert m_match["proof_boundaries"]["audit_tier"] == "full"
     assert m_match["proof_boundaries"]["no_frame_level_replay"] is False
     assert m_match["proof_boundaries"]["replaces_full_receipt"] is False
+
+
+# --------------------------------------------------------------------------- #
+# 7. Regression tests for Codex PR #21 Round-2 review findings (Items 1-6)
+# --------------------------------------------------------------------------- #
+
+def test_same_run_id_multiple_input_ids_rejects_bare_run_dir_and_allows_input_slug(
+    tmp_path: Path,
+) -> None:
+    """Round-2 Item 1: same (candidate_id, run_id) with distinct input_ids must not share bare <run_id> dir."""
+    from script.frame_correspondence.evidence import _run_slug_for_record
+
+    rec_1 = make_v3_record(candidate_id="clip_same_run", run_id="run-shared", clip_indices=(0,))
+    rec_2 = make_v3_record(candidate_id="clip_same_run", run_id="run-shared", clip_indices=(15,))
+    assert rec_1["input_id"] != rec_2["input_id"]
+
+    # Case 1: Only bare <run_id>/<candidate_id>/frame_001.png exists -> ambiguous, must skip!
+    bare_l3 = tmp_path / "bare_l3"
+    (bare_l3 / "run-shared" / "clip_same_run").mkdir(parents=True)
+    (bare_l3 / "run-shared" / "clip_same_run" / "frame_001.png").write_bytes(b"BARE_RUN_DIR_PNG")
+
+    out_bare = tmp_path / "out_bare_ambig"
+    idx_bare = extract_evidence_bundle(
+        [rec_1, rec_2],
+        output_dir=out_bare,
+        mode="extract_images",
+        extractor=FakeFrameExtractor(),
+        l3_frames_dir=bare_l3,
+    )
+    for entry in idx_bare["entries"]:
+        m = json.loads((out_bare / entry["evidence_manifest"]).read_text(encoding="utf-8"))
+        l3 = m["frames"][0]["layers"]["l3"]
+        assert l3["extraction_status"] == "skipped"
+        assert "l3_image_ambiguous_same_run_id_multiple_input_ids" in l3["skip_reason"]
+        assert l3["extracted_image"] is None
+
+    # Case 2: Exact run_slug-scoped dirs exist -> each input_id copies its own PNG!
+    slug_1 = _run_slug_for_record(rec_1)
+    slug_2 = _run_slug_for_record(rec_2)
+    assert slug_1 != slug_2
+    exact_l3 = tmp_path / "exact_l3"
+    (exact_l3 / slug_1 / "clip_same_run").mkdir(parents=True)
+    (exact_l3 / slug_2 / "clip_same_run").mkdir(parents=True)
+    (exact_l3 / slug_1 / "clip_same_run" / "frame_001.png").write_bytes(b"INPUT_1_EXACT_PNG")
+    (exact_l3 / slug_2 / "clip_same_run" / "frame_001.png").write_bytes(b"INPUT_2_EXACT_PNG")
+
+    out_exact = tmp_path / "out_exact_scoped"
+    idx_exact = extract_evidence_bundle(
+        [rec_1, rec_2],
+        output_dir=out_exact,
+        mode="extract_images",
+        extractor=FakeFrameExtractor(),
+        l3_frames_dir=exact_l3,
+    )
+    m1 = json.loads((out_exact / idx_exact["entries"][0]["evidence_manifest"]).read_text(encoding="utf-8"))
+    m2 = json.loads((out_exact / idx_exact["entries"][1]["evidence_manifest"]).read_text(encoding="utf-8"))
+    assert m1["frames"][0]["layers"]["l3"]["extraction_status"] == "copied"
+    assert m1["frames"][0]["layers"]["l3"]["binding_basis"] == "input_scoped_directory"
+    assert m1["frames"][0]["layers"]["l3"]["observed_sha256"] == hashlib.sha256(b"INPUT_1_EXACT_PNG").hexdigest()
+    assert m2["frames"][0]["layers"]["l3"]["extraction_status"] == "copied"
+    assert m2["frames"][0]["layers"]["l3"]["binding_basis"] == "input_scoped_directory"
+    assert m2["frames"][0]["layers"]["l3"]["observed_sha256"] == hashlib.sha256(b"INPUT_2_EXACT_PNG").hexdigest()
+
+
+def test_missing_record_manifest_sha256_never_verifies_subvideo_manifest_binding(
+    tmp_path: Path,
+) -> None:
+    """Round-2 Item 2: record without manifest_sha256 must NOT inherit full tier or source_video_id."""
+    rec = make_v3_record(candidate_id="clip_no_msha", source_video_id="video_0001", clip_indices=(0,))
+    rec["manifest_sha256"] = None
+
+    sv_path = tmp_path / "sv_full.json"
+    sv_path.write_text(
+        json.dumps(
+            {
+                "schema": "tensile-unified-sub-video-manifest/1",
+                "verification": {"mode": "full"},
+                "candidates": [
+                    {
+                        "candidate_id": "clip_no_msha",
+                        "source_video_id": "video_WRONG_OVERRIDE",
+                        "output": {"sha256": L2_SHA},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    out_dir = tmp_path / "out_no_msha"
+    idx = extract_evidence_bundle(
+        [rec],
+        output_dir=out_dir,
+        mode="metadata_only",
+        subvideo_manifest=load_subvideo_manifest(sv_path),
+    )
+    m = json.loads((out_dir / idx["entries"][0]["evidence_manifest"]).read_text(encoding="utf-8"))
+    assert m["clip_identity"]["subvideo_manifest_binding"]["binding_verified"] is False
+    assert m["clip_identity"]["subvideo_manifest_binding"]["record_manifest_sha256_match"] is None
+    assert m["proof_boundaries"]["audit_tier"] == "unknown"
+    assert "subvideo_manifest_record_sha256_missing_tier_not_inherited" in m["proof_boundaries"]["active_limitations"]
+    # source_video_id must remain derived from record L0 path, NOT overridden by unverified manifest
+    assert m["clip_identity"]["source_video_id"] == "video_0001"
+
+
+def test_preflight_duplicate_identity_fails_without_modifying_existing_snapshot(
+    tmp_path: Path,
+) -> None:
+    """Round-2 Item 3: [A, A] duplicate batch fails in pre-flight before modifying any prior files."""
+    rec_a = make_v3_record(candidate_id="clip_dup", run_id="run-dup", clip_indices=(0,))
+    out_dir = tmp_path / "out_preflight"
+
+    first_idx = extract_evidence_bundle([rec_a], output_dir=out_dir, mode="metadata_only")
+    manifest_path = out_dir / first_idx["entries"][0]["evidence_manifest"]
+    index_md_path = out_dir / first_idx["entries"][0]["index_markdown"]
+    run_index_path = out_dir / "run_index.json"
+
+    # Inject a marker into existing index.md & run_index.json to prove zero writes happen on failure
+    index_md_path.write_text("SENTINEL_INDEX_MD", encoding="utf-8")
+    run_index_before = run_index_path.read_bytes()
+    manifest_before = manifest_path.read_bytes()
+
+    with pytest.raises(EvidenceError, match="duplicate record identity"):
+        extract_evidence_bundle([rec_a, copy.deepcopy(rec_a)], output_dir=out_dir, mode="metadata_only")
+
+    assert index_md_path.read_text(encoding="utf-8") == "SENTINEL_INDEX_MD"
+    assert run_index_path.read_bytes() == run_index_before
+    assert manifest_path.read_bytes() == manifest_before
+
+
+def test_atomic_writes_do_not_truncate_hard_linked_files(tmp_path: Path) -> None:
+    """Round-2 Item 4: atomic replace writes new inodes without modifying hard-linked targets."""
+    import os
+
+    rec = make_v3_record(candidate_id="clip_hl", run_id="run-hl", clip_indices=(0,))
+    out_dir = tmp_path / "out_hardlink"
+    first_idx = extract_evidence_bundle([rec], output_dir=out_dir, mode="metadata_only")
+
+    manifest_path = out_dir / first_idx["entries"][0]["evidence_manifest"]
+    index_md_path = out_dir / first_idx["entries"][0]["index_markdown"]
+    run_index_path = out_dir / "run_index.json"
+
+    sentinel_dir = tmp_path / "hardlink_sentinels"
+    sentinel_dir.mkdir()
+    sent_manifest = sentinel_dir / "manifest.json"
+    sent_index = sentinel_dir / "index.md"
+    sent_run_index = sentinel_dir / "run_index.json"
+    os.link(manifest_path, sent_manifest)
+    os.link(index_md_path, sent_index)
+    os.link(run_index_path, sent_run_index)
+
+    orig_manifest_ino = sent_manifest.stat().st_ino
+    orig_index_ino = sent_index.stat().st_ino
+    orig_run_idx_ino = sent_run_index.stat().st_ino
+    orig_index_bytes = sent_index.read_bytes()
+
+    # Overwrite index_md via sentinel to check original inode contents remain untouched on re-run
+    sent_index.write_bytes(b"ORIGINAL_HARDLINK_INODE_CONTENT")
+
+    extract_evidence_bundle([rec], output_dir=out_dir, mode="metadata_only")
+
+    # Sentinels keep their original inodes and bytes; output files got fresh inodes
+    assert sent_manifest.stat().st_ino == orig_manifest_ino
+    assert sent_index.stat().st_ino == orig_index_ino
+    assert sent_run_index.stat().st_ino == orig_run_idx_ino
+    assert sent_index.read_bytes() == b"ORIGINAL_HARDLINK_INODE_CONTENT"
+    assert manifest_path.stat().st_ino != orig_manifest_ino
+    assert index_md_path.stat().st_ino != orig_index_ino
+    assert run_index_path.stat().st_ino != orig_run_idx_ino
+    assert index_md_path.read_bytes() == orig_index_bytes
+
+
+def test_rejects_bare_git_repository_and_subdirectories(tmp_path: Path) -> None:
+    """Round-2 Item 5: bare Git repositories and their subdirectories must be rejected."""
+    bare_repo = tmp_path / "bare_mirror.git"
+    proc = subprocess.run(
+        ["git", "init", "--bare", str(bare_repo)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+
+    with pytest.raises(EvidenceError, match="inside Git repository"):
+        ensure_output_outside_git_repo(bare_repo)
+
+    with pytest.raises(EvidenceError, match="inside Git repository"):
+        ensure_output_outside_git_repo(bare_repo / "sub" / "evidence_out")
+
+    rec = make_v3_record(candidate_id="clip_bare", run_id="run-bare", clip_indices=(0,))
+    with pytest.raises(EvidenceError, match="inside Git repository"):
+        extract_evidence_bundle([rec], output_dir=bare_repo / "out", mode="metadata_only")
+
+
+def test_ffmpeg_showinfo_parses_scientific_notation_pts_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Round-2 Item 6 (Advisory): pts_time in scientific notation (1e-05, 1.5e-03) parses accurately."""
+    fake_bin = tmp_path / "ffmpeg"
+    fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    video = tmp_path / "clip.mp4"
+    video.write_bytes(b"video")
+    extractor = FfmpegFrameExtractor(ffmpeg_bin=str(fake_bin))
+
+    for raw_ts, expected in (("1e-05", 1e-05), ("1.5e-03", 0.0015), ("2.25E+01", 22.5)):
+        out_png = tmp_path / f"sci_{raw_ts}.png"
+
+        def fake_run(cmd, capture_output, text, _ts=raw_ts):
+            Path(cmd[-1]).write_bytes(b"PNGDATA")
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout="",
+                stderr=f"[Parsed_showinfo_1 @ 0x0] n:   0 pts:     1 pts_time:{_ts} pos:42",
+            )
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        res = extractor.extract_video_frame(video, 0, out_png)
+        assert res.status == "extracted"
+        assert res.pts_seconds == pytest.approx(expected)

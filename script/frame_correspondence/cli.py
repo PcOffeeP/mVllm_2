@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 import sys
 
-from .evidence import count_candidate_runs, extract_evidence_bundle
+from .evidence import count_candidate_run_input_ids, count_candidate_runs, extract_evidence_bundle
 from .loader import (
     filter_records,
     load_input_records,
@@ -91,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         input_path = Path(args.input_records)
         records = load_input_records(input_path)
         all_run_counts = count_candidate_runs(records)
+        all_run_input_counts = count_candidate_run_input_ids(records)
         selected = filter_records(records, clip_ids=args.clip_ids, run_ids=args.run_ids)
 
         sv_manifest = load_subvideo_manifest(args.subvideo_manifest) if args.subvideo_manifest else None
@@ -109,6 +110,7 @@ def main(argv: list[str] | None = None) -> int:
             l3_frames_dir=l3_frames_dir,
             input_records_dir=input_path.parent,
             candidate_run_counts=all_run_counts,
+            candidate_run_input_counts=all_run_input_counts,
         )
     except (EvidenceError, OSError, UnicodeError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

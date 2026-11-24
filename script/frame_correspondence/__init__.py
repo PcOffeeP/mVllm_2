@@ -4,6 +4,7 @@ from __future__ import annotations
 from .cli import main
 from .evidence import (
     build_evidence_manifest,
+    count_candidate_run_input_ids,
     count_candidate_runs,
     ensure_output_outside_git_repo,
     extract_evidence_bundle,
@@ -54,6 +55,7 @@ __all__ = [
     "RUN_INDEX_SCHEMA",
     "build_evidence_manifest",
     "build_extractor",
+    "count_candidate_run_input_ids",
     "count_candidate_runs",
     "ensure_output_outside_git_repo",
     "extract_evidence_bundle",
