@@ -9,7 +9,7 @@
 | 能力 | 当前状态 | 落地位置或缺口 |
 | --- | --- | --- |
 | 1. 四层谱系与三帧号推导 | `已实现` | L0／L1／L2 层由 `_layer_media` 逐层产出（`script/five_label_eval/frames.py:336-363`），`lineage_media` 装配三层（`:645-651`）；`roi_frame_index = source_start + clip_frame_index`（`:203`）、`original_source_frame_index = roi_frame_index`（`:133`）。L3 只落 `frames[].image` 与 `pts_seconds`（`:670-676`）；逐帧摘要与宽高不在本项，见第 7 项 |
-| 2. 三级同序证据（anchors／来源级／`unverified`） | `已实现` | 三档方法名 `ROI_TO_SOURCE_METHODS`（`:40`）；anchors 档含条目非法／自相矛盾的硬失败（`:211-231`），来源级走 `if c1 and c2`（`:232-241`），都不成立落 `unverified` 并写 `failed_conditions`（`:242-247`） |
+| 2. 三级同序证据（anchors／来源级／`unverified`） | `已实现` | 三档方法名 `ROI_TO_ORIGINAL_METHODS`（`:40`）；anchors 档含条目非法／自相矛盾的硬失败（`:211-231`），来源级走 `if c1 and c2`（`:232-241`），都不成立落 `unverified` 并写 `failed_conditions`（`:242-247`） |
 | 3. `lineage_summary` 与 5% 警告 | `已实现` | `SUMMARY_SCHEMA`（`:44`）、`COVERAGE_WARNING_RATIO = 0.05`（`:46`）、`lineage_summary`（`:754-783`，只有**超过** 5% 才置 `warning`，判定在 `:775`）、`_report_coverage` 打印 `!!!` 且不改退出码（`:834-847`） |
 | 4. 四层一致性校验 `verify_lineage` | `规格要求但实现较窄` | **已校**：判据 1 的区间检查（`:442`、`:449`）、判据 2 的加性偏移（`:451-459`）、判据 5 的两组摘要（`:484-501`、`:558-574`）。**较窄**：判据 1「该帧在 L2 解码中实际存在」无独立校验，只查 `0 <= idx < total`，存在性由抽帧成功隐含；判据 4 在 `verify_lineage` 里没有任何 anchors 比对，只有 `method == manifest_anchors` 的门控（`:398-403`），锚点一致性靠 `derive_lineage` 自证（`:218`）加「偏移公式 + 同号」在构造期隐含，记录本身也不含 anchors 列表可供独立比对；`--coverage-scan` 只调 `derive_lineage`（`:819-831`），**不执行** `verify_lineage`；推理模式只 `read_records`、不重验（`script/five_label_eval/infer.py:96`）。**更严**：判据 3 声明为「或」，实现对所有非 `unverified` 记录一律强制 `l0.total_frames == l1.total_frames`（`:425-427`） |
 | 5. 逐层证据导出 `--export-lineage-png` | `已实现` | 默认关（`store_true`，参数 `:858-859`），调用分支在抽帧模式写完 records 之后（`:907-910`）；导出目录 `<out_dir>/lineage/<candidate_id>/`（`:726`），命名 `:738`、L3 复制 `:744-745`，跳过行写 `skips.jsonl`（`:747-750`）。边界：L3 复制用裸 `shutil.copyfile`（`:744-745`），失败不在「不中断」保证内，会落到 `main` 的 `OSError` 分支返回 2（`:912-914`） |
@@ -68,7 +68,7 @@ roi_frame_index   --(源→ROI 同序已验证，且绑定 verification)-->     
 
 **关于 `output.frame_mapping.output_start_frame`**：该字段在清单中存在，但**当前实现不读取**——`frames.py` 里除 `derive_lineage` 的 docstring 声明（`:155`「是输出序起点，绝不参与 ROI 推导」）之外没有任何读取点，`derive_lineage` 只取 `source_start_frame`（`:199-203`）。它的含义是片段起点在片段自身输出序列里的帧号，与 ROI 帧号无关，清单实测恒为 0。**因而不存在「`output_start_frame` 恒为 0，所以含它和不含它等价」这种关系**：含 `− output_start_frame` 的写法在该字段非 0 时会给出错误结果，公式一律以本表的实现形式为准。（此处「不读取」限于评测侧：`script/five_label_eval/frames.py` 与 `script/five_label_eval/score.py` 均无读取点；生成期的切片自校验另会读到该字段，例如 `script/subvideo_generation/generate.py:372` 把它作为 `frame_mapping` 整体相等校验的一部分。）
 
-**记录级 `unverified` 时**（`verification.method == "unverified"`，三级证据都不成立）：`unverified` 是**记录级**判定，由候选决定、不随帧号变化，**帧条目没有 `kind` 字段**——`kind` 只出现在 `frames[].frame_index_mapping` 的三个节点上。此时 `roi_frame_index` 与 `original_source_frame_index` 都是 `null`（不写 `0`、不写 `-1`、不省略字段），`source_to_media` 与 `roi_to_source` 两个节点的 `kind` 以及 `roi_to_source.method` 都写 `unverified`、`offset` 为 `null`、`reason` 非空。同一条记录内所有帧的 `roi_to_source.kind`／`method` **必然同值**，且都须与记录级 `verification.method` 配对：不配对即进 `verify_lineage` 的 reasons、`extract_record` 抛 `InputError`，故「同记录内不同帧取不同 `kind`」不成立。锚点来源与实测来源需并用时拆成两条记录。
+**记录级 `unverified` 时**（`verification.method == "unverified"`，三级证据都不成立）：`unverified` 是**记录级**判定，由候选决定、不随帧号变化，**帧条目没有 `kind` 字段**——`kind` 只出现在 `frames[].frame_index_mapping` 的三个节点上。此时 `roi_frame_index` 与 `original_source_frame_index` 都是 `null`（不写 `0`、不写 `-1`、不省略字段），`clip_to_roi` 与 `roi_to_original` 两个节点的 `kind` 以及 `roi_to_original.method` 都写 `unverified`、`offset` 为 `null`、`reason` 非空。同一条记录内所有帧的 `roi_to_original.kind`／`method` **必然同值**，且都须与记录级 `verification.method` 配对：不配对即进 `verify_lineage` 的 reasons、`extract_record` 抛 `InputError`，故「同记录内不同帧取不同 `kind`」不成立。锚点来源与实测来源需并用时拆成两条记录。
 
 ## 5. 同序性证据三条（并列记录，不得只取其一）
 
@@ -78,13 +78,13 @@ roi_frame_index   --(源→ROI 同序已验证，且绑定 verification)-->     
 | 2 | 清单 `sources[].frame_preserving_replay.status == "verified_frame_preserving_replay"`，`proof_type == "exact_static_spatial_pipeline_replay"`，`mapping == "source_frame_i_to_ROI_frame_i_by_verified_frame_preserving_pipeline"` | 110/110 | 与 `docs/facts.yaml` 的 DF-027、DF-028 一致；是声明侧证据，不替代独立复核 |
 | 3 | `output.frame_mapping.anchors` 三元组中 `roi_frame == source_frame` 全等 | 1155/1155 三元组（579 条候选非空；`anchors` 键 1621/1621 都有，1042 条为空数组） | 清单生成侧逐帧记录；空数组表示无锚点，**不能**读成「已核实为不同序」 |
 
-三条证据缺一不可：证据 1 只覆盖 9 例，证据 2 是声明，证据 3 只覆盖 579 条候选。**并列记录要求不因下面的实现而放宽**：同一记录的帧共用记录级 `verification`（记录级单对象；帧条目不携带 `verification`，`roi_to_source.kind`／`method` 逐帧同值），锚点来源与实测来源需并用时拆成两条记录。
+三条证据缺一不可：证据 1 只覆盖 9 例，证据 2 是声明，证据 3 只覆盖 579 条候选。**并列记录要求不因下面的实现而放宽**：同一记录的帧共用记录级 `verification`（记录级单对象；帧条目不携带 `verification`，`roi_to_original.kind`／`method` 逐帧同值），锚点来源与实测来源需并用时拆成两条记录。
 
 三条证据在实现里是 §6 三级判定的**输入**，不是彼此替代的判据：证据 3 对应优先级 1，证据 2 对应优先级 2 的 c1 与 c3，证据 1 的口径按 c2 改为解码帧数；实际档位分布见 §8。**独立复核结论未绑定前，仍不得只用优先级 2 的证据做逐帧追溯分析**（原因见 §11）：实现只保证「有证据才填帧号」，不保证「帧号已被字节级核对」。只凭证据 2 或只凭证据 3 提前填源帧号依然不合规。
 
 ## 6. 三级同序证据：判定顺序与 `method`
 
-L1→L0（`roi_to_source`）的原始源帧号只在三级证据之一成立时填写。判定顺序固定为「先 anchors 全真 → 再来源级三条件 → 否则 `unverified`」，**任一更高级成立即停止**，不再检查更低级；都不成立时帧号留 `null`，不猜、不就近取整。实现为提交 `2baf363` 的 `script/five_label_eval/frames.py:146`（`derive_lineage`）。
+L1→L0（`roi_to_original`）的原始源帧号只在三级证据之一成立时填写。判定顺序固定为「先 anchors 全真 → 再来源级三条件 → 否则 `unverified`」，**任一更高级成立即停止**，不再检查更低级；都不成立时帧号留 `null`，不猜、不就近取整。实现为 `script/five_label_eval/frames.py`（`derive_lineage`）。
 
 **前置链（先于三级判定）**：以下任一失败即直接 `unverified` 并记失败 token，不进入三级判定。
 
@@ -100,16 +100,16 @@ L1→L0（`roi_to_source`）的原始源帧号只在三级证据之一成立时�
 
 | 优先级 | 节点／kind | 触发条件 | `method` |
 | ---: | --- | --- | --- |
-| 1 | `roi_to_source.kind = explicit_pairs` | `frame_mapping.anchors` 非空，且每条锚点同时满足 `roi_frame == source_start_frame + output_frame` 与 `source_frame == roi_frame` | `manifest_anchors` |
-| 2 | `roi_to_source.kind = offset`（`offset = 0`） | `anchors` 为空或缺失，且 c1、c2、c3 全真（逐条见 §7） | `source_replay_mapping` |
-| 3 | `roi_to_source.kind = unverified` | 以上都不成立 | `unverified` |
+| 1 | `roi_to_original.kind = explicit_pairs` | `frame_mapping.anchors` 非空，且每条锚点同时满足 `roi_frame == source_start_frame + output_frame` 与 `source_frame == roi_frame` | `manifest_anchors` |
+| 2 | `roi_to_original.kind = offset`（`offset = 0`） | `anchors` 为空或缺失，且 c1、c2、c3 全真（逐条见 §7） | `source_replay_mapping` |
+| 3 | `roi_to_original.kind = unverified` | 以上都不成立 | `unverified` |
 
 - 两级成立时都用 `offset = 0`：该级证据本身就是「`roi_frame == source_frame`」，差的只是 `kind`——优先级 1 记显式帧对 `explicit_pairs`，优先级 2 记偏移 `offset`。
 - `anchors` 非空但任一条目非法或自相矛盾（`roi_frame != source_start_frame + output_frame` 或 `source_frame != roi_frame`）是**硬失败**，记 token `anchors_broken` 并停在 `unverified`，**绝不**回退到优先级 2；`anchors` 声明了但不是数组同样按硬失败处理。
-- 帧级 `roi_to_source.method` 与记录级 `verification.method` 必须一致；`unverified` 时 `kind`、`method` 都写 `unverified`，`offset` 只能是 `null`（契约容忍 `0`）**不得非零**，且 `reason` 非空（节点自证，`frames.py:506`）；成立级别的节点 `offset` 必须是整数 `0`。
+- 帧级 `roi_to_original.method` 与记录级 `verification.method` 必须一致；`unverified` 时 `kind`、`method` 都写 `unverified`，`offset` 只能是 `null`（契约容忍 `0`）**不得非零**，且 `reason` 非空（节点自证，`frames.py`）；成立级别的节点 `offset` 必须是整数 `0`。
 - 实测档位分布：579 条走优先级 1、1,042 条走优先级 2、0 条 `unverified`（来源见 §8）。
 
-**失效条件：** `ROI_TO_SOURCE_METHODS` 的 method 名称、`kind` 与 `method` 的配对关系、锚点一致性判据或前置链顺序变更即失效（`frames.py:40`）。
+**失效条件：** `ROI_TO_ORIGINAL_METHODS` 的 method 名称、`kind` 与 `method` 的配对关系、锚点一致性判据或前置链顺序变更即失效（`frames.py:40`）。
 
 ## 7. 来源级三条件（c1／c2／c3）
 
@@ -176,23 +176,23 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 
 **失效条件：** `SUMMARY_SCHEMA` 字面量、上述字段名、5% 阈值或两种口径的分支变更即失效。
 
-## 10. 三个映射节点：名称与实际方向
+## 10. 三个映射节点：名称与实际方向（`five-label-input-record/3`）
 
-`frames[].frame_index_mapping` 固定三个节点（`frames.py:677-679`）。名字与实际方向不完全一致，读取时一律以本表为准。
+`frames[].frame_index_mapping` 固定三个节点（`frames.py` 常量 `MAPPING_NODE_KEYS`），记录 schema 为 **`five-label-input-record/3`**（2026-11-24 完成任务 7 `MAPPING-NODE-RENAME` 重命名，由 `DF-052` 取代 `DF-041`）：
 
-| 节点 | 实际方向 | 含义 |
-| --- | --- | --- |
-| `media_to_clip` | L2 → L3 | 从 L2 片段媒体按解码序取第 `clip_frame_index` 个解码帧作为 L3 模型输入；`kind = ffmpeg_select_nth_decoded_frame`、`offset = None`，是抽帧规则常量（`MEDIA_TO_CLIP`，`frames.py:53`），不做帧号换算 |
-| `source_to_media` | **L2 → L1** | 记片段帧号到 ROI 帧号的加性偏移：`offset = source_start_frame`，`roi_frame_index = clip_frame_index + offset`。名字里的 source 指**片段自身的来源媒体（L1 ROI 视频）**，不是原始源视频 |
-| `roi_to_source` | L1 → L0 | ROI 帧号 → 原始源视频帧号；`kind` 与 `method` 由 §6 的三级证据给出，成立时 `offset = 0` |
+| 现行节点（v3） | 实际方向 | 含义 | 旧 v2 键名（已废止） |
+| --- | --- | --- | --- |
+| `clip_to_model_input` | L2 → L3 | 从 L2 片段媒体按解码序取第 `clip_frame_index` 个解码帧作为 L3 模型输入；`kind = ffmpeg_select_nth_decoded_frame`、`offset = None`，是抽帧规则常量（`CLIP_TO_MODEL_INPUT`），不做帧号换算 | `media_to_clip` |
+| `clip_to_roi` | **L2 → L1** | 记片段帧号到 ROI 帧号的加性偏移：`offset = source_start_frame`，`roi_frame_index = clip_frame_index + offset` | `source_to_media` |
+| `roi_to_original` | L1 → L0 | ROI 帧号 → 原始源视频帧号；`kind` 与 `method` 由 §6 的三级证据给出，成立时 `offset = 0` | `roi_to_source` |
 
 抽帧取证工具按本表方向读取映射。
 
-**`source_to_media` 这个名字是历史遗留、方向易误读，读取时以本表为准。** 代码同一处也留了命名陷阱注释（`frames.py:134-136`、`150-155`），并明确 `source_to_media` 记 L2→L1、`roi_to_source` 才是 L1→L0。该重命名是已确认的待办方向，已在 `docs/TODO.md` 登记为「7. MAPPING-NODE-RENAME — 重命名映射节点，消除 source_to_media 的方向误读」：登记前不得据名字反推方向。
+**旧批次记录处理策略（显式拒绝，不做静默兼容）**：当前仓库尚无已冻结的正式 v2 输入记录。`five-label-input-record/3` 在 `read_records` 与 `verify_lineage` 中**显式拒绝**旧 `record_schema`（如 `five-label-input-record/2`）以及含任一旧键名（`media_to_clip`、`source_to_media`、`roi_to_source`）的记录，报错均点名期望的 `five-label-input-record/3` 与新键名；历史 v2 命名遗留仅留作本表对照与 `DF-041`（`superseded`）追溯。
 
-补充：节点自证只覆盖后两项——`verify_lineage` 校 `source_to_media.offset` 与 `roi_to_source` 的形态，`media_to_clip` 是常量，不逐帧校验（`frames.py:380`、`451`、`506`）。
+补充：节点自证覆盖后两项——`verify_lineage` 校 `clip_to_roi.offset` 与 `roi_to_original` 的形态，并拦截任何旧键名或旧 `record_schema`；`clip_to_model_input` 是常量，不逐帧校验。
 
-**失效条件：** 三个节点键名、方向或 `MEDIA_TO_CLIP` 的 `kind` 变更即失效；重命名落地后本表须整体替换。
+**失效条件：** `RECORD_SCHEMA`、三个节点键名、方向、`CLIP_TO_MODEL_INPUT` 的 `kind` 或旧 v2 拒绝策略变更即失效。
 
 ## 11. 最重要：来源级证据在 ROI 重生成后会静默错位
 
@@ -255,7 +255,7 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 | # | 判据形式 | 失败含义 |
 | --- | --- | --- |
 | 1 | L3 ⊆ L2：每个 `clip_frame_index` ∈ `[0, L2.total_frames)`，且该帧在 L2 解码中实际存在〔实现见状态表 4：记录态只校区间，逐帧存在性由抽帧成功隐含〕 | 抽帧越界或片段帧数记错 |
-| 2 | L2 ⊆ L1：逐帧 `roi_frame_index == clip_frame_index + source_to_media.offset`（`offset = source_start_frame`，`frames.py:451-459`），且每个 `roi_frame_index` ∈ `[0, L1.total_frames)`（`frames.py:445-450`） | 片段不是 L1 的一段，或起点空间搞错 |
+| 2 | L2 ⊆ L1：逐帧 `roi_frame_index == clip_frame_index + clip_to_roi.offset`（`offset = source_start_frame`），且每个 `roi_frame_index` ∈ `[0, L1.total_frames)` | 片段不是 L1 的一段，或起点空间搞错 |
 | 3 | L1 ↔ L0 同序：`L0.total_frames == L1.total_frames`（解码帧计）；或该候选 `anchors` 三元组满足 `roi_frame == source_frame`；或 `verification` 已绑定并声明同序 | L1 与 L0 不同序，或同序尚未绑定证据 |
 | 4 | 锚点一致：命中锚点的帧，三个索引与锚点三元组逐项相等〔实现见状态表 4：`verify_lineage` 无锚点比对，只由 `derive_lineage` 自证加偏移公式隐含〕 | 锚点与推导冲突，须以锚点为准并记 issue（带候选 ID、帧号与两套取值） |
 | 5 | L2 摘要一致：`record.clip_sha256` 与 `record.media.sha256` 都必须等于 `lineage_media.l2.sha256`（实测值，`_digest_identity_reasons`，`frames.py:558-574`），且每层 `lineage_media` 的实测 `sha256` 必须等于其 `declared_sha256`（`frames.py:488-501`）；`l2` 的 `declared_sha256` 缺失或空串恒判失败，而 `unverified` 记录的 L0／L1 缺 `declared_sha256` 时不记 reason（`frames.py:494-498`） | 记录摘要与实测媒体字节不一致，或实测字节与清单声明不一致 |

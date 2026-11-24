@@ -24,8 +24,7 @@
 | `L0` 原视频 | 经 ROI 帧号映射定位的原始画面 |
 
 回溯顺序不等于节点的映射方向，读取一律以[输入记录 §10 的方向表](eval/input-record.md)为准。
-`media_to_clip` 描述 `L2 → L3` 的取帧规则，`source_to_media` 实为 `L2 → L1`，`roi_to_source` 为 `L1 → L0`。
-节点名称易误读；改名属 `DF-041` 所述遗留问题（任务 7），落地前不得据名字反推方向。
+`clip_to_model_input` 描述 `L2 → L3` 的取帧规则，`clip_to_roi` 为 `L2 → L1`，`roi_to_original` 为 `L1 → L0`（`five-label-input-record/3` 已于 2026-11-24 替换旧 v2 键名并显式拒绝旧记录，见 `DF-052`）。
 
 ## 取证对象与产物
 
@@ -44,6 +43,6 @@
 ## 实现前置条件与失效条件
 
 1. 模型输入抽帧口径须先落纸。
-2. 映射字段命名须先定案，见[待办](TODO.md)任务 7 `MAPPING-NODE-RENAME`。
+2. 映射字段命名已定案并落地（见[待办](TODO.md)任务 7 `MAPPING-NODE-RENAME` 与 `DF-052`：`clip_to_model_input`／`clip_to_roi`／`roi_to_original`）。
 
 **失效条件：** 前置条件、映射表、锚点定义或证明强度口径变化时，须重新核对本设计。

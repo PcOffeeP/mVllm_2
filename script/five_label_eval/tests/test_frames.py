@@ -29,10 +29,10 @@ FRAME_FIELDS = ("display_order", "decode_order", "clip_frame_index", "roi_frame_
                 "pts_seconds", "frame_index_mapping")
 MAPPING_FIELDS = ("kind", "offset", "reason")
 LINEAGE_RESULT_FIELDS = ("clip_frame_index", "roi_frame_index", "original_source_frame_index",
-                         "source_to_media", "roi_to_source", "verification")
+                         "clip_to_roi", "roi_to_original", "verification")
 VERIFICATION_FIELDS = ("verdict_id", "method", "evidence_sha256", "checked_at",
                        "conditions", "failed_conditions")
-ROI_TO_SOURCE_FIELDS = ("kind", "offset", "method", "reason")
+ROI_TO_ORIGINAL_FIELDS = ("kind", "offset", "method", "reason")
 SIZE_BUCKET_SOURCE = "width_rule_le200_lt400"
 MISSING = object()  # 参数化用哨兵：区分「键不存在」与「值为 None」
 
@@ -125,14 +125,14 @@ def assert_unverified(lineage):
     """Unverified must admit two empty indices and say why; never guess a frame number."""
     assert lineage["roi_frame_index"] is None
     assert lineage["original_source_frame_index"] is None
-    assert lineage["source_to_media"]["kind"] == "unverified"
-    assert lineage["source_to_media"]["offset"] is None
-    reason = lineage["source_to_media"]["reason"]
+    assert lineage["clip_to_roi"]["kind"] == "unverified"
+    assert lineage["clip_to_roi"]["offset"] is None
+    reason = lineage["clip_to_roi"]["reason"]
     assert isinstance(reason, str) and reason.strip()
     assert lineage["verification"]["method"] == "unverified"
     # L1→L0 节点必须显式 unverified + 非空 reason，且 failed_conditions 非空。
-    assert lineage["roi_to_source"]["kind"] == "unverified"
-    reason = lineage["roi_to_source"]["reason"]
+    assert lineage["roi_to_original"]["kind"] == "unverified"
+    reason = lineage["roi_to_original"]["reason"]
     assert isinstance(reason, str) and reason.strip()
     failed = lineage["verification"]["failed_conditions"]
     assert isinstance(failed, list) and failed
@@ -161,8 +161,8 @@ def test_derive_lineage_should_derive_roi_and_source_index_when_replay_verified(
     assert lineage["clip_frame_index"] == 191
     assert lineage["roi_frame_index"] == 1164
     assert lineage["original_source_frame_index"] == 1164
-    assert lineage["source_to_media"]["kind"] in {"manifest_replay", "manifest_anchors"}
-    assert lineage["source_to_media"]["offset"] == 973
+    assert lineage["clip_to_roi"]["kind"] in {"manifest_replay", "manifest_anchors"}
+    assert lineage["clip_to_roi"]["offset"] == 973
     # 默认候选带合法 anchors：落优先级 1，词表里再也没有旧的 "manifest_replay"。
     assert lineage["verification"]["method"] == "manifest_anchors"
 
@@ -171,10 +171,10 @@ def test_derive_lineage_should_return_contract_shape_when_replay_verified():
     lineage = frames.derive_lineage(candidate(), 191)
 
     assert set(LINEAGE_RESULT_FIELDS) <= set(lineage)
-    assert set(MAPPING_FIELDS) <= set(lineage["source_to_media"])
-    assert set(ROI_TO_SOURCE_FIELDS) <= set(lineage["roi_to_source"])
+    assert set(MAPPING_FIELDS) <= set(lineage["clip_to_roi"])
+    assert set(ROI_TO_ORIGINAL_FIELDS) <= set(lineage["roi_to_original"])
     assert set(VERIFICATION_FIELDS) <= set(lineage["verification"])
-    assert isinstance(lineage["roi_to_source"]["method"], str)
+    assert isinstance(lineage["roi_to_original"]["method"], str)
     assert isinstance(lineage["verification"]["verdict_id"], str)
 
 
@@ -188,7 +188,7 @@ def test_derive_lineage_should_ignore_output_start_frame_when_deriving_roi_index
 
     assert lineage["roi_frame_index"] == 907
     assert lineage["original_source_frame_index"] == 907
-    assert lineage["source_to_media"]["offset"] == 900
+    assert lineage["clip_to_roi"]["offset"] == 900
 
 
 @pytest.mark.parametrize("build", [
@@ -267,10 +267,10 @@ def test_derive_lineage_should_return_unverified_when_anchors_contradict_offset(
 def assert_verified_tier(lineage, method, kind):
     """三级里某一级通过的公共断言：两帧号同号，且 L1→L0 节点写成该级的证据形态。"""
     assert lineage["verification"]["method"] == method
-    assert lineage["roi_to_source"]["kind"] == kind
-    assert lineage["roi_to_source"]["method"] == method
-    assert lineage["roi_to_source"]["offset"] == 0
-    assert lineage["roi_to_source"]["reason"] is None
+    assert lineage["roi_to_original"]["kind"] == kind
+    assert lineage["roi_to_original"]["method"] == method
+    assert lineage["roi_to_original"]["offset"] == 0
+    assert lineage["roi_to_original"]["reason"] is None
     assert lineage["roi_frame_index"] == lineage["original_source_frame_index"]
     assert lineage["verification"]["failed_conditions"] == []
 
@@ -524,30 +524,30 @@ def lineage_media(l0_sha=L0_SHA, l1_sha=L1_SHA, l2_sha=L2_SHA,
 
 
 def frame_entry(order, clip_frame_index, roi_frame_index, original_source_frame_index, offset=973,
-                roi_to_source=None):
+                roi_to_original=None):
     return {"display_order": order, "decode_order": order,
             "clip_frame_index": clip_frame_index, "roi_frame_index": roi_frame_index,
             "original_source_frame_index": original_source_frame_index,
             "is_anchor": clip_frame_index in (191, 192), "anchor_ref": None, "media_role": "clip",
             "image": f"frame_{order + 1:03d}.png", "pts_seconds": clip_frame_index / 30.0,
             "frame_index_mapping": {
-                "source_to_media": {"kind": "manifest_replay", "offset": offset, "reason": None},
-                "media_to_clip": {"kind": "manifest_replay", "offset": offset, "reason": None},
-                "roi_to_source": {"kind": "explicit_pairs", "offset": 0, "method": "manifest_anchors",
-                                  "reason": None} if roi_to_source is None else roi_to_source}}
+                "clip_to_roi": {"kind": "manifest_replay", "offset": offset, "reason": None},
+                "clip_to_model_input": {"kind": "manifest_replay", "offset": offset, "reason": None},
+                "roi_to_original": {"kind": "explicit_pairs", "offset": 0, "method": "manifest_anchors",
+                                  "reason": None} if roi_to_original is None else roi_to_original}}
 
 
 def unverified_frame_entry(order, clip_frame_index):
     """unverified 帧：两帧号 None，L1→L0 节点记为 unverified 并带非空 reason。"""
     return frame_entry(order, clip_frame_index, None, None,
-                       roi_to_source={"kind": "unverified", "offset": None, "method": "unverified",
+                       roi_to_original={"kind": "unverified", "offset": None, "method": "unverified",
                                       "reason": "没有可用的同序性证据"})
 
 
 def offset_frame_entry(order, clip_frame_index, roi_frame_index, original_source_frame_index, offset=973):
     """优先级 2（source_replay_mapping）帧：L1→L0 节点 kind == offset 且 offset 为 0。"""
     return frame_entry(order, clip_frame_index, roi_frame_index, original_source_frame_index, offset=offset,
-                       roi_to_source={"kind": "offset", "offset": 0, "method": "source_replay_mapping",
+                       roi_to_original={"kind": "offset", "offset": 0, "method": "source_replay_mapping",
                                       "reason": None})
 
 
@@ -699,22 +699,22 @@ def test_verify_lineage_should_report_legacy_manifest_replay_method():
     assert_reasons_require(frames.verify_lineage(record), "method")
 
 
-def test_verify_lineage_should_report_missing_roi_to_source():
+def test_verify_lineage_should_report_missing_roi_to_original():
     """verified 记录缺 L1→L0 节点时无从校 offset，不得静默通过。"""
     frame = frame_entry(0, 0, 973, 973)
-    del frame["frame_index_mapping"]["roi_to_source"]
+    del frame["frame_index_mapping"]["roi_to_original"]
     record = lineage_record(frames_override=[frame])
 
-    assert_reasons_require(frames.verify_lineage(record), "roi_to_source")
+    assert_reasons_require(frames.verify_lineage(record), "roi_to_original")
 
 
-def test_verify_lineage_should_report_roi_to_source_offset_not_zero():
-    """verified 要求 roi_to_source.offset == 0；非 0 偏移与两帧号同号相矛盾。"""
+def test_verify_lineage_should_report_roi_to_original_offset_not_zero():
+    """verified 要求 roi_to_original.offset == 0；非 0 偏移与两帧号同号相矛盾。"""
     frame = offset_frame_entry(0, 0, 973, 973)
-    frame["frame_index_mapping"]["roi_to_source"]["offset"] = 5
+    frame["frame_index_mapping"]["roi_to_original"]["offset"] = 5
     record = lineage_record(verification=SOURCE_REPLAY_VERIFICATION, frames_override=[frame])
 
-    assert_reasons_require(frames.verify_lineage(record), "roi_to_source", "offset")
+    assert_reasons_require(frames.verify_lineage(record), "roi_to_original", "offset")
 
 
 def test_verify_lineage_should_report_original_source_index_not_equal_roi_index():
@@ -743,7 +743,7 @@ def test_verify_lineage_should_report_source_replay_conditions_not_satisfied():
     assert_reasons_require(frames.verify_lineage(record), "source_replay")
 
 
-def test_verify_lineage_should_report_unverified_record_with_verified_roi_to_source():
+def test_verify_lineage_should_report_unverified_record_with_verified_roi_to_original():
     """unverified 记录的 L1→L0 节点必须是 kind == unverified，不能挂着 verified 形态。
 
     断言 token 必须能区分「kind 配对守卫」与「reason 未填守卫」：两个子串都要命中此条。
@@ -751,13 +751,13 @@ def test_verify_lineage_should_report_unverified_record_with_verified_roi_to_sou
     record = lineage_record(verification=UNVERIFIED_VERIFICATION,
                             frames_override=[frame_entry(0, 0, None, None)])
 
-    assert_reasons_require(frames.verify_lineage(record), "roi_to_source", "kind", "explicit_pairs")
+    assert_reasons_require(frames.verify_lineage(record), "roi_to_original", "kind", "explicit_pairs")
 
 
 def test_verify_lineage_should_report_kind_contradicting_manifest_anchors():
     """method=manifest_anchors 却把 L1→L0 节点写成 kind=offset：证据形态与证据级别不配对。"""
     frame = frame_entry(0, 0, 973, 973,
-                        roi_to_source={"kind": "offset", "offset": 0, "method": "manifest_anchors",
+                        roi_to_original={"kind": "offset", "offset": 0, "method": "manifest_anchors",
                                        "reason": None})
     record = lineage_record(frames_override=[frame])
 
@@ -767,21 +767,21 @@ def test_verify_lineage_should_report_kind_contradicting_manifest_anchors():
 def test_verify_lineage_should_report_kind_contradicting_source_replay_mapping():
     """method=source_replay_mapping 却把 L1→L0 节点写成 kind=explicit_pairs：反向的同一缺口。"""
     frame = frame_entry(0, 0, 973, 973,
-                        roi_to_source={"kind": "explicit_pairs", "offset": 0,
+                        roi_to_original={"kind": "explicit_pairs", "offset": 0,
                                        "method": "source_replay_mapping", "reason": None})
     record = lineage_record(verification=SOURCE_REPLAY_VERIFICATION, frames_override=[frame])
 
     assert_reasons_require(frames.verify_lineage(record), "kind", "explicit_pairs", "offset")
 
 
-def test_verify_lineage_should_report_roi_to_source_node_method_disagreeing_with_verification():
+def test_verify_lineage_should_report_roi_to_original_node_method_disagreeing_with_verification():
     """kind 对但节点自身 method 字段写错：节点里的证据级别也必须与 verification.method 一致。"""
     frame = frame_entry(0, 0, 973, 973,
-                        roi_to_source={"kind": "explicit_pairs", "offset": 0,
+                        roi_to_original={"kind": "explicit_pairs", "offset": 0,
                                        "method": "source_replay_mapping", "reason": None})
     record = lineage_record(frames_override=[frame])
 
-    assert_reasons_require(frames.verify_lineage(record), "roi_to_source", "method",
+    assert_reasons_require(frames.verify_lineage(record), "roi_to_original", "method",
                            "manifest_anchors", "source_replay_mapping")
 
 
@@ -793,11 +793,11 @@ def test_verify_lineage_should_report_unverified_record_carrying_verified_shape_
     守卫也不生效，verify_lineage 会直接放行。断言的 token 只可能来自 kind 守卫的文案。
     """
     frame = frame_entry(0, 0, None, None,
-                        roi_to_source={"kind": kind, "offset": 0, "method": "manifest_anchors",
+                        roi_to_original={"kind": kind, "offset": 0, "method": "manifest_anchors",
                                        "reason": "从来源级映射继承（模板残留）"})
     record = lineage_record(verification=UNVERIFIED_VERIFICATION, frames_override=[frame])
 
-    assert_reasons_require(frames.verify_lineage(record), "roi_to_source", "kind", kind)
+    assert_reasons_require(frames.verify_lineage(record), "roi_to_original", "kind", kind)
 
 
 def test_verify_lineage_should_report_unverified_node_naming_a_verified_method():
@@ -807,22 +807,22 @@ def test_verify_lineage_should_report_unverified_node_naming_a_verified_method()
     reason 必须点名该字段与那个错写的取值。
     """
     frame = frame_entry(0, 0, None, None,
-                        roi_to_source={"kind": "unverified", "offset": 0,
+                        roi_to_original={"kind": "unverified", "offset": 0,
                                        "method": "manifest_anchors",
                                        "reason": "候选 anchors 为空，来源级证据未采用"})
     record = lineage_record(verification=UNVERIFIED_VERIFICATION, frames_override=[frame])
 
-    assert_reasons_require(frames.verify_lineage(record), "roi_to_source", "method", "manifest_anchors")
+    assert_reasons_require(frames.verify_lineage(record), "roi_to_original", "method", "manifest_anchors")
 
 
 def test_verify_lineage_should_report_unverified_node_with_nonzero_offset():
     """unverified 节点的 offset 必须是 0/None：非 0 偏移等于偷带一份未经证明的 L1→L0 偏移。"""
     frame = frame_entry(0, 0, None, None,
-                        roi_to_source={"kind": "unverified", "offset": 5, "method": "unverified",
+                        roi_to_original={"kind": "unverified", "offset": 5, "method": "unverified",
                                        "reason": "候选 anchors 为空，来源级证据未采用"})
     record = lineage_record(verification=UNVERIFIED_VERIFICATION, frames_override=[frame])
 
-    assert_reasons_require(frames.verify_lineage(record), "roi_to_source", "offset")
+    assert_reasons_require(frames.verify_lineage(record), "roi_to_original", "offset")
 
 
 def test_verify_lineage_should_report_unverified_record_without_failed_conditions():
@@ -834,9 +834,9 @@ def test_verify_lineage_should_report_unverified_record_without_failed_condition
 
 
 def test_verify_lineage_should_report_unverified_record_without_reason():
-    """unverified 记录的 roi_to_source.reason 必须是非空字符串。"""
+    """unverified 记录的 roi_to_original.reason 必须是非空字符串。"""
     frame = unverified_frame_entry(0, 0)
-    frame["frame_index_mapping"]["roi_to_source"]["reason"] = "   "
+    frame["frame_index_mapping"]["roi_to_original"]["reason"] = "   "
     record = lineage_record(verification=UNVERIFIED_VERIFICATION, frames_override=[frame])
 
     assert_reasons_require(frames.verify_lineage(record), "reason")
@@ -869,35 +869,35 @@ def test_verify_lineage_should_report_empty_frames():
 
 
 def test_verify_lineage_should_report_roi_index_not_matching_offset():
-    """verified 时 roi_frame_index 必须等于 clip_frame_index + source_to_media.offset。"""
+    """verified 时 roi_frame_index 必须等于 clip_frame_index + clip_to_roi.offset。"""
     record = lineage_record(frames_override=[frame_entry(0, 0, 5, 973)])  # 0 + 973 != 5
 
     assert_reasons_require(frames.verify_lineage(record), "roi_frame_index")
 
 
-def test_record_schema_should_be_version_two():
-    assert frames.RECORD_SCHEMA == "five-label-input-record/2"
+def test_record_schema_should_be_version_three():
+    assert frames.RECORD_SCHEMA == "five-label-input-record/3"
 
 
 def _drop_frame_index_mapping(frame):
     del frame["frame_index_mapping"]
 
 
-def _drop_source_to_media(frame):
-    del frame["frame_index_mapping"]["source_to_media"]
+def _drop_clip_to_roi(frame):
+    del frame["frame_index_mapping"]["clip_to_roi"]
 
 
 def _offset_as_string(frame):
-    frame["frame_index_mapping"]["source_to_media"]["offset"] = "973"
+    frame["frame_index_mapping"]["clip_to_roi"]["offset"] = "973"
 
 
 def _offset_as_float(frame):
-    frame["frame_index_mapping"]["source_to_media"]["offset"] = 973.0
+    frame["frame_index_mapping"]["clip_to_roi"]["offset"] = 973.0
 
 
-@pytest.mark.parametrize("break_offset", [_drop_frame_index_mapping, _drop_source_to_media,
+@pytest.mark.parametrize("break_offset", [_drop_frame_index_mapping, _drop_clip_to_roi,
                                          _offset_as_string, _offset_as_float],
-                         ids=["mapping-block-missing", "source-to-media-missing",
+                         ids=["mapping-block-missing", "clip-to-roi-missing",
                               "offset-string", "offset-float"])
 def test_verify_lineage_should_report_missing_offset_for_verified_record(break_offset):
     """verified 时偏移必须可校验：缺失或非整数 offset 使 roi 无法校验，不得静默通过。"""
@@ -1109,12 +1109,12 @@ def test_extract_record_should_derive_roi_and_source_index_for_every_frame(tmp_p
     for frame in record["frames"]:
         assert set(FRAME_FIELDS) <= set(frame)
         # 新增 L1→L0 节点：键集合固定三个。
-        assert set(frame["frame_index_mapping"]) == {"source_to_media", "media_to_clip", "roi_to_source"}
+        assert set(frame["frame_index_mapping"]) == {"clip_to_roi", "clip_to_model_input", "roi_to_original"}
         for mapping in frame["frame_index_mapping"].values():
             assert set(MAPPING_FIELDS) <= set(mapping)
-        assert frame["frame_index_mapping"]["source_to_media"]["offset"] == 973
-        assert frame["frame_index_mapping"]["roi_to_source"]["kind"] == "explicit_pairs"
-        assert frame["frame_index_mapping"]["roi_to_source"]["offset"] == 0
+        assert frame["frame_index_mapping"]["clip_to_roi"]["offset"] == 973
+        assert frame["frame_index_mapping"]["roi_to_original"]["kind"] == "explicit_pairs"
+        assert frame["frame_index_mapping"]["roi_to_original"]["offset"] == 0
 
 
 def test_extract_record_should_keep_l2_identity_fields(tmp_path, monkeypatch):
@@ -1506,3 +1506,55 @@ def test_main_should_probe_only_selected_sources_in_extract_mode(tmp_path, monke
     records = frames.read_records(tmp_path / "records.jsonl")
     assert [record["candidate_id"] for record in records] == ["c00"]
     assert records[0]["verification"]["method"] == "manifest_anchors"
+
+
+def test_verify_lineage_should_explicitly_reject_legacy_v2_record_schema():
+    """旧 v2 记录 schema 必须被显式拒绝，报错点名当前 v3 schema。"""
+    record = lineage_record()
+    record["record_schema"] = "five-label-input-record/2"
+
+    reasons = frames.verify_lineage(record)
+    assert_reasons_require(reasons, "record_schema", frames.RECORD_SCHEMA)
+
+
+@pytest.mark.parametrize("legacy_key", ["media_to_clip", "source_to_media", "roi_to_source"])
+def test_verify_lineage_should_explicitly_reject_legacy_mapping_keys(legacy_key):
+    """即使 record_schema 写成 v3，只要 frame_index_mapping 含旧键名也必须显式拒绝。"""
+    frame = frame_entry(0, 0, 973, 973)
+    frame["frame_index_mapping"][legacy_key] = {"kind": "manifest_replay", "offset": 973, "reason": None}
+    record = lineage_record(frames_override=[frame])
+
+    reasons = frames.verify_lineage(record)
+    assert_reasons_require(reasons, "legacy", legacy_key)
+
+
+def test_read_records_should_explicitly_reject_legacy_v2_schema(tmp_path):
+    """read_records 读取旧 five-label-input-record/2 记录必须抛 InputError。"""
+    record = lineage_record()
+    record["record_schema"] = "five-label-input-record/2"
+    path = tmp_path / "legacy_v2.jsonl"
+    path.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    with pytest.raises(InputError) as excinfo:
+        frames.read_records(path)
+
+    message = str(excinfo.value)
+    assert "five-label-input-record/2" in message
+    assert frames.RECORD_SCHEMA in message
+
+
+@pytest.mark.parametrize("legacy_key", ["media_to_clip", "source_to_media", "roi_to_source"])
+def test_read_records_should_explicitly_reject_legacy_mapping_keys(tmp_path, legacy_key):
+    """read_records 读到旧映射节点键名必须抛 InputError。"""
+    frame = frame_entry(0, 0, 973, 973)
+    frame["frame_index_mapping"][legacy_key] = {"kind": "manifest_replay", "offset": 973, "reason": None}
+    record = lineage_record(frames_override=[frame])
+    path = tmp_path / f"legacy_{legacy_key}.jsonl"
+    path.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    with pytest.raises(InputError) as excinfo:
+        frames.read_records(path)
+
+    message = str(excinfo.value)
+    assert legacy_key in message
+    assert frames.RECORD_SCHEMA in message

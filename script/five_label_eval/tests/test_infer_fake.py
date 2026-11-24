@@ -74,11 +74,11 @@ def record(index):
         "frames": [{"display_order": 0, "clip_frame_index": 0, "roi_frame_index": 973,
                     "original_source_frame_index": 973,
                     "frame_index_mapping": {
-                        "source_to_media": {"kind": "manifest_replay", "offset": 973, "reason": None},
-                        "media_to_clip": {"kind": "ffmpeg_select_nth_decoded_frame", "offset": None,
-                                         "reason": None},
-                        "roi_to_source": {"kind": "offset", "offset": 0,
-                                          "method": "source_replay_mapping", "reason": None}}}],
+                        "clip_to_roi": {"kind": "manifest_replay", "offset": 973, "reason": None},
+                        "clip_to_model_input": {"kind": "ffmpeg_select_nth_decoded_frame", "offset": None,
+                                                "reason": None},
+                        "roi_to_original": {"kind": "offset", "offset": 0,
+                                            "method": "source_replay_mapping", "reason": None}}}],
     }
 
 
