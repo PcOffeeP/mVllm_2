@@ -47,7 +47,7 @@
 | 专题 | 文档及状态 |
 | --- | --- |
 | 检查机制台账 | [检查机制台账](checks.md)：全项目 134 处检查的位置、触发方式与快照状态。 |
-| 专项调研 | [测评数据覆盖与虚拟数据建议](research/evaluation-data-requirements.md) · [MiniCPM 视频加载核查](research/minicpm-video-loading.md) · [65 条虚拟视频溯源](research/virtual-video-provenance.md)。 |
+| 专项调研 | [测评数据覆盖与虚拟数据建议](research/evaluation-data-requirements.md) · [MiniCPM 视频加载核查](research/minicpm-video-loading.md) · [65 条虚拟视频溯源](research/virtual-video-provenance.md) · [8B/9B 开源视频多模态基座选型](research/vlm-8b-9b-model-comparison.md) · [模型输入 8 帧抽帧口径方案](research/model-input-frame-sampling-options.md) · [训练机前置体检与推理适配器规划](research/eval-preflight-and-adapter-plan.md)。 |
 | 变更窗口声明 | `docs/changes/`：按 `AGENTS.md` 规范留存，自「已完成」记录之日起保留 7 天，期满直接删除。 |
 
 > 注：原 `mVllm_2` 冻结线的架构说明（`ARCHITECTURE.md`）与历史模型清单（`docs/results/model-inventory.md`）未在本 sparse-checkout 工作区检出；追溯历史信息请回原 `mVllm_2` 工作区。
