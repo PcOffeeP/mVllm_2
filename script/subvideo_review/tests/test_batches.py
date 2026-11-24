@@ -38,7 +38,7 @@ REAL_SPLIT_DIR = REPO_ROOT / "data/splits/three-fold"
 REAL_BATCHES_PATH = REPO_ROOT / "data/subvideo-review/batches.json"
 REAL_AUDIT_PATH = REPO_ROOT / "data/sub_video/audit.json"
 REAL_TODO_PATH = REPO_ROOT / "docs/TODO.md"
-REAL_B2_DRAFT_PATH = REPO_ROOT / "docs/eval/eval-subset-draft.md"
+REAL_B2_DRAFT_PATH = REPO_ROOT / "docs/subvideo-eval-subset-draft.md"
 
 # `/api/bootstrap` 改动前（本功能之前）的键集合；本功能不得新增批次相关字段。
 BOOTSTRAP_KEYS = {"manifest_sha256", "token", "options", "candidates", "audit_current", "audit_status",
@@ -430,7 +430,7 @@ def b0_ids_from_todo(path=REAL_TODO_PATH):
 
 
 def b2_ids_by_fold_from_draft(path=REAL_B2_DRAFT_PATH):
-    """从 docs/eval/eval-subset-draft.md §4.3 按折解析 B2 的 180 条候选名（不硬编码任何 id）。"""
+    """从 docs/subvideo-eval-subset-draft.md §4.3 按折解析 B2 的 180 条候选名（不硬编码任何 id）。"""
     text = Path(path).read_text(encoding="utf-8")
     start = text.index("### 4.3 B2 180 条按折分组清单")
     end = text.index("\n## 5.", start)
@@ -518,11 +518,11 @@ class RealDataGuardTests(unittest.TestCase):
                 self.assertEqual(self.candidates[cid]["folds"][f], "val",
                                  f"草稿 fold {f} 下的 {cid} 实际不属于 fold {f} val")
         self.assertEqual(len(documented), 180)
-        self.assertEqual(len(set(documented)), 180, "eval-subset-draft.md 中的 B2 候选名不应重复")
+        self.assertEqual(len(set(documented)), 180, "subvideo-eval-subset-draft.md 中的 B2 候选名不应重复")
         self.assertEqual(b2["candidate_count"], 180)
         self.assertEqual(b2["missing_ids"], [], "B2 的 180 条必须全部存在于当前清单")
         self.assertEqual(set(b2["candidate_ids"]), set(documented),
-                         "batches.json 的 B2 必须与 docs/eval/eval-subset-draft.md 登记的 180 条一致")
+                         "batches.json 的 B2 必须与 docs/subvideo-eval-subset-draft.md 登记的 180 条一致")
         scopes = {self.candidates[cid]["scope"] for cid in b2["candidate_ids"]}
         self.assertEqual(scopes, {"development"}, "B2 只取开发集，不取 test")
         self.assertEqual(set(b2["candidate_ids"]) & prior_confirmed, set(),

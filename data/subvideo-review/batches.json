@@ -257,7 +257,7 @@
         ]
       },
       "provenance": {
-        "source": "docs/eval/eval-subset-draft.md",
+        "source": "docs/subvideo-eval-subset-draft.md",
         "section": "§4 B2 每折 val 抽样清单",
         "decision_date": "2026-11-24",
         "seed": 20261124,

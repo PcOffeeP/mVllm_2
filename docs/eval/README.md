@@ -17,13 +17,12 @@
 | [`input-record.md`](input-record.md) | 四层画面谱系、四个帧索引、`source_start_frame` 命名陷阱、同序证据、四层一致性校验、逐层导出 | 抽帧、写输入记录、追溯帧号、核对实际输入 |
 | [`eval-subset.md`](eval-subset.md) | 画幅三档、报告必报项、`max_pixels` 与分档绑定、分层抽样与冻结、旧批次退流 | 划定评测子集、写评测报告、比较不同画幅结果 |
 
-### 同目录评测方案与跨仓草案（3 篇，非输入契约正文）
+### 同目录评测方案与跨仓草案（2 篇，非输入契约正文）
 
 | 文件 | 承担内容 |
 | --- | --- |
 | [`base-model-eval-plan.md`](base-model-eval-plan.md) | 基座模型三层测评实验方案与跑通判据（未实施） |
 | [`agent-handoff-contract-draft.md`](agent-handoff-contract-draft.md) | 向 `TensileAgent` 交付新一代视觉模型（拟 `tensile-vlm/v5`）的跨仓契约草案（未冻结） |
-| [`eval-subset-draft.md`](eval-subset-draft.md) | 第 2 批 1,633 条分层覆盖统计、63 条待关注清单与 B2 每折 60 条抽样名单草稿（非冻结集） |
 
 ## 范围界定
 

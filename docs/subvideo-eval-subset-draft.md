@@ -1,19 +1,19 @@
-# 测评候选子集分层统计与草稿（非冻结集）
+# 子视频候选分层统计与 B2 审核抽样草稿（非冻结集）
 
-> **状态：候选清单草稿（非冻结集）。** 本文件基于第 2 批子视频清单（1,633 条）统计全量分层覆盖，并记录用户于 2026-11-24 确认的 **B2 每折 val 抽样 60 条（共 180 条）** 固定审核名单。本稿**不是冻结测评集**，不作测评真值，不运行模型，也不改变固定测试集的用途边界。
+> **定位与边界（非冻结集）：** 本文件属于**子视频候选分层与 B2 人工审核抽样**专题文档（与 `docs/subvideo-current-logic.md`、`docs/subvideo-review-workflow.md` 同属子视频侧），**不属于 `docs/eval/` 下的整体模型测评契约或正式模型测评范围**。本稿基于第 2 批子视频清单（1,633 条）统计全量分层覆盖，并记录用户于 2026-11-24 确认的 **B2 每折 val 抽样 60 条（共 180 条）** 固定审核名单；本稿**不是冻结测评集**，不作测评真值，不运行模型，也不改变固定测试集的用途边界。
 
 ## 1. 输入身份与口径
 
-- **画幅三档判据**：严格沿用 [评测子集专题](eval-subset.md) §1 与 `script/five_label_eval/frames.py` 的 `size_bucket()`（`w_le_200`：`width <= 200`；`w_200_400`：`200 < width < 400`；`w_gt_400`：`width >= 400`）。
+- **画幅三档判据**：沿用 [评测子集专题](eval/eval-subset.md) §1 与 `script/five_label_eval/frames.py` 的 `size_bucket()`（`w_le_200`：`width <= 200`；`w_200_400`：`200 < width < 400`；`w_gt_400`：`width >= 400`）。
 - **单选与多选口径**：全量 1,633 条标签分布表取自清单 `candidate_labels` 初值（其中生成层旧规则写入的「无」在审核页预填映射为「无法判断」，此处按清单原值统计并单列）；已完成人工审核的 B1 固定 test 314 条另以 `reviews.json` 人工真值单列对照。
-- **来源数下限**：按 [评测子集专题](eval-subset.md) §3，任意层来源数 < 3 时只报个案与计数、不报比例、不并入其他档。
+- **来源数下限**：参照 [评测子集专题](eval/eval-subset.md) §3，任意层来源数 < 3 时只报个案与计数、不报比例、不并入其他档。
 
 | 输入文件 | SHA-256 | 说明 |
 | --- | --- | --- |
 | `data/sub_video/manifest.json` | `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f` | 第 2 批正式清单（1,633 条候选、110 个真实源） |
 | `data/sub_video/audit.json` | `e579da79dfab2455bb0a3203feead78b4defa00e5903a6908a94164ac4b237d9` | 当前批次核验记录（63 条待关注候选） |
 | `data/subvideo-review/reviews.json` | `c2a0ab5df72023de2527a3bf0a35ade758ffd3da994eac5563d4a21bb38cb3c8` | 人工审核快照（本批有效确认 347 条：B0 32 + B1 314 + 试审 1） |
-| `data/subvideo-review/batches.json` | `86d8425ac48f3bc083ba89a2a1e5d1ff1858bda02d9ee5aedd2cc6318c139572` | 批次配置（已纳入 B2 180 条 `explicit_ids`） |
+| `data/subvideo-review/batches.json` | `6d5024f4992d9be34a1bad65c6113a6332a10d0114d9291aa2bec0a04a6f87f9` | 批次配置（已纳入 B2 180 条 `explicit_ids`） |
 
 ## 2. 全量 1,633 条分层覆盖表
 
@@ -337,5 +337,5 @@
 
 ## 5. 待确认与失效条件
 
-- **待确认**：正式冻结测评子集时的选取比例、每层最小样本数、冻结时点，以及虚拟来源未来如纳入诊断评测时的分层口径（本轮主评价按 [DEC-003](../decisions/0003-five-label-eval-scope.md) 第 6 条不纳入虚拟视频）。
-- **失效条件：** 当 `data/sub_video/manifest.json`、三折划分、`data/sub_video/audit.json`、`size_bucket` 区间判据或 B2 抽样规则任一变更时，本草稿分层统计与 B2 名单须重新生成并核对；进入正式冻结阶段时，须按 [评测子集专题](eval-subset.md) §6 单独输出冻结清单与 SHA-256，不直接将本草稿当作冻结集。
+- **待确认**：正式冻结测评子集时的选取比例、每层最小样本数、冻结时点，以及虚拟来源未来如纳入诊断评测时的分层口径（本轮主评价按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 6 条不纳入虚拟视频）。
+- **失效条件：** 当 `data/sub_video/manifest.json`、三折划分、`data/sub_video/audit.json`、`size_bucket` 区间判据或 B2 抽样规则任一变更时，本草稿分层统计与 B2 名单须重新生成并核对；进入正式冻结阶段时，须按 [评测子集专题](eval/eval-subset.md) §6 单独输出冻结清单与 SHA-256，不直接将本草稿当作冻结集。
