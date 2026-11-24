@@ -6,21 +6,21 @@
 
 **基准与边界声明：**
 
-- **仓内核对基线**：`feat/tensileagent-finetune` 提交 `a2b329e23e0321a7c70270eb4dddc4dbc56b3939`（稀疏检出工作树，不含 `pipeline/`、`versioning/`）。
+- **仓内核对基线**：`feat/tensileagent-finetune` 提交 `07d9c8e6030f62ac604a186b777ab1b7dc280e42`（稀疏检出工作树，不含 `pipeline/`、`versioning/`）。
 - **只规划、不改码、不启测**：本文不修改 `script/five_label_eval/` 或 `config/eval_paths.json`，不授权启动真实模型评测或训练。
-- **证据分级纪律**：代码行号与关键文件 SHA-256 均为 `a2b329e` 本机实读实算；训练机尚未现场核验项一律标注 **`待训练机实测核对`**，单条耗时估算一律标注 **`[推测/待训练机实测核对]`**。
+- **证据分级纪律**：代码行号与关键文件 SHA-256 均为 `07d9c8e` 本机实读实算；训练机尚未现场核验项一律标注 **`待训练机实测核对`**，单条耗时估算一律标注 **`[推测/待训练机实测核对]`**。
 
 ---
 
 ## 1. 现状代码与契约缺口分析
 
-本节逐项核对 `a2b329e` 工作树中 [infer.py](../../script/five_label_eval/infer.py)、[frames.py](../../script/five_label_eval/frames.py)、[paths.py](../../script/five_label_eval/paths.py)、[eval_paths.json](../../config/eval_paths.json) 与 [inference-entry.md](../eval/inference-entry.md)、[input-record.md](../eval/input-record.md)、[output-contract.md](../eval/output-contract.md)、[prompt.md](../eval/prompt.md) 之间的接口缺口。
+本节逐项核对 `07d9c8e` 工作树中 [infer.py](../../script/five_label_eval/infer.py)、[frames.py](../../script/five_label_eval/frames.py)、[paths.py](../../script/five_label_eval/paths.py)、[eval_paths.json](../../config/eval_paths.json) 与 [inference-entry.md](../eval/inference-entry.md)、[input-record.md](../eval/input-record.md)、[output-contract.md](../eval/output-contract.md)、[prompt.md](../eval/prompt.md) 之间的接口缺口。
 
-> 注：经实读核对，[inference-entry.md](../eval/inference-entry.md) §1–§2 引用 `infer.py` 行号（如 `main` 74 行、`--backend` 84 行）较当前工作树偏移 2 行（实际为 76 行、86 行）；下文均以 `a2b329e` 实测行号为准。
+> 注：经实读核对，[inference-entry.md](../eval/inference-entry.md) §1–§2 引用 `infer.py` 行号（如 `main` 74 行、`--backend` 84 行）较当前工作树偏移 2 行（实际为 76 行、86 行）；下文均以 `07d9c8e` 实测行号为准。
 
 ### 1.1 `script/five_label_eval/infer.py` 与 `inference-entry.md` 缺口
 
-| 维度 | 现状（`a2b329e` 实读） | 契约/方案要求 | 缺口与影响 |
+| 维度 | 现状（`07d9c8e` 实读） | 契约/方案要求 | 缺口与影响 |
 | --- | --- | --- | --- |
 | `transformers` backend | `--backend` 在 `infer.py:86` 声明 `choices=("fake", "transformers")`，89–90 行直接 `raise NotImplementedError` | `DF-044` / `DEC-003` 第 9 条选定基座 `openbmb/MiniCPM-V-4_5` + `transformers` 加载 | 无模型加载、无处理器装配、无推理执行，无法运行 run A |
 | `http` backend | CLI 未声明 `http`，无 `--endpoint`、`--api-model-name`、`--api-key-env`、`--timeout`、`--temperature`、`--max-tokens` 等参数 | [inference-entry.md](../eval/inference-entry.md) §8 规划 `http` 拟增；[agent-handoff-contract-draft.md](../eval/agent-handoff-contract-draft.md) §2.2 规划 OpenAI-compatible `POST /v1/chat/completions` | 无法对接 vLLM / SGLang 启动的 Qwen3-VL / InternVL3 / InternVL3.5 等多模型服务 |
@@ -33,7 +33,7 @@
 
 ### 1.2 `script/five_label_eval/frames.py` 与 `config/eval_paths.json` 缺口
 
-| 维度 | 现状（`a2b329e` 实读） | 契约/决策要求 | 缺口与影响 |
+| 维度 | 现状（`07d9c8e` 实读） | 契约/决策要求 | 缺口与影响 |
 | --- | --- | --- | --- |
 | 默认抽帧数 | `frames.py:646` 与 `:887` 默认 `--clips-per-record 3` | `DF-044` / `DEC-003` 第 9 条定为**单请求 8 帧** | 默认 3 帧易误抽；待 [抽帧口径方案](model-input-frame-sampling-options.md) 拍板后统一对齐为 8 |
 | L3 逐帧宽高与 PNG 摘要 | `_extract_frames`（`frames.py:632–643`）仅做 `select+showinfo`；`frames[]`（`:700–709`）**不含** `width`/`height` 与 PNG `sha256` | [input-record.md](../eval/input-record.md) §0 状态表 1/7 标为「实现较窄」 | 推理前无法直接从 `records.jsonl` 校验 L3 PNG 字节完整性 |
@@ -189,7 +189,7 @@ cat config/eval_paths.json 2>/dev/null || echo "config/eval_paths.json missing"
 '
 ```
 
-核对通过标准（全部 SHA-256 均为 `a2b329e` 本机实算基线）：
+核对通过标准（全部 SHA-256 均为 `07d9c8e` 本机实算基线）：
 - **关键文件逐一匹配**：
   - `data/annotation-table-full.csv`: `c928bea3d769eb16ad55ed7d872a877a3b4fd327d0af5422bc2bb682c1ec354c`
   - `data/roi/manifest.json`: `24b2dfa3019462dbef27fc00314901d30ad308802a458b31d95a90e4dc6948b3`
@@ -252,7 +252,7 @@ script/five_label_eval/
   - 注意：`httpx.Timeout` 是**分阶段超时**（connect / read / write / pool），并非整请求墙钟总时限——若服务端响应头返回极慢或持续缓慢吐字节（如慢速 chunked body），可能总耗时超过 `600.0 s` 却不触发单次读超时。因此 `http_backend` 必须用**可取消的端到端墙钟总 deadline（默认 `600.0 s`）包住完整 HTTP 调用**（同时覆盖连接、发送、**慢响应头**与**慢响应体**全过程；超限立即取消/中止连接并判 `timeout`）；
   - `httpx.TimeoutException` 或触达端到端总 deadline → `status="timeout"`, `raw_output=None`；
   - `httpx.RequestError` / HTTP 非 2xx / 响应 JSON 异常 / `choices` 为空 / `message.content` 非字符串或空串 → `status="request_failed"`, `raw_output=None`；
-  - 正常返回非空字符串 → `status="success"`, `raw_output=<原文不做 strip 或围栏剥离>`（若服务端配置 `--reasoning-parser` 产生独立 `reasoning_content` 字段，须将其写入独立 `run_meta.jsonl` 并在批次元数据显式记录 `reasoning_parser` 标识）。
+  - 正常返回非空字符串 → `status="success"`, `raw_output=<原文不做 strip 或围栏剥离>`（若服务端配置 `--reasoning-parser` 产生独立 `reasoning_content` 字段，须将其写入独立 `run_meta.jsonl` 并在批次元数据显式记录 `reasoning_parser` 标识；**注意**：如 `GLM-4.1V-9B-Thinking` 搭配 `--reasoning-parser glm45` 时，`message.content` 仍保留非 special token 的 `<answer>...</answer>` 包裹标签，默认须原样写入 `raw_output` 并承受 `score.extract` 的 `surrounding_text_or_fence` / `strict_format_valid=False` 罚分——严禁在 `http_backend` 内静默剥离 `<answer>` 标签；若后续确需解包，必须经批准作为独立标明身份的新 run 模式显式启用，详见 [vlm-8b-9b-model-comparison.md](vlm-8b-9b-model-comparison.md) §3.2）。
 
 #### 路线 2：薄本地 `transformers` backend（覆盖 MiniCPM-V-4.5 专属 `temporal_ids`）
 

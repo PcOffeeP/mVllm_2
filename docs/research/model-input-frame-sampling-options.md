@@ -6,7 +6,7 @@
 
 **基准与边界声明：**
 
-- **仓内核对基线**：`feat/tensileagent-finetune` 提交 `a2b329e23e0321a7c70270eb4dddc4dbc56b3939`；当前生效第 2 批子视频清单 [data/sub_video/manifest.json](../../data/sub_video/manifest.json)（SHA-256 `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f`，共 1,633 条候选 = 开发集 1,319 条 + 固定 test 314 条）。
+- **仓内核对基线**：`feat/tensileagent-finetune` 提交 `07d9c8e6030f62ac604a186b777ab1b7dc280e42`；当前生效第 2 批子视频清单 [data/sub_video/manifest.json](../../data/sub_video/manifest.json)（SHA-256 `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f`，共 1,633 条候选 = 开发集 1,319 条 + 固定 test 314 条）。
 - **固定 test 隔离红线**：固定 test（314 条候选、200 个锚点）**严禁参与任何抽帧口径选型或参数调优**；下文所有方案对比与决策依据均严格限定在开发集（1,319 条候选、955 个锚点）内计算。
 - **只给方案、不代拍板**：本文不修改 `script/five_label_eval/frames.py` 或输入记录 schema，须经用户确认 §5 待决项后再落地。
 
