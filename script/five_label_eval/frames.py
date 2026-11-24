@@ -12,10 +12,11 @@ holds a verified frame-preserving replay plus evidence that ``roi_frame == sourc
 索引而不是猜。批级输出 ``lineage_summary``：三档计数/占比、unverified 的 failed_conditions
 直方图与帧号覆盖率告警（``--coverage-scan`` 可只读帧数就产出）。
 
-记录格式从 ``five-label-input-record/1`` 升到 ``/2``：新增 ``lineage_media``（L0/L1/L2 三层明文、
-含 ``total_frames_source``）、``roi_frame_index``/``original_source_frame_index`` 两级帧号、
-``verification`` 证据身份与 ``frame_count_convention``；删除旧的 ``source_frame_index``（换成
-``original_source_frame_index``）与 ``frame_index_note``（其「ROI 域无声明映射」文案已失效）。
+记录格式从 ``five-label-input-record/2`` 升到 ``/3``：将 ``frames[].frame_index_mapping`` 三个节点
+重命名为与实际层级方向一致的 ``clip_to_model_input``（L2→L3）、``clip_to_roi``（L2→L1）与
+``roi_to_original``（L1→L0），并显式拒绝旧 ``/2`` schema 或遗留键名（``media_to_clip``／
+``source_to_media``／``roi_to_source``）。沿用 ``/2`` 引入的 ``lineage_media``、
+``roi_frame_index``/``original_source_frame_index``、``verification`` 与 ``frame_count_convention``。
 """
 from __future__ import annotations
 
@@ -32,12 +33,14 @@ import sys
 from . import paths
 from .score import InputError, decode_file, require_text
 
-RECORD_SCHEMA = "five-label-input-record/2"
+RECORD_SCHEMA = "five-label-input-record/3"
 SIZE_BUCKET_SOURCE = "width_rule_le200_lt400"
 VERIFIED_REPLAY = "verified_frame_preserving_replay"
 # 来源级 replay 声明里固定的 mapping 常量：只有它才算「源帧 i 与 ROI 帧 i 同序」。
 SOURCE_MAPPING = "source_frame_i_to_ROI_frame_i_by_verified_frame_preserving_pipeline"
-ROI_TO_SOURCE_METHODS = ("manifest_anchors", "source_replay_mapping", "unverified")
+ROI_TO_ORIGINAL_METHODS = ("manifest_anchors", "source_replay_mapping", "unverified")
+MAPPING_NODE_KEYS = ("clip_to_model_input", "clip_to_roi", "roi_to_original")
+LEGACY_MAPPING_KEYS = ("media_to_clip", "source_to_media", "roi_to_source")
 FAILED_CONDITION_TOKENS = ("no_output", "replay_unverified", "bad_clip_index", "no_frame_mapping",
                            "bad_source_start", "anchors_broken", "c1_source_record",
                            "c2_decoded_frame_counts", "c3_candidate_replay")
@@ -50,8 +53,8 @@ SHA256 = re.compile(r"[a-f0-9]{64}")
 SHOWINFO = re.compile(r"\] n:\s*(\d+)\s+pts:\s*(-?\d+)\s+pts_time:(-?\d+(?:\.\d+)?)")
 LAYERS = ("l0", "l1", "l2")
 # L3 帧是 L2 的第 ``clip_frame_index`` 个解码帧：抽帧规则本身就是 L2→L3 的映射。
-MEDIA_TO_CLIP = {"kind": "ffmpeg_select_nth_decoded_frame", "offset": None,
-                 "reason": "L3 帧由 ffmpeg select=eq(n\\,clip_frame_index) 从 L2 按解码序抽取"}
+CLIP_TO_MODEL_INPUT = {"kind": "ffmpeg_select_nth_decoded_frame", "offset": None,
+                       "reason": "L3 帧由 ffmpeg select=eq(n\\,clip_frame_index) 从 L2 按解码序抽取"}
 # 同一路径一次运行内只探测一次：``-count_frames`` 会全解码，重复调用很贵。
 _FRAME_COUNT_CACHE: dict[str, int | None] = {}
 _MEDIA_INFO_CACHE: dict[str, dict] = {}
@@ -113,9 +116,9 @@ def _unverified_lineage(reason, checked_at=None, explicit_pairs=(False, False, F
                         source_replay=(False, False, False), failed=()) -> dict:
     """Unverified admits two empty indices, one non-empty reason and the token it stopped at."""
     return {"clip_frame_index": None, "roi_frame_index": None, "original_source_frame_index": None,
-            "source_to_media": {"kind": "unverified", "offset": None, "reason": reason},
-            "roi_to_source": {"kind": "unverified", "offset": None, "method": "unverified",
-                              "reason": reason},
+            "clip_to_roi": {"kind": "unverified", "offset": None, "reason": reason},
+            "roi_to_original": {"kind": "unverified", "offset": None, "method": "unverified",
+                                "reason": reason},
             "verification": {"verdict_id": "unverified", "method": "unverified",
                              "evidence_sha256": None, "checked_at": checked_at,
                              # 条件布尔值独立计算：前置链失败时也如实记录，便于按条件做诊断直方图。
@@ -131,11 +134,9 @@ def _verified_lineage(clip_frame_index, roi_frame_index, source_start, replay, c
             "roi_frame_index": roi_frame_index,
             # 该级证据已证明 roi_frame == source_frame：L1 与 L0 同序，故原始源帧号等于 ROI 帧号。
             "original_source_frame_index": roi_frame_index,
-            # 命名陷阱（naming trap）：同一块里 source_to_media 与 roi_to_source 指两个不同环节。
-            # source_to_media 的 "source" 是 ROI 视频（L1，历史命名），记 L2→L1 加性偏移；
-            # roi_to_source 才是 L1→L0（ROI 帧 → 原始源视频帧）。不要把两者当成同一层。
-            "source_to_media": {"kind": "manifest_replay", "offset": source_start, "reason": None},
-            "roi_to_source": {"kind": kind, "offset": 0, "method": method, "reason": None},
+            # L2→L1 记子视频到 ROI 的加性偏移；L1→L0 记 ROI 到原始源视频的同序证据。
+            "clip_to_roi": {"kind": "manifest_replay", "offset": source_start, "reason": None},
+            "roi_to_original": {"kind": kind, "offset": 0, "method": method, "reason": None},
             "verification": {"verdict_id": _verdict_id(replay, verdict_receipt), "method": method,
                              "evidence_sha256": evidence_sha256, "checked_at": checked_at,
                              "conditions": {"explicit_pairs": list(explicit_pairs),
@@ -154,7 +155,7 @@ def derive_lineage(candidate: dict, clip_frame_index: int, manifest_sha256=None,
     ``roi_frame_index = roi_frame_index_derived = source_start_frame + clip_frame_index``，
     ``output_start_frame`` 是输出序起点，绝不参与 ROI 推导。
 
-    L1→L0（``roi_to_source``）按三级同序证据判定，优先级从高到低：
+    L1→L0（``roi_to_original``）按三级同序证据判定，优先级从高到低：
 
     1. ``manifest_anchors``：候选自带 anchors 全部良构且 ``roi_frame == source_start_frame +
        output_frame``、``source_frame == roi_frame`` → 显式帧对，``offset`` 为 0。anchors 非空但任一条
@@ -369,12 +370,19 @@ def _layer_total(media: dict, layer: str):
     return _positive_int(total)
 
 
-def _source_to_media_offset(frame: dict):
+def _clip_to_roi_offset(frame: dict):
     """Return the additive L2→L1 offset (``roi = clip + offset``) when the frame declares an integer one."""
     mapping = frame.get("frame_index_mapping")
-    source_to_media = mapping.get("source_to_media") if isinstance(mapping, dict) else None
-    offset = source_to_media.get("offset") if isinstance(source_to_media, dict) else None
+    clip_to_roi = mapping.get("clip_to_roi") if isinstance(mapping, dict) else None
+    offset = clip_to_roi.get("offset") if isinstance(clip_to_roi, dict) else None
     return offset if isinstance(offset, int) and not isinstance(offset, bool) else None
+
+
+def _legacy_mapping_keys(frame: dict) -> list[str]:
+    mapping = frame.get("frame_index_mapping") if isinstance(frame, dict) else None
+    if not isinstance(mapping, dict):
+        return []
+    return [key for key in LEGACY_MAPPING_KEYS if key in mapping]
 
 
 def verify_lineage(record: dict) -> list[str]:
@@ -385,6 +393,10 @@ def verify_lineage(record: dict) -> list[str]:
     if not isinstance(media, dict):
         return ["lineage_media missing: l0/l1/l2 layers are required"]
     reasons: list[str] = []
+    schema = record.get("record_schema")
+    if schema is not None and schema != RECORD_SCHEMA:
+        reasons.append(f"record_schema {schema!r} != {RECORD_SCHEMA!r}: legacy input-record schemas "
+                       f"are explicitly rejected (use {list(MAPPING_NODE_KEYS)})")
     # 没有 verification 块就没有证据身份：不得当作「反正没给帧号」而静默通过。
     verification = record.get("verification")
     if not isinstance(verification, dict):
@@ -392,8 +404,8 @@ def verify_lineage(record: dict) -> list[str]:
         verification = {}
     method = verification.get("method")
     unverified = method == "unverified"
-    if method not in ROI_TO_SOURCE_METHODS:
-        reasons.append(f"verification.method {method!r} is not one of " + "/".join(ROI_TO_SOURCE_METHODS))
+    if method not in ROI_TO_ORIGINAL_METHODS:
+        reasons.append(f"verification.method {method!r} is not one of " + "/".join(ROI_TO_ORIGINAL_METHODS))
     conditions = verification.get("conditions")
     # 证据级别必须自证：manifest_anchors 看 explicit_pairs，source_replay_mapping 看 source_replay。
     if method == "manifest_anchors":
@@ -448,15 +460,18 @@ def verify_lineage(record: dict) -> list[str]:
                                "against the l1 frames")
             elif not 0 <= roi_index < l1_total:
                 reasons.append(f"frames[{order}].roi_frame_index {roi_index} outside l1 frames 0..{l1_total - 1}")
-        offset = _source_to_media_offset(frame)
+        if legacy := _legacy_mapping_keys(frame):
+            reasons.append(f"frames[{order}].frame_index_mapping contains legacy key(s) {legacy}: "
+                           f"{RECORD_SCHEMA} explicitly rejects legacy keys; use {list(MAPPING_NODE_KEYS)}")
+        offset = _clip_to_roi_offset(frame)
         if not unverified:
             # N1：verified 时偏移必须可校；非整数（含 "973"/973.0/None/缺块）都算缺失，不得静默通过。
             if offset is None:
-                reasons.append(f"frames[{order}].frame_index_mapping.source_to_media.offset is not an "
+                reasons.append(f"frames[{order}].frame_index_mapping.clip_to_roi.offset is not an "
                                "integer (string/float/None/missing): roi_frame_index cannot be verified")
             elif roi_is_int and clip_is_int and roi_index != clip_index + offset:
                 reasons.append(f"frames[{order}].roi_frame_index {roi_index} != clip_frame_index {clip_index} + "
-                               f"source_to_media.offset {offset} (added-increment mapping broken)")
+                               f"clip_to_roi.offset {offset} (added-increment mapping broken)")
         source_is_int = isinstance(source_index, int) and not isinstance(source_index, bool)
         if unverified:
             if source_is_int:
@@ -474,8 +489,8 @@ def verify_lineage(record: dict) -> list[str]:
         elif not 0 <= source_index < l0_total:
             reasons.append(f"frames[{order}].original_source_frame_index {source_index} outside l0 frames "
                            f"0..{l0_total - 1}")
-        reasons.extend(_roi_to_source_reasons(order, frame, unverified, method, roi_is_int, roi_index,
-                                             source_is_int, source_index))
+        reasons.extend(_roi_to_original_reasons(order, frame, unverified, method, roi_is_int, roi_index,
+                                                source_is_int, source_index))
     for layer in LAYERS:
         entry = media.get(layer)
         if not isinstance(entry, dict):
@@ -503,12 +518,12 @@ def verify_lineage(record: dict) -> list[str]:
     return reasons
 
 
-def _roi_to_source_reasons(order, frame, unverified, method, roi_is_int, roi_index, source_is_int,
-                           source_index) -> list[str]:
+def _roi_to_original_reasons(order, frame, unverified, method, roi_is_int, roi_index, source_is_int,
+                             source_index) -> list[str]:
     """L1→L0 节点自证：verified 时 kind/offset/method/同号必须成立，unverified 时不得挂已验形态。"""
     mapping = frame.get("frame_index_mapping")
-    node = mapping.get("roi_to_source") if isinstance(mapping, dict) else None
-    label = f"frames[{order}].frame_index_mapping.roi_to_source"
+    node = mapping.get("roi_to_original") if isinstance(mapping, dict) else None
+    label = f"frames[{order}].frame_index_mapping.roi_to_original"
     if unverified:
         # 四项守卫按 kind → method → offset → reason 的顺序全部进 reasons，不早退：
         # 一条记录可能同时挂错形态、写错 method、偷带 offset，只报第一条会遮住其余证据级别矛盾。
@@ -575,11 +590,26 @@ def _digest_identity_reasons(record: dict, media: dict) -> list[str]:
 
 
 def read_records(path) -> list[dict]:
-    """Parse a records JSONL; blank lines are skipped and every row must be an object."""
+    """Parse a records JSONL; blank lines are skipped, objects required, legacy v2/keys explicitly rejected."""
     lines = enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1)
     rows = [(number, decode_file(line, f"{path}:{number}")) for number, line in lines if line.strip()]
     if bad := next(((number, row) for number, row in rows if not isinstance(row, dict)), None):
         raise InputError(f"{path}:{bad[0]}: record row must be object")
+    for number, row in rows:
+        schema = row.get("record_schema")
+        if schema is not None and schema != RECORD_SCHEMA:
+            raise InputError(
+                f"{path}:{number}: record_schema {schema!r} != expected {RECORD_SCHEMA!r}; "
+                f"legacy schemas are explicitly rejected (expected mapping keys: {list(MAPPING_NODE_KEYS)})"
+            )
+        frames = row.get("frames")
+        if isinstance(frames, list):
+            for order, frame in enumerate(frames):
+                if legacy := _legacy_mapping_keys(frame):
+                    raise InputError(
+                        f"{path}:{number}: frames[{order}].frame_index_mapping contains legacy key(s) {legacy}; "
+                        f"{RECORD_SCHEMA} explicitly rejects legacy keys (use {list(MAPPING_NODE_KEYS)})"
+                    )
     return [row for _, row in rows]
 
 
@@ -674,9 +704,9 @@ def extract_record(candidate, profiles, out_dir, clips_per_record=3, manifest_sh
                        "is_anchor": clip_frame_index in anchor_by_output,
                        "anchor_ref": anchor_by_output.get(clip_frame_index), "media_role": "clip",
                        "image": image, "pts_seconds": pts_seconds,
-                       "frame_index_mapping": {"source_to_media": lineage["source_to_media"],
-                                               "media_to_clip": dict(MEDIA_TO_CLIP),
-                                               "roi_to_source": lineage["roi_to_source"]}})
+                       "frame_index_mapping": {"clip_to_roi": lineage["clip_to_roi"],
+                                               "clip_to_model_input": dict(CLIP_TO_MODEL_INPUT),
+                                               "roi_to_original": lineage["roi_to_original"]}})
     # 候选级证据：verdict_id/method/evidence_sha256/checked_at 只取决于候选，不取决于具体帧号。
     candidate_lineage = derive_lineage(candidate, 0, manifest_sha256=manifest_sha256,
                                        checked_at=checked_at, source_evidence=source_evidence)
@@ -688,7 +718,7 @@ def extract_record(candidate, profiles, out_dir, clips_per_record=3, manifest_sh
                 "original_source_frame_indices": [frame["original_source_frame_index"] for frame in frames],
                 "lineage_verification": {key: verification[key] for key in ("method", "verdict_id", "evidence_sha256")},
                 # 证据级别本身也是输入身份：L1→L0 由 anchors 换成来源级 replay 必须换 input_id。
-                "roi_to_source_kind": candidate_lineage["roi_to_source"]["kind"],
+                "roi_to_original_kind": candidate_lineage["roi_to_original"]["kind"],
                 # L0/L1 实测摘要也是模型输入身份：上游字节变了必须换 input_id（checked_at 等易变值不入哈希）。
                 "lineage_sha256": {layer: lineage_media[layer]["sha256"] for layer in LAYERS},
                 **{key: media[key] for key in ("width", "total_frames", "fps")}}
@@ -757,7 +787,7 @@ def lineage_summary(rows) -> dict:
     入参每行 ``{"candidate_id", "method", "failed_conditions"}``。``warning`` 只在 unverified 占比
     **超过** 5% 时为真（恰好 5% 仍可接受，0 条记录不告警也不除零）。
     """
-    counts = {method: 0 for method in ROI_TO_SOURCE_METHODS}
+    counts = {method: 0 for method in ROI_TO_ORIGINAL_METHODS}
     reasons: dict[str, int] = {}
     for row in rows if isinstance(rows, list) else []:
         row = row if isinstance(row, dict) else {}

@@ -16,7 +16,7 @@
 | [4. DATA-HANDOFF](#4-data-handoff--梳理新标注到数据生成的衔接方案) | 梳理新标注到数据生成的衔接方案 | 进行中 | 1,633 条新批次已回传核验；审核进度移交 `§6`，待定虚拟视频切分策略与发布衔接 |
 | [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 进行中 | 已产出 1,633 条分层统计与候选草稿 [eval-subset-draft.md](eval/eval-subset-draft.md)（非冻结集）；待确认冻结口径 |
 | [6. SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段) | 人工审核新批次候选片段 | 进行中 | **当前主线**：B0（32/32）与 B1（314/314）已完成；**B2（180 条）已就绪待审** → B3 |
-| [7. MAPPING-NODE-RENAME](#7-mapping-node-rename--重命名映射节点消除-source_to_media-的方向误读) | 重命名映射节点 | 未开始 | 待确认三个层级节点新名字与旧记录兼容策略 |
+| [7. MAPPING-NODE-RENAME](#7-mapping-node-rename--重命名映射节点消除-source_to_media-的方向误读) | 重命名映射节点 | 已解决（2026-11-24） | 已改用 `clip_to_model_input`／`clip_to_roi`／`roi_to_original`（`five-label-input-record/3`，显式拒绝旧 v2），见 `DF-052` |
 | [8. SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正) | 源标注待改清单与集中修正 | 等待确认／未开始 | 已登记 7 源 9 字段（均为 test 源）；暂不改表，建议 B2/B3 审完后集中复核 |
 | [1. LABEL-ANNOTATION](#1-label-annotation--确认标签基准并进行人工标注) | 确认标签基准并进行人工标注 | 已解决（2026-11-07） | 110 条源标注与材料类型补全已完成；后续修正由 `§8` 跟踪 |
 
@@ -263,7 +263,7 @@
 
 ## 7. MAPPING-NODE-RENAME — 重命名映射节点，消除 source_to_media 的方向误读
 
-**状态：** 未开始。
+**状态：** 已解决（2026-11-24）。用户确认采用纯语义命名并升至 `five-label-input-record/3`、显式拒绝旧 v2 记录；代码、测试、契约文档与 `docs/facts.yaml`（`DF-052` 取代 `DF-041`）已同步完成。
 
 ### 目标
 
@@ -271,30 +271,27 @@
 
 ### 当前进展
 
-- 三个节点的实际方向：`media_to_clip` = L2 → L3（抽帧规则常量，不做帧号换算）、`source_to_media` = **L2 → L1**（加性偏移 `source_start_frame`）、`roi_to_source` = L1 → L0（方向表见 [输入记录专题](eval/input-record.md) §10，已登记为 DF-041）。
-- 该组命名已两次导致实现错误：（1）`source_start_frame` 的 "source" 实指 L1 ROI 视频，误当原始源视频后导致 64% 候选帧号置空；（2）`source_to_media` 实际为 **L2 → L1** 而非「源视频 → 媒体」。代码已留命名陷阱注释（`script/five_label_eval/frames.py:134`）；[帧对应抽帧取证](frame-correspondence-evidence.md)（[DEC-005](decisions/0005-frame-correspondence-evidence.md)）亦明确须先定案本命名再落地实现。
+- **已完成映射重命名与 schema 升级（2026-11-24）**：`media_to_clip` → `clip_to_model_input`（L2 → L3）、`source_to_media` → `clip_to_roi`（L2 → L1）、`roi_to_source` → `roi_to_original`（L1 → L0）；`RECORD_SCHEMA` 升级为 `five-label-input-record/3`。
+- **旧记录显式拒绝已落地**：`read_records` 与 `verify_lineage` 对旧 `record_schema`（含 `/2`）以及含任一旧键名的记录均显式报错拒绝并点名新 schema 与新键名；`test_frames.py` 已补对应单元测试。
+- **文档与事实库已对齐**：[输入记录专题](eval/input-record.md) §10、[帧对应抽帧取证](frame-correspondence-evidence.md) 与 `docs/facts.yaml`（新增 `DF-052` supersede `DF-041`，保留 `DF-041` 原结论作历史记录）已全部同步。
 
 ### 下一步
 
-- [ ] 拟定三个节点的新名称（直接体现 L0/L1/L2/L3 方向，避免 `source`/`media` 等多义词）及旧名到新名的映射，交用户确认。
-- [ ] 在 `script/five_label_eval/frames.py` 更新输出字段名，同步记录 schema 版本与合法性校验。
-- [ ] 同步 [输入记录专题](eval/input-record.md) §10 方向表与失效条件，并在 `docs/facts.yaml` 新增条目 supersede DF-041（不就地改写旧结论）。
-- [ ] 明确旧批次记录（含 `source_to_media` 键）的处理策略（兼容读取或显式拒绝），写入文档并补测试。
+- [x] 拟定三个节点的新名称及旧名到新名的映射，并获用户确认（`clip_to_model_input`／`clip_to_roi`／`roi_to_original`）。
+- [x] 在 `script/five_label_eval/frames.py` 更新输出字段名，同步记录 schema 版本（`five-label-input-record/3`）与合法性校验。
+- [x] 同步 [输入记录专题](eval/input-record.md) §10 方向表与失效条件，并在 `docs/facts.yaml` 新增 `DF-052` supersede `DF-041`（不就地改写旧结论）。
+- [x] 明确旧批次记录（含 `source_to_media` 键与 v2 schema）采用显式拒绝策略，写入文档并补单元测试。
 
 ### 完成标准
 
-- [ ] `frames.py` 输出、记录 schema、`docs/eval/input-record.md` §10 与 `docs/facts.yaml` 四处使用同一套新键名，无残留旧键名。
-- [ ] 旧批次记录的处理方式有明确说明与对应单元测试。
-- [ ] 全量测试与 `facts` 校验通过，命名契约变更证据落入 `docs/facts.yaml` 新条目。
-
-### 等待确认
-
-- 三个映射节点的新命名方案，以及旧批次记录采用兼容读取还是显式拒绝。
+- [x] `frames.py` 输出、记录 schema、`docs/eval/input-record.md` §10 与 `docs/facts.yaml` 四处使用同一套新键名，无残留旧键名。
+- [x] 旧批次记录的处理方式有明确说明（显式拒绝）与对应单元测试。
+- [x] 全量测试与 `facts` 校验通过，命名契约变更证据落入 `docs/facts.yaml` 新条目（`DF-052`）。
 
 ### 限制与关联
 
-- 修改 `frames.py` 输出字段名属契约变更，须用户确认后方可实施。
-- 本任务只登记方向与验收要求，不构成代码、数据或批次重跑授权；关联 [输入记录专题](eval/input-record.md) §10、[帧对应抽帧取证](frame-correspondence-evidence.md)、DF-041。
+- 清单上游字段 `output.frame_mapping.source_start_frame` 本身未改名，仍指 L1 ROI 空间起点。
+- 关联 [输入记录专题](eval/input-record.md) §10、[帧对应抽帧取证](frame-correspondence-evidence.md)、DF-041（`superseded`）、DF-052。
 
 ---
 
