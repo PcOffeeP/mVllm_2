@@ -1,0 +1,220 @@
+# 测评候选子集分层统计与草稿（非冻结集）
+
+> **状态：候选清单草稿（非冻结集）。** 本文件基于第 2 批子视频清单（1,633 条）统计全量分层覆盖，并记录用户于 2026-11-24 确认的 **B2 每折 val 抽样 60 条（共 180 条）** 固定审核名单。本稿**不是冻结测评集**，不作测评真值，不运行模型，也不改变固定测试集的用途边界。
+
+## 1. 输入身份与口径
+
+- **画幅三档判据**：严格沿用 [评测子集专题](eval-subset.md) §1 与 `script/five_label_eval/frames.py` 的 `size_bucket()`（`w_le_200`：`width <= 200`；`w_200_400`：`200 < width < 400`；`w_gt_400`：`width >= 400`）。
+- **单选与多选口径**：全量 1,633 条标签分布表取自清单 `candidate_labels` 初值（其中生成层旧规则写入的「无」在审核页预填映射为「无法判断」，此处按清单原值统计并单列）；已完成人工审核的 B1 固定 test 314 条另以 `reviews.json` 人工真值单列对照。
+- **来源数下限**：按 [评测子集专题](eval-subset.md) §3，任意层来源数 < 3 时只报个案与计数、不报比例、不并入其他档。
+
+| 输入文件 | SHA-256 | 说明 |
+| --- | --- | --- |
+| `data/sub_video/manifest.json` | `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f` | 第 2 批正式清单（1,633 条候选、110 个真实源） |
+| `data/sub_video/audit.json` | `e579da79dfab2455bb0a3203feead78b4defa00e5903a6908a94164ac4b237d9` | 当前批次核验记录（63 条待关注候选） |
+| `data/subvideo-review/reviews.json` | `c2a0ab5df72023de2527a3bf0a35ade758ffd3da994eac5563d4a21bb38cb3c8` | 人工审核快照（本批有效确认 347 条：B0 32 + B1 314 + 试审 1） |
+| `data/subvideo-review/batches.json` | `86d8425ac48f3bc083ba89a2a1e5d1ff1858bda02d9ee5aedd2cc6318c139572` | 批次配置（已纳入 B2 180 条 `explicit_ids`） |
+
+## 2. 全量 1,633 条分层覆盖表
+
+### 2.1 按划分与画幅三档总览
+
+三档在全部、开发集、固定 test 三个范围下**均有样本**，且每档独立来源数均 ≥ 6（满足 ≥ 3 下限）：
+
+| 范围 | 合计（候选／来源） | `w_le_200`（候选／来源） | `w_200_400`（候选／来源） | `w_gt_400`（候选／来源） |
+| --- | --- | --- | --- | --- |
+| 全部 110 源 | 1633 / 110 源 | 881 / 55 源 | 448 / 29 源 | 304 / 26 源 |
+| 开发集（89 源） | 1319 / 89 源 | 791 / 48 源 | 308 / 21 源 | 220 / 20 源 |
+| 固定 test（21 源，B1 已全审） | 314 / 21 源 | 90 / 7 源 | 140 / 8 源 | 84 / 6 源 |
+
+### 2.2 按片段角色 × 画幅三档（全部 1,633 条）
+
+表格单元格式为「候选数 / 可用来源数」。`no_fracture`（仅 2 源）与 `unclamped`（仅 1 源 `video_0002`）来源数 < 3，后续评测仅报个案与计数：
+
+| 片段角色 | 合计（候选／来源） | `w_le_200` | `w_200_400` | `w_gt_400` | 选取与分层说明 |
+| --- | --- | --- | --- | --- | --- |
+| `pre` | 825 / 77 源 | 373 / 34 源 | 255 / 24 源 | 197 / 19 源 | 三档齐全；按比例分层，避免长视频 15 条 `pre` 挤占名额 |
+| `fracture` | 576 / 89 源 | 347 / 43 源 | 146 / 26 源 | 83 / 20 源 | 三档齐全；核心事件片段，优先保底覆盖多源 |
+| `post` | 127 / 53 源 | 88 / 35 源 | 29 / 13 源 | 10 / 5 源 | 三档齐全；`w_gt_400` 仅 5 源（10 条），抽样时须保留覆盖 |
+| `coverage` | 93 / 17 源 | 64 / 10 源 | 18 / 3 源 | 11 / 4 源 | 三档齐全；无断裂锚点滑窗，`w_200_400` 3 源、`w_gt_400` 4 源 |
+| `no_fracture` | 9 / 2 源 | 9 / 2 源 | 0 / 0 源 | 0 / 0 源 | 仅 2 源且全在 `w_le_200`（< 3 源只报个案），全量保留 |
+| `unclamped` | 3 / 1 源 | 0 / 0 源 | 0 / 0 源 | 3 / 1 源 | 仅 1 源 `video_0002` 且全在 `w_gt_400`（< 3 源只报个案），全量保留 |
+
+### 2.3 按五类候选初值标签 × 画幅三档（全部 1,633 条）
+
+下表按清单 `candidate_labels` 统计（单元格格式「候选数 / 来源数」）；**不替代人工审核真值**：
+
+| 类别与字段值 | 合计（候选／来源） | `w_le_200` | `w_200_400` | `w_gt_400` |
+| --- | --- | --- | --- | --- |
+| 断裂状态：`未断裂` | 847 / 81 源 | 392 / 37 源 | 255 / 24 源 | 200 / 20 源 |
+| 断裂状态：`发生断裂` | 576 / 89 源 | 347 / 43 源 | 146 / 26 源 | 83 / 20 源 |
+| 断裂状态：`已断裂` | 127 / 53 源 | 88 / 35 源 | 29 / 13 源 | 10 / 5 源 |
+| 断裂状态：`无法判断` | 83 / 16 源 | 54 / 9 源 | 18 / 3 源 | 11 / 4 源 |
+| 断裂模式：`脆性断裂` | 186 / 20 源 | 128 / 11 源 | 32 / 4 源 | 26 / 5 源 |
+| 断裂模式：`韧性断裂` | 288 / 49 源 | 98 / 14 源 | 131 / 20 源 | 59 / 15 源 |
+| 断裂模式：`半脆半韧断裂` | 207 / 21 源 | 183 / 16 源 | 14 / 3 源 | 10 / 2 源 |
+| 断裂模式：`无法判断` | 105 / 15 源 | 80 / 11 源 | 16 / 2 源 | 9 / 2 源 |
+| 断裂模式：`无` | 847 / 81 源 | 392 / 37 源 | 255 / 24 源 | 200 / 20 源 |
+| 断裂位置：`标距内` | 444 / 67 源 | 260 / 29 源 | 118 / 19 源 | 66 / 19 源 |
+| 断裂位置：`标距外非根部` | 129 / 15 源 | 66 / 6 源 | 46 / 7 源 | 17 / 2 源 |
+| 断裂位置：`夹持根部` | 113 / 10 源 | 104 / 9 源 | 0 / 0 源 | 9 / 1 源 |
+| 断裂位置：`无法判断` | 100 / 13 源 | 59 / 8 源 | 29 / 3 源 | 12 / 2 源 |
+| 断裂位置：`无` | 847 / 81 源 | 392 / 37 源 | 255 / 24 源 | 200 / 20 源 |
+| 异常情况·未夹紧=`是` | 3 / 1 源 | 0 / 0 源 | 0 / 0 源 | 3 / 1 源 |
+| 异常情况·视频异常=`是` | 160 / 18 源 | 107 / 13 源 | 31 / 3 源 | 22 / 2 源 |
+| 异常情况·爆炸性断裂=`是` | 22 / 1 源 | 22 / 1 源 | 0 / 0 源 | 0 / 0 源 |
+| 断裂现象·伸长=`是` | 924 / 55 源 | 552 / 28 源 | 173 / 11 源 | 199 / 16 源 |
+| 断裂现象·颈缩=`是` | 734 / 46 源 | 272 / 16 源 | 310 / 19 源 | 152 / 11 源 |
+| 断裂现象·开裂=`是` | 22 / 3 源 | 17 / 1 源 | 0 / 0 源 | 5 / 2 源 |
+| 断裂现象·界面分离=`是` | 233 / 12 源 | 217 / 11 源 | 16 / 1 源 | 0 / 0 源 |
+| 断裂现象·断后脱夹=`是` | 90 / 5 源 | 22 / 1 源 | 16 / 1 源 | 52 / 3 源 |
+
+### 2.4 已人工确认的 B1 固定 test（314 条）真值分布速览
+
+仅作 B1 已审覆盖核对（来源 `reviews.json`；**未运行模型、未冻结子集**）：
+
+| 类别 | 人工真值分布（314 条 test 片段） |
+| --- | --- |
+| 断裂状态 | 未断裂 183、发生断裂 100、已断裂 17、无法判断 14 |
+| 断裂模式 | 无法判断 143、韧性断裂 123、脆性断裂 25、半脆半韧断裂 23 |
+| 断裂位置 | 无法判断 157、标距内 122、标距外非根部 20、夹持根部 15 |
+| 异常情况 | 未夹紧（是 0 / 无法判断 7）；视频异常（是 25 / 无法判断 0）；爆炸性断裂（是 0 / 无法判断 7） |
+| 断裂现象 | 伸长（是 138 / 无法判断 115）；颈缩（是 100 / 无法判断 30）；开裂（是 0 / 无法判断 7）；界面分离（是 21 / 无法判断 8）；断后脱夹（是 15 / 无法判断 10） |
+
+## 3. 优先核验清单（`audit.json` 63 条待关注候选）
+
+当前批次 `data/sub_video/audit.json` 共标记 **63 条**待关注候选（均含「未断裂片段的断后脱夹需复核」，其中 15 条兼有「未断裂与爆炸性断裂互斥」）：
+
+- **已人工确认 26 条**：固定 test 23 条（B1 已全审）+ 开发集 3 条（B0 已审：`video_0013_pre_01`、`video_0040_pre_01`、`video_0068_pre_01`）。
+- **未审核 37 条（已 100% 纳入 B2 优先核验）**：Fold 0 val 9 条、Fold 1 val 14 条、Fold 2 val 14 条。B2 审完后全批次 63 条待关注将全部完成人工核验。
+
+| 源视频 ID | 划分／val 折 | 待关注条数 | 已确认 | 纳入 B2 | 触发问题 |
+| --- | --- | ---: | ---: | ---: | --- |
+| `video_0013` | dev / fold 1 val | 15 | 1 | 14 | 未断裂片段的断后脱夹需复核 |
+| `video_0040` | dev / fold 2 val | 15 | 1 | 14 | 未断裂与爆炸性断裂互斥；未断裂片段的断后脱夹需复核 |
+| `video_0041` | test（B1） | 15 | 15 | 0 | 未断裂片段的断后脱夹需复核 |
+| `video_0068` | dev / fold 0 val | 10 | 1 | 9 | 未断裂片段的断后脱夹需复核 |
+| `video_0089` | test（B1） | 8 | 8 | 0 | 未断裂片段的断后脱夹需复核 |
+
+## 4. B2 每折 val 抽样清单（每折 60 条，总计 180 条）
+
+### 4.1 抽样规则（2026-11-24 用户确认）
+
+- **候选池**：每折开发集 `val` 池中**扣除已确认 33 条**（B0 32 条 + 试审 `video_0050_coverage_02` 1 条）后的未审候选；三折 `val` 互斥覆盖全部 89 个开发源（其中 2 个源 `video_0015`、`video_0021` 已 100% 在 B0/试审确认，其余 **87 个未审开发源**在 B2 中 **100% 覆盖**）。
+- **确定性分层优先级（随机种子 `seed = 20261124`，第 `k` 折用 `seed + k`）**：
+  1. 全量纳入该折全部未审 `audit.json` 待关注候选（共 37 条：折 0 9 条、折 1 14 条、折 2 14 条）；
+  2. 保底纳入稀缺角色全部剩余未审项（`unclamped` 1 条、`no_fracture` 2 条）与稀缺正例（`开裂`、`爆炸性断裂`、`断后脱夹` 每折各保底最多 4 条）；
+  3. 为该折每个尚未被抽到的未审来源至少分配 1 条（优先填补「角色 × 画幅三档」欠代表单元）；
+  4. 剩余名额按「角色 × 画幅三档」未审池比例缺口从大到小补齐至每折 60 条，单元内优先选当前抽样数最少的来源，避免长视频 `pre` 扎堆。
+- **排序与落盘**：按 `manifest.json` 原序（已按 `source_video_id` 聚簇）写入 `data/subvideo-review/batches.json` 的 `B2.selection`（`type = "explicit_ids"`，`status = "ready"`）。
+
+### 4.2 三折抽样覆盖核对表
+
+| 折 | val 全池／未审池 | B2 抽样 | 覆盖来源（抽样／未审源／全源） | 纳入待关注 | `w_le_200`（条／源） | `w_200_400`（条／源） | `w_gt_400`（条／源） | 角色分布 |
+| --- | --- | ---: | --- | --- | --- | --- | --- | --- |
+| fold 0 | 432 / 421 | 60 | 29 / 29 / 30 | 9 / 9 | 27 / 14 源 | 21 / 8 源 | 12 / 7 源 | pre 30、fracture 20、post 5、coverage 5 |
+| fold 1 | 440 / 426 | 60 | 30 / 30 / 30 | 14 / 14 | 34 / 18 源 | 6 / 6 源 | 20 / 6 源 | pre 34、fracture 17、post 3、coverage 5、unclamped 1 |
+| fold 2 | 447 / 439 | 60 | 28 / 28 / 29 | 14 / 14 | 39 / 16 源 | 11 / 7 源 | 10 / 5 源 | pre 28、fracture 21、post 6、coverage 3、no_fracture 2 |
+
+### 4.3 B2 180 条按折分组清单（与 `batches.json` 逐项一致）
+
+#### Fold 0 val（60 条）
+
+- `video_0001`：`video_0001_fracture_02`
+- `video_0004`：`video_0004_pre_05`、`video_0004_fracture_02`
+- `video_0006`：`video_0006_pre_06`、`video_0006_pre_13`
+- `video_0007`：`video_0007_pre_10`、`video_0007_fracture_01`
+- `video_0009`：`video_0009_pre_04`、`video_0009_pre_08`
+- `video_0011`：`video_0011_pre_05`、`video_0011_fracture_02`
+- `video_0012`：`video_0012_pre_05`、`video_0012_fracture_01`
+- `video_0014`：`video_0014_pre_02`、`video_0014_pre_06`
+- `video_0016`：`video_0016_fracture_01`
+- `video_0017`：`video_0017_pre_09`、`video_0017_fracture_04`
+- `video_0020`：`video_0020_fracture_02`、`video_0020_fracture_10`
+- `video_0022`：`video_0022_pre_08`、`video_0022_post_03`
+- `video_0026`：`video_0026_pre_02`、`video_0026_pre_03`
+- `video_0029`：`video_0029_fracture_07`、`video_0029_fracture_09`
+- `video_0030`：`video_0030_pre_02`、`video_0030_fracture_10`
+- `video_0033`：`video_0033_pre_07`、`video_0033_fracture_06`
+- `video_0034`：`video_0034_coverage_01`
+- `video_0042`：`video_0042_coverage_03`
+- `video_0046`：`video_0046_pre_02`、`video_0046_pre_04`
+- `video_0051`：`video_0051_pre_04`
+- `video_0059`：`video_0059_fracture_02`、`video_0059_fracture_05`、`video_0059_post_01`
+- `video_0065`：`video_0065_fracture_02`
+- `video_0068`：`video_0068_pre_02`、`video_0068_pre_03`、`video_0068_pre_04`、`video_0068_pre_05`、`video_0068_pre_06`、`video_0068_pre_07`、`video_0068_pre_08`、`video_0068_pre_09`、`video_0068_pre_10`
+- `video_0075`：`video_0075_fracture_02`、`video_0075_post_01`
+- `video_0083`：`video_0083_fracture_06`、`video_0083_fracture_07`
+- `video_0096`：`video_0096_coverage_01`、`video_0096_coverage_07`
+- `video_0099`：`video_0099_pre_08`、`video_0099_post_02`
+- `video_0102`：`video_0102_pre_09`、`video_0102_fracture_06`、`video_0102_post_02`
+- `video_0107`：`video_0107_coverage_04`
+
+#### Fold 1 val（60 条）
+
+- `video_0002`：`video_0002_unclamped_03`
+- `video_0003`：`video_0003_pre_03`
+- `video_0013`：`video_0013_pre_02`、`video_0013_pre_03`、`video_0013_pre_04`、`video_0013_pre_05`、`video_0013_pre_06`、`video_0013_pre_07`、`video_0013_pre_08`、`video_0013_pre_09`、`video_0013_pre_10`、`video_0013_pre_11`、`video_0013_pre_12`、`video_0013_pre_13`、`video_0013_pre_14`、`video_0013_pre_15`
+- `video_0023`：`video_0023_pre_04`
+- `video_0027`：`video_0027_pre_02`、`video_0027_pre_03`
+- `video_0028`：`video_0028_pre_03`、`video_0028_pre_06`、`video_0028_pre_09`
+- `video_0035`：`video_0035_fracture_01`
+- `video_0036`：`video_0036_coverage_03`
+- `video_0039`：`video_0039_pre_02`、`video_0039_pre_09`
+- `video_0043`：`video_0043_fracture_01`、`video_0043_post_02`
+- `video_0044`：`video_0044_fracture_02`、`video_0044_fracture_03`
+- `video_0047`：`video_0047_fracture_02`、`video_0047_fracture_03`
+- `video_0048`：`video_0048_fracture_06`
+- `video_0049`：`video_0049_coverage_12`
+- `video_0050`：`video_0050_coverage_03`、`video_0050_coverage_04`
+- `video_0055`：`video_0055_pre_06`
+- `video_0056`：`video_0056_coverage_01`
+- `video_0057`：`video_0057_pre_09`、`video_0057_pre_14`
+- `video_0060`：`video_0060_fracture_01`、`video_0060_fracture_04`
+- `video_0061`：`video_0061_fracture_02`
+- `video_0069`：`video_0069_pre_08`、`video_0069_fracture_01`
+- `video_0071`：`video_0071_pre_02`
+- `video_0072`：`video_0072_fracture_07`、`video_0072_post_01`
+- `video_0073`：`video_0073_pre_10`、`video_0073_fracture_08`
+- `video_0074`：`video_0074_post_03`
+- `video_0079`：`video_0079_fracture_01`
+- `video_0081`：`video_0081_fracture_05`
+- `video_0098`：`video_0098_pre_09`、`video_0098_pre_14`、`video_0098_fracture_10`
+- `video_0104`：`video_0104_pre_03`、`video_0104_fracture_02`
+- `video_0106`：`video_0106_pre_01`、`video_0106_pre_05`
+
+#### Fold 2 val（60 条）
+
+- `video_0024`：`video_0024_fracture_01`、`video_0024_fracture_02`、`video_0024_fracture_03`、`video_0024_fracture_04`
+- `video_0031`：`video_0031_fracture_07`
+- `video_0040`：`video_0040_pre_02`、`video_0040_pre_03`、`video_0040_pre_04`、`video_0040_pre_05`、`video_0040_pre_06`、`video_0040_pre_07`、`video_0040_pre_08`、`video_0040_pre_09`、`video_0040_pre_10`、`video_0040_pre_11`、`video_0040_pre_12`、`video_0040_pre_13`、`video_0040_pre_14`、`video_0040_pre_15`
+- `video_0045`：`video_0045_pre_08`、`video_0045_pre_10`
+- `video_0052`：`video_0052_no_fracture_03`、`video_0052_no_fracture_04`
+- `video_0053`：`video_0053_fracture_08`
+- `video_0054`：`video_0054_coverage_03`
+- `video_0058`：`video_0058_coverage_01`
+- `video_0064`：`video_0064_coverage_03`
+- `video_0066`：`video_0066_pre_10`
+- `video_0070`：`video_0070_pre_06`、`video_0070_post_01`
+- `video_0076`：`video_0076_fracture_05`、`video_0076_fracture_06`
+- `video_0077`：`video_0077_fracture_01`、`video_0077_fracture_05`
+- `video_0080`：`video_0080_pre_07`、`video_0080_fracture_04`
+- `video_0084`：`video_0084_pre_05`、`video_0084_pre_08`
+- `video_0085`：`video_0085_fracture_02`
+- `video_0086`：`video_0086_fracture_01`
+- `video_0090`：`video_0090_pre_03`、`video_0090_fracture_01`
+- `video_0091`：`video_0091_fracture_03`、`video_0091_fracture_04`
+- `video_0092`：`video_0092_pre_02`
+- `video_0097`：`video_0097_pre_10`、`video_0097_fracture_06`
+- `video_0100`：`video_0100_fracture_08`、`video_0100_post_01`
+- `video_0101`：`video_0101_pre_02`、`video_0101_fracture_01`
+- `video_0103`：`video_0103_post_01`
+- `video_0105`：`video_0105_pre_07`、`video_0105_post_02`
+- `video_0108`：`video_0108_pre_09`、`video_0108_post_01`
+- `video_0109`：`video_0109_pre_09`、`video_0109_post_01`
+- `video_0110`：`video_0110_fracture_01`、`video_0110_fracture_04`
+
+## 5. 待确认与失效条件
+
+- **待确认**：正式冻结测评子集时的选取比例、每层最小样本数、冻结时点，以及虚拟来源未来如纳入诊断评测时的分层口径（本轮主评价按 [DEC-003](../decisions/0003-five-label-eval-scope.md) 第 6 条不纳入虚拟视频）。
+- **失效条件：** 当 `data/sub_video/manifest.json`、三折划分、`data/sub_video/audit.json`、`size_bucket` 区间判据或 B2 抽样规则任一变更时，本草稿分层统计与 B2 名单须重新生成并核对；进入正式冻结阶段时，须按 [评测子集专题](eval-subset.md) §6 单独输出冻结清单与 SHA-256，不直接将本草稿当作冻结集。

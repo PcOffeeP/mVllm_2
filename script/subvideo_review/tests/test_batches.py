@@ -36,7 +36,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 REAL_MANIFEST_PATH = REPO_ROOT / "data/sub_video/manifest.json"
 REAL_SPLIT_DIR = REPO_ROOT / "data/splits/three-fold"
 REAL_BATCHES_PATH = REPO_ROOT / "data/subvideo-review/batches.json"
+REAL_AUDIT_PATH = REPO_ROOT / "data/sub_video/audit.json"
 REAL_TODO_PATH = REPO_ROOT / "docs/TODO.md"
+REAL_B2_DRAFT_PATH = REPO_ROOT / "docs/eval/eval-subset-draft.md"
 
 # `/api/bootstrap` 改动前（本功能之前）的键集合；本功能不得新增批次相关字段。
 BOOTSTRAP_KEYS = {"manifest_sha256", "token", "options", "candidates", "audit_current", "audit_status",
@@ -427,6 +429,19 @@ def b0_ids_from_todo(path=REAL_TODO_PATH):
     return ids
 
 
+def b2_ids_from_draft(path=REAL_B2_DRAFT_PATH):
+    """从 docs/eval/eval-subset-draft.md §4.3 解析 B2 的 180 条候选名（不硬编码任何 id）。"""
+    text = Path(path).read_text(encoding="utf-8")
+    start = text.index("### 4.3 B2 180 条按折分组清单")
+    end = text.index("\n## 5.", start)
+    ids = []
+    for line in text[start:end].splitlines():
+        match = re.match(r"\s*-\s*`video_\d+`：(.+)$", line)
+        if match:
+            ids.extend(re.findall(r"`([^`]+)`", match.group(1)))
+    return ids
+
+
 class RealDataGuardTests(unittest.TestCase):
     """真实清单漂移守卫：清单或划分变更时本组测试应当变红。"""
 
@@ -440,8 +455,7 @@ class RealDataGuardTests(unittest.TestCase):
 
     def test_real_batch_definitions_cover_b0_to_b3(self):
         self.assertEqual(set(self.batches), {"B0", "B1", "B2", "B3"})
-        self.assertEqual(self.batches["B2"]["status"], "undefined")
-        for batch_id in ("B0", "B1", "B3"):
+        for batch_id in ("B0", "B1", "B2", "B3"):
             self.assertEqual(self.batches[batch_id]["status"], "ready", f"{batch_id} 应已定义完成")
 
     def test_real_batch_b1_selects_the_314_test_candidates(self):
@@ -468,12 +482,56 @@ class RealDataGuardTests(unittest.TestCase):
         self.assertEqual(b1 & b3, set(), "test 与开发集候选不得重叠")
         self.assertEqual(b1 | b3, set(self.candidates), "B1 与 B3 必须覆盖全部候选")
 
-    def test_real_batch_b2_undefined_fold_pools_are_432_440_447(self):
-        result = self.select("B2")
+    def test_real_val_fold_pools_remain_432_440_447(self):
+        probe = definition("B2_POOL", status="undefined",
+                           selection={"type": "rule", "scope": "development", "fold_roles": ["val"]})
+        result = self.module.select(probe, self.candidates)
 
         self.assertEqual(result["candidate_ids"], [])
         self.assertIsNone(result["candidate_count"])
         self.assertEqual(result["fold_pool_counts"], {"0": 432, "1": 440, "2": 447})
+
+    def test_real_batch_b2_selects_180_val_candidates_matching_draft_and_guards(self):
+        documented = b2_ids_from_draft()
+        b2_def = self.batches["B2"]
+        b2 = self.select("B2")
+        b0_ids = set(self.select("B0")["candidate_ids"])
+
+        self.assertEqual(b2_def["selection"]["type"], "explicit_ids")
+        self.assertEqual(len(documented), 180)
+        self.assertEqual(len(set(documented)), 180, "eval-subset-draft.md 中的 B2 候选名不应重复")
+        self.assertEqual(b2["candidate_count"], 180)
+        self.assertEqual(b2["missing_ids"], [], "B2 的 180 条必须全部存在于当前清单")
+        self.assertEqual(set(b2["candidate_ids"]), set(documented),
+                         "batches.json 的 B2 必须与 docs/eval/eval-subset-draft.md 登记的 180 条一致")
+        scopes = {self.candidates[cid]["scope"] for cid in b2["candidate_ids"]}
+        self.assertEqual(scopes, {"development"}, "B2 只取开发集，不取 test")
+        self.assertEqual(set(b2["candidate_ids"]) & b0_ids, set(), "B2 不得与 B0 的 32 条重复")
+        self.assertNotIn("video_0050_coverage_02", b2["candidate_ids"], "B2 不得重复抽入已确认的试审片段")
+
+        fold_counts = {f: sum(self.candidates[cid]["folds"][f] == "val" for cid in b2["candidate_ids"])
+                       for f in ("0", "1", "2")}
+        self.assertEqual(fold_counts, {"0": 60, "1": 60, "2": 60}, "B2 每折 val 必须恰好 60 条")
+
+        # 全量覆盖开发集中全部 37 条未审待关注候选（开发集共 40 条待关注，其中 3 条已在 B0 确认）
+        audit = json.loads(REAL_AUDIT_PATH.read_text(encoding="utf-8"))
+        dev_attention = {
+            e["candidate_id"] for e in audit["candidates"]
+            if e.get("issues") and self.candidates[e["candidate_id"]]["scope"] == "development"
+        }
+        unreviewed_dev_attention = dev_attention - b0_ids
+        self.assertEqual(len(unreviewed_dev_attention), 37)
+        self.assertTrue(unreviewed_dev_attention.issubset(set(b2["candidate_ids"])),
+                        "B2 必须完整纳入全部 37 条未审开发集待关注候选")
+
+        # 每折均覆盖全部三个画幅档（w_le_200 / w_200_400 / w_gt_400）
+        manifest = json.loads(REAL_MANIFEST_PATH.read_text(encoding="utf-8"))
+        widths = {c["candidate_id"]: c["output"]["media"]["width"] for c in manifest["candidates"]}
+        for f in ("0", "1", "2"):
+            f_ids = [cid for cid in b2["candidate_ids"] if self.candidates[cid]["folds"][f] == "val"]
+            tiers = {"w_le_200" if widths[cid] <= 200 else "w_200_400" if widths[cid] < 400 else "w_gt_400"
+                     for cid in f_ids}
+            self.assertEqual(tiers, {"w_le_200", "w_200_400", "w_gt_400"}, f"fold {f} 须覆盖全部三个画幅档")
 
     def test_real_batch_b0_ids_exist_in_manifest_and_are_development(self):
         documented = b0_ids_from_todo()
