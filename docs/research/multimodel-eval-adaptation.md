@@ -122,18 +122,18 @@
 | `unclamped` | 3 | 3 | 60 / 90 / 150 | 2.00 s / 3.00 s / 5.00 s | 25–30 fps |
 | **合计** | **1,633** | **579** | **45 / 150 / 600（`< 8` 帧为 0 条）** | **1.50 s / 5.00 s / 20.07 s** | **25–30 fps** |
 
-额外实测约束：
+额外实测约束（严格区分「批次概览」与「选型依据」，**固定 test 314 条候选及 200 个 test 锚点不参与抽帧方案选型**）：
 - 1,633 条候选中没有任何片段少于 8 帧（最短 45 帧 / 1.50 s）；上表时长按清单 `output.media.duration` 实测统计（`video_0099_pre_05` 的 `output.media.duration = 20.067 s`，约 `20.07 s`，而按 `total_frames / fps = 600 / 30` 为 `20.00 s`）。
-- 579 条带锚点候选共有 1,155 个锚点，其相对位置 `output_frame / (total_frames - 1)` 分布在 `[0.184, 1.000]`（P10 = `0.203`，P50 = `0.503`，P90 = `0.802`，恰落在首尾端点 1 个）。
-- 若沿用旧项目 `2 fps` 上限 8 帧公式 `max(1, min(int(duration * 2.0), 8, total_frames))`，会在 **746 / 1,633 条（45.7%）** 短于 4.0 s 的片段上抽出少于 8 帧（1.5 s 片段仅抽 3 帧）。
+- 579 条带锚点候选合计 1,155 个锚点 = **开发集 479 条（955 个锚点）** + 固定 test 100 条（200 个锚点）。下文方案 A/B/C 的选型对比**仅采用开发集 1,319 条候选与 955 个开发集锚点**：开发集 955 个锚点的相对位置 `output_frame / (total_frames - 1)` 分布在 `[0.184, 1.000]`（P10 = `0.203`，P50 = `0.503`，P90 = `0.802`，恰落在首尾端点 1 个）。
+- 若沿用旧项目 `2 fps` 上限 8 帧公式 `max(1, min(int(duration * 2.0), 8, total_frames))`，在**开发集 1,319 条**中会有 **608 / 1,319 条（46.1%）** 短于 4.0 s 的片段抽出少于 8 帧（全批次概览为 746 / 1,633 条，45.7%；1.5 s 片段仅抽 3 帧）。
 
-### 4.2 四种候选抽帧口径对比
+### 4.2 四种候选抽帧口径对比（选型数据仅取开发集 1,319 条 / 955 锚点）
 
-| 方案 | 抽帧公式（0 基可解码帧 `total = L2.total_frames`） | 第 2 批（1,633 条）实测特性 | 优点 | 缺点与风险 | 推荐结论 |
+| 方案 | 抽帧公式（0 基可解码帧 `total = L2.total_frames`） | 开发集（1,319 条 / 955 锚点）实测特性 | 优点 | 缺点与风险 | 推荐结论 |
 | --- | --- | --- | --- | --- | --- |
-| **方案 A：全片均匀含首尾固定 8 帧（`evenly_spaced_inclusive`）** | `count = 8`（`total >= 8` 时）；`idx[i] = round(i * (total - 1) / 7)`，`i = 0..7`（与 `frames.py:687` 现有公式完全一致） | 全量 1,633/1,633 稳定产出 8 帧；相邻帧间隔 `0.233–2.880 s`（中位 `0.733 s`，P90 `2.867 s`）；距 1,155 个已知锚点最近帧距中位 `0.233 s`、P90 `0.667 s`、最大 `1.233 s` | 1. **必含首帧 `0` 与末帧 `total-1`**，最利于完整呈现「初始状态→最终状态」变化（直接支撑 `未断裂 / 发生断裂 / 已断裂` 判别）；<br>2. **完全无真值泄露**，不依赖任何标注或角色；<br>3. **与 `frames.py` 现有代码零公式差异**，纯整数 0 基解码索引，训练与推理完全一致；<br>4. 满足 `DF-044` 固定 8 帧约束 | 20 s 长片（如 `coverage`）帧间隔约 2.86 s，极短暂瞬时断裂或微小开裂可能落在两帧之间（需靠「完整片段 vs 实际输入」双轨评价暴露，而非偷改抽帧） | **推荐默认主口径** |
-| **方案 B：全片均匀分桶中点固定 8 帧（`uniform_bucket_midpoint`）** | `idx[i] = min(total - 1, floor((i + 0.5) * total / 8))`，`i = 0..7`（类似 MiniCPM 官方卡分桶中点） | 全量 1,633/1,633 稳定产出 8 帧；距 1,155 个已知锚点最近帧距中位 `0.133 s`、P90 `0.300 s`、最大 `0.700 s`（略近于方案 A，因多数锚点位于片内 20%–80%） | 中段桶中心采样更贴近片内中部事件，减少片头/片尾静止帧占比 | **丢失首帧 `0` 与末帧 `total-1`**（20 s 片段首帧落在 ~1.25 s、末帧落在 ~18.75 s，首尾共丢 ~2.5 s），对结尾才出现断裂或脱夹的片段不利；且需修改 `frames.py:687` 现有已测公式 | 可作次选备选（仅当用户明确偏好中段密集、接受丢首尾时考虑） |
-| **方案 C：旧 `2 fps` 上限 8 帧（`fps_capped_2fps_max8`）** | `n = max(1, min(int(duration * 2.0), 8, total))`，再 `linspace(0, total-1, n)` | **746 / 1,633 条（45.7%）** 抽出 `< 8` 帧（1.5 s 断裂片仅 3 帧） | 仅与旧 v4.1 代码静态一致 | 直接违背 `DF-044` 统一 8 帧契约与历史 `max_frames=8` 硬要求；短断裂/断后片段本就信息紧张却被反向降帧 | **明确不推荐** |
+| **方案 A：全片均匀含首尾固定 8 帧（`evenly_spaced_inclusive`）** | `count = 8`（`total >= 8` 时）；`idx[i] = round(i * (total - 1) / 7)`，`i = 0..7`（与 `frames.py:687` 现有公式完全一致） | 开发集 1,319/1,319 稳定产出 8 帧；**每条片段最大相邻帧间隔** `0.233–2.880 s`（中位 `0.720 s`、P90 `2.867 s`），**全部 9,233 个相邻帧间隔** `0.200–2.880 s`（中位 `0.700 s`、P90 `2.840 s`）；距开发集 955 个锚点最近帧距中位 `0.200 s`、P90 `0.667 s`、最大 `1.233 s`（注：全批次 1,633 条概览下，每片最大间隔为 `0.233–2.880 s` 中位 `0.733 s` / P90 `2.867 s`，全部 11,431 个相邻间隔为 `0.200–2.880 s` 中位 `0.700 s` / P90 `2.840 s`） | 1. **必含首帧 `0` 与末帧 `total-1`**，最利于完整呈现「初始状态→最终状态」变化（直接支撑 `未断裂 / 发生断裂 / 已断裂` 判别）；<br>2. **完全无真值泄露**，不依赖任何标注或角色；<br>3. **与 `frames.py` 现有代码零公式差异**，纯整数 0 基解码索引，训练与推理完全一致；<br>4. 满足 `DF-044` 固定 8 帧约束 | 20 s 长片（如 `coverage`）帧间隔约 2.86 s，极短暂瞬时断裂或微小开裂可能落在两帧之间（需靠「完整片段 vs 实际输入」双轨评价暴露，而非偷改抽帧） | **推荐默认主口径** |
+| **方案 B：全片均匀分桶中点固定 8 帧（`uniform_bucket_midpoint`）** | `idx[i] = min(total - 1, floor((i + 0.5) * total / 8))`，`i = 0..7`（类似 MiniCPM 官方卡分桶中点） | 开发集 1,319/1,319 稳定产出 8 帧；距开发集 955 个锚点最近帧距中位 `0.133 s`、P90 `0.300 s`、最大 `0.700 s`（略近于方案 A，因开发集多数锚点位于片内 20%–80%） | 中段桶中心采样更贴近片内中部事件，减少片头/片尾静止帧占比 | **丢失首帧 `0` 与末帧 `total-1`**（20 s 片段首帧落在 ~1.25 s、末帧落在 ~18.75 s，首尾共丢 ~2.5 s），对结尾才出现断裂或脱夹的片段不利；且需修改 `frames.py:687` 现有已测公式 | 可作次选备选（仅当用户明确偏好中段密集、接受丢首尾时考虑） |
+| **方案 C：旧 `2 fps` 上限 8 帧（`fps_capped_2fps_max8`）** | `n = max(1, min(int(duration * 2.0), 8, total))`，再 `linspace(0, total-1, n)` | 开发集 **608 / 1,319 条（46.1%）** 抽出 `< 8` 帧（1.5 s 断裂片仅 3 帧） | 仅与旧 v4.1 代码静态一致 | 直接违背 `DF-044` 统一 8 帧契约与历史 `max_frames=8` 硬要求；短断裂/断后片段本就信息紧张却被反向降帧 | **明确不推荐** |
 | **方案 D：按时长自适应（>8 帧）或锚点加密** | 长片 >8 帧；或在断裂锚点前后加密取帧 | — | 理论上可提升长片或锚点附近覆盖 | ① `>8` 帧违背 `DF-044`（4090 显存限制下训练与推理统一 8 帧）；② 锚点加密在真实推理/测试期不可用且构成**严重标签泄露**（违反 [design-test.md](../design-test.md) §6 与 [prompt.md](../eval/prompt.md)） | **禁止作为主评测口径**（锚点分析仅可用于离线诊断，绝不可进主评测输入） |
 
 ### 4.3 `clip_to_model_input` 与 `input_id` 参数表示草案
@@ -189,7 +189,7 @@
 
 ### 5.2 可直接复制执行的只读只查命令清单
 
-以下所有命令均为**严格只读查询**（不修改任何文件、不下载权重、不启动服务或训练），可直接在本机通过 SSH 发往训练机执行并重定向保存日志到仓外目录（如本机 `/private/tmp/gpu-preflight-$(date +%Y%m%d).log`）：
+以下**步骤 1、2、3、4** 均为**严格静态只读查询**（不修改任何文件或 `.pyc` 缓存、不导入第三方库、不下载权重、不启动服务或训练）；**步骤 2b** 为单列的可选经授权运行期诊断（仅在需要实测 PyTorch CUDA/BF16 时执行，仍加 `-B` 禁写字节码且不加载模型权重）。命令均可直接在本机通过 SSH 发往训练机执行，并重定向保存日志到仓外目录（如本机 `/private/tmp/gpu-preflight-$(date +%Y%m%d).log`）：
 
 #### 步骤 1：GPU、显存、当前进程与系统资源
 
@@ -207,37 +207,55 @@ df -h /home/liuyang /home/liuyang/文档 /tmp
 '
 ```
 
-#### 步骤 2：Conda / Python 环境与推理包版本盘点
+#### 步骤 2：Conda / Python 环境与推理包版本盘点（严格静态只读）
+
+> 注意：不使用 `conda env list`（其在 `~/.conda/environments.txt` 含失效路径时会清理并重写该文件），也不直接 `__import__` 第三方包（避免写入 `.pyc` 或触发库初始化副作用）；统一通过列目录 + 读登记文件 + `PYTHONDONTWRITEBYTECODE=1 ... python3.11 -B` 配合 `importlib.metadata` 只读查元数据。
 
 ```bash
 ssh liuyang@100.70.83.68 '
-echo "=== CONDA ENVS ==="
-/home/liuyang/miniconda3/bin/conda env list 2>/dev/null || ls -la /home/liuyang/miniconda3/envs
-echo "=== AGENT ENV CHECK ==="
-/home/liuyang/miniconda3/envs/agent/bin/python3.11 -c "
-import sys
+echo "=== CONDA ENVS (READ-ONLY) ==="
+ls -la /home/liuyang/miniconda3/envs 2>/dev/null || echo "envs dir not found"
+echo "--- ~/.conda/environments.txt ---"
+cat ~/.conda/environments.txt 2>/dev/null || echo "no environments.txt"
+
+echo "=== AGENT ENV METADATA CHECK (NO IMPORT, NO PYC) ==="
+PYTHONDONTWRITEBYTECODE=1 /home/liuyang/miniconda3/envs/agent/bin/python3.11 -B -c "
+import importlib.metadata as md, sys
 print(\"python:\", sys.version)
-for pkg in (\"torch\", \"torchvision\", \"transformers\", \"vllm\", \"sglang\", \"accelerate\", \"bitsandbytes\", \"flash_attn\", \"decord\", \"av\", \"qwen_vl_utils\", \"httpx\", \"PIL\", \"cv2\"):
+dists = (
+    \"torch\", \"torchvision\", \"transformers\", \"vllm\", \"sglang\",
+    \"accelerate\", \"bitsandbytes\", \"flash-attn\", \"decord\", \"av\",
+    \"qwen-vl-utils\", \"httpx\", \"pillow\", \"opencv-python\",
+)
+for dist in dists:
     try:
-        m = __import__(pkg)
-        ver = getattr(m, \"__version__\", \"installed(no __version__)\")
-    except Exception as e:
-        ver = f\"MISSING ({type(e).__name__})\"
-    print(f\"  {pkg:16s}: {ver}\")
-try:
-    import torch
-    print(\"  cuda_available  :\", torch.cuda.is_available())
-    print(\"  cuda_version    :\", torch.version.cuda)
-    if torch.cuda.is_available():
-        print(\"  bf16_supported  :\", torch.cuda.is_bf16_supported())
-        print(\"  device_count    :\", torch.cuda.device_count(), [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())])
-except Exception as e:
-    print(\"  torch_probe_err :\", e)
+        ver = md.version(dist)
+    except md.PackageNotFoundError:
+        ver = \"MISSING\"
+    print(f\"  {dist:16s}: {ver}\")
 "
 '
 ```
 
-> 若训练机存在其他专用推理环境（例如 `vllm`、`llamafactory`、`mvllm`），对步骤 2 输出中的每个环境路径替换解释器重复上述只读探针即可。
+> 若训练机存在其他专用推理环境（例如 `vllm`、`llamafactory`、`mvllm`），对上面列出的每个环境路径替换解释器重复该静态只读探针即可。
+
+#### 步骤 2b（可选、经授权的运行期 CUDA/BF16 诊断）
+
+上述步骤 2 仅读取包元数据，不初始化 GPU 上下文；若需在目标推理环境中实测 PyTorch 是否可用 CUDA 及 `bfloat16`，须在确认空闲显存充足后单独运行以下**运行期诊断命令**（仍加 `PYTHONDONTWRITEBYTECODE=1` 与 `-B` 避免写 `.pyc`，不加载任何模型权重）：
+
+```bash
+ssh liuyang@100.70.83.68 '
+PYTHONDONTWRITEBYTECODE=1 /home/liuyang/miniconda3/envs/agent/bin/python3.11 -B -c "
+import torch
+print(\"torch          :\", torch.__version__)
+print(\"cuda_available :\", torch.cuda.is_available())
+print(\"cuda_version   :\", torch.version.cuda)
+if torch.cuda.is_available():
+    print(\"bf16_supported :\", torch.cuda.is_bf16_supported())
+    print(\"device_count   :\", torch.cuda.device_count(), [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())])
+"
+'
+```
 
 #### 步骤 3：本地模型权重目录与 MiniCPM-V-4.5 身份/差异核对
 
@@ -257,6 +275,8 @@ if [ -d "$DIR" ]; then
     "$DIR"/modeling_minicpmv.py "$DIR"/resampler.py 2>/dev/null || true
   grep -n "post_init" "$DIR"/modeling_minicpmv.py 2>/dev/null || true
   stat -c "%s %n" "$DIR"/*.safetensors 2>/dev/null || true
+  # 注意：4 片合计约 17 GB，sha256sum 实算耗时约几十秒，严格只读
+  sha256sum "$DIR"/*.safetensors 2>/dev/null || true
 fi
 '
 ```
@@ -265,7 +285,8 @@ fi
 - 2026-11-10 官方固定 `openbmb/MiniCPM-V-4_5@daef484c...` 的两个处理器源码 SHA-256 见 [minicpm-video-loading.md](minicpm-video-loading.md) §5.3：
   - `processing_minicpmv.py`: `aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd`
   - `image_processing_minicpmv.py`: `52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7`
-- 若训练机现场核出的 SHA-256 与官方不一致（例如 `modeling_minicpmv.py` 存在本地 `self.post_init()` 修改），须在 `model_id` 身份说明中显式记录该目录快照摘要，不得谎称为官方原样权重。
+- 权重分片（`*.safetensors`）的 `sha256sum` 计算耗时约几十秒；在未对照可信官方分片基线清单前，该输出仅作为**本地权重快照身份留档**（供写入 `model_id` 与跨次复现核对），不得据此宣称与官方权重逐字节一致。
+- 若训练机现场核出的小文件 SHA-256 与官方不一致（例如 `modeling_minicpmv.py` 存在本地 `self.post_init()` 修改），须在 `model_id` 身份说明中显式记录该目录快照摘要，不得谎称为官方原样权重。
 
 #### 步骤 4：数据与路径一致性核对（为填充 `config/eval_paths.json` 的 `gpu-train` 做准备）
 
@@ -337,8 +358,9 @@ script/five_label_eval/
 - **适用对象**：vLLM / SGLang 启动的 Qwen2.5-VL-7B/32B、InternVL3-8B/14B/38B、以及支持 OpenAI API 的 MiniCPM-V-4.5 与未来 `TensileAgent` HTTP 服务（衔接 [agent-handoff-contract-draft.md](../eval/agent-handoff-contract-draft.md) §2.2）。
 - **请求构造**：将 8 张 L3 PNG 编码为 `data:image/png;base64,...` 的有序 `image_url` 项，按 `display_order` 排列，与 `prompt_text` 组成单轮 `user` 消息；通过 `--api-model-name` 指定服务端路由模型名，与严格权重身份 `--model-id`（含权重摘要）分离；认证密钥仅通过 `--api-key-env` 指定环境变量名读取，严禁命令行明文传 key。
 - **可选契约探测**：支持 `--contract-endpoint`（如 `GET /v1/tensile/contract`），配置时在请求前 fail-closed 核对服务端声明的模型/契约身份。
-- **三态映射**：
-  - `httpx.TimeoutException` → `status="timeout"`, `raw_output=None`；
+- **端到端超时与三态映射**：
+  - 注意：`httpx.Timeout` 是**分阶段超时**（connect / read / write / pool），并非整请求墙钟总时限——若服务端持续缓慢吐字节（如慢速 chunked body），可能总耗时超过 `600.0 s` 却不触发单次读超时。因此 `http_backend` 必须显式强制**端到端墙钟总截止时间（wall-clock deadline，默认 `600.0 s`）**（按剩余时间收紧单次读超时并在流式/分块读循环与响应完成前检查总 deadline，超限立即中止连接并判 `timeout`）；
+  - `httpx.TimeoutException` 或触达端到端总 deadline → `status="timeout"`, `raw_output=None`；
   - `httpx.RequestError` / HTTP 非 2xx / 响应 JSON 异常 / `choices` 为空 / `message.content` 非字符串或空串 → `status="request_failed"`, `raw_output=None`；
   - 正常返回非空字符串 → `status="success"`, `raw_output=<原文不做 strip 或围栏剥离>`。
 
@@ -353,7 +375,7 @@ script/five_label_eval/
 | 阶段 | 范围与交付物 | 验收与测试策略（严格区分合成测试与训练机实跑） |
 | --- | --- | --- |
 | **阶段 0（决策与核对）** | 用户确认 §4.4 四个边界问题；在训练机执行 §5.2 只读核对并留档；确定首批对比模型名单 | 产出训练机 Pre-flight 核对记录；更新 `DEC-005` 前置条件 1 状态 |
-| **阶段 1（本机开发与单测）** | 1. 补齐 `frames.py` 8 帧默认口径与 L3 宽高/SHA-256；<br>2. 实现 `backends/` 抽象层 + `http_backend` + `transformers_backend` 骨架 + `infer.py` 逐条落盘与 `verify_lineage` 前置校验；<br>3. 补齐 `DF-037` 跨模型报告拦截 `fake` 的守卫 | **本机纯单测/mock 测试（无 GPU、无真实权重）**：<br>- `http_backend`：用 `httpx.MockTransport` 覆盖 200 正常、4xx/5xx、空 content、连接断开、超时映射、8 帧 base64 顺序保真、`prompt_text` 字节零修改、严禁泄露 `candidate_id`/文件路径；<br>- `transformers_backend`：用 stub processor/model 覆盖 `temporal_ids` 透传、帧序一致、`SIGALRM` 超时、OOM 映射 `request_failed`；<br>- 回归全量 `pytest` + `script.checks.facts`（`gone == 0`, `ambiguous == 0`） |
+| **阶段 1（本机开发与单测）** | 1. 补齐 `frames.py` 8 帧默认口径与 L3 宽高/SHA-256；<br>2. 实现 `backends/` 抽象层 + `http_backend` + `transformers_backend` 骨架 + `infer.py` 逐条落盘与 `verify_lineage` 前置校验；<br>3. 补齐 `DF-037` 跨模型报告拦截 `fake` 的守卫 | **本机纯单测/mock 测试（无 GPU、无真实权重）**：<br>- `http_backend`：用 `httpx.MockTransport` 覆盖 200 正常、4xx/5xx、空 content、连接断开、单阶段超时与**慢速吐字节触发端到端总 deadline 超时**映射、8 帧 base64 顺序保真、`prompt_text` 字节零修改、严禁泄露 `candidate_id`/文件路径；<br>- `transformers_backend`：用 stub processor/model 覆盖 `temporal_ids` 透传、帧序一致、`SIGALRM` 超时、OOM 映射 `request_failed`；<br>- 回归全量 `pytest` + `script.checks.facts`（`gone == 0`, `ambiguous == 0`） |
 | **阶段 2（训练机冒烟验证）** | 填充并核对 `config/eval_paths.json` 的 `gpu-train`；在 **5–10 条开发集片段**上实跑 MiniCPM-V-4.5（`transformers`）与候选对比模型（`http`/vLLM） | 核对冷启动耗时、单条 P50/P95、显存峰值、`predictions.jsonl` 通过 `score.py` 评分、并验证 `DEC-005` 按次抽帧取证回溯闭环；开发集冒烟结果不得混作正式 test 结论 |
 | **阶段 3（授权后正式 run A）** | 取得用户正式评测授权后，在已审完的 B1 固定 test（314 条）上按 [base-model-eval-plan.md](../eval/base-model-eval-plan.md) §4、§8.1 执行 run A | 按 §8.1 (a) 类判据验收 run 完整性，按画幅三档与来源级/片段级并列报告，再由用户决定是否进入 run B/C 及确定后续微调与阈值 |
 
