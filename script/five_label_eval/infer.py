@@ -493,7 +493,12 @@ def main(argv=None) -> int:
             selected = decode_file(Path(args.candidate_ids).read_text(encoding="utf-8"), args.candidate_ids)
             if not isinstance(selected, list) or not selected:
                 raise InputError("candidate IDs must be a nonempty JSON array")
-            by_id = {record.get("candidate_id"): record for record in records}
+            by_id: dict[Any, dict] = {}
+            for record in records:
+                rcid = record.get("candidate_id") if isinstance(record, dict) else None
+                if rcid in by_id:
+                    raise InputError(f"duplicate candidate_id in input records: {rcid}")
+                by_id[rcid] = record
             duplicated = sorted(cid for cid in set(selected) if selected.count(cid) > 1)
             missing = [cid for cid in selected if cid not in by_id]
             if duplicated or missing:

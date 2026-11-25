@@ -2203,3 +2203,9 @@ def test_r15_regression_jsonl_line_separators_and_duplicate_manifest_candidate(t
         verify_trusted_snapshot_sha256(upper_dir, {"config.json": cfg_sha})
     with pytest.raises(InputError, match="external auto_map"):
         verify_trusted_snapshot_sha256(upper_dir, {"config.json": cfg_sha, "PROCESSOR_CONFIG.JSON": up_sha})
+
+    # 4. Invalid IPv4/host rejected by httpx.URL at construction (before creating any output files) without echoing URL.
+    with pytest.raises(InputError) as inv_exc:
+        HttpBackend(endpoint="http://127.0.0.999:8000/v1", model_id="Qwen3-VL-8B-Instruct@1")
+    assert "127.0.0.999" not in str(inv_exc.value)
+    assert inv_exc.value.__cause__ is None

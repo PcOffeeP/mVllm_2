@@ -94,7 +94,12 @@ def _resolve_completions_url(endpoint: str) -> str:
         new_path = f"{path}/chat/completions"
     else:
         new_path = f"{path}/v1/chat/completions"
-    return urlunsplit((scheme, parts.netloc, new_path, "", ""))
+    resolved = urlunsplit((scheme, parts.netloc, new_path, "", ""))
+    try:
+        httpx.URL(resolved)
+    except httpx.InvalidURL:
+        raise InputError("http endpoint is not a valid http:// or https:// URL") from None
+    return resolved
 
 
 def _encode_png_bytes_data_url(raw: bytes) -> str:
