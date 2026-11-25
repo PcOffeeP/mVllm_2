@@ -205,6 +205,7 @@ def test_http_backend_sends_ordered_8_frames_verbatim_prompt_and_no_leakage(tmp_
     ]
     assert [item["image_url"]["url"] for item in content[:8]] == expected_urls
     assert content[8] == {"type": "text", "text": "  请严格输出 JSON\n"}
+    assert captured["body"]["mm_processor_kwargs"] == {"max_pixels": 65536}
 
     # Zero leakage of candidate_id or filesystem paths in payload.
     serialized_payload = json.dumps(captured["body"], ensure_ascii=False)
@@ -925,3 +926,147 @@ def test_r2_regression_device_placement_minicpm_max_pixels_processor_config_and_
     finally:
         http_backend.close()
     assert sent_b64_by_cid["c01"] == f"data:image/png;base64,{base64.b64encode(orig_c01_f0).decode('ascii')}"
+
+
+def test_r3_regression_tokenizer_auto_map_internvl_default_loader_seed_and_meta_checkpoint(tmp_path, monkeypatch):
+    """Regression tests for unresolved PR #24 bot findings (4689838553, 4689785933, 4689785953, 4689715685)."""
+    import types
+    from script.five_label_eval.backends.transformers_backend import _default_model_loader
+
+    # 1. Reject external auto_map in tokenizer_config.json (both dict and legacy list forms).
+    for form_name, tok_cfg in (
+        ("dict", {"auto_map": {"AutoTokenizer": ["evil/repo--tok.Tok", None]}}),
+        ("list", {"auto_map": ["evil/repo--tok.Tok"]}),
+    ):
+        mdir = tmp_path / f"tok_ext_{form_name}"
+        mdir.mkdir()
+        (mdir / "config.json").write_bytes(b'{"version": "4.5"}')
+        (mdir / "tokenizer_config.json").write_bytes(json.dumps(tok_cfg).encode("utf-8"))
+        manifest_sha = {
+            "config.json": hashlib.sha256((mdir / "config.json").read_bytes()).hexdigest(),
+            "tokenizer_config.json": hashlib.sha256((mdir / "tokenizer_config.json").read_bytes()).hexdigest(),
+        }
+        with pytest.raises(InputError, match="tokenizer_config.json"):
+            verify_trusted_snapshot_sha256(mdir, manifest_sha)
+
+    # 2. Default loader uses AutoImageProcessor (not AutoProcessor) for native InternVL with model.chat().
+    loader_calls: list[str] = []
+
+    class FakeCuda:
+        @staticmethod
+        def is_available():
+            return False
+
+        @staticmethod
+        def is_bf16_supported():
+            return False
+
+    fake_torch = types.SimpleNamespace(
+        bfloat16="bf16",
+        cuda=FakeCuda(),
+        manual_seed=lambda s: loader_calls.append(f"torch.manual_seed({s})"),
+    )
+
+    class FakeNativeInternVL:
+        def eval(self):
+            return self
+
+        def chat(self, tokenizer, pixel_values, question, generation_config, num_patches_list=None):
+            return LEGAL_JSON
+
+    class FakeAutoModel:
+        @staticmethod
+        def from_pretrained(*_a, **_kw):
+            return FakeNativeInternVL()
+
+    class FakeAutoTokenizer:
+        @staticmethod
+        def from_pretrained(*_a, **_kw):
+            return "TOK"
+
+    class FakeAutoImageProcessor:
+        @staticmethod
+        def from_pretrained(*_a, **_kw):
+            loader_calls.append("AutoImageProcessor.from_pretrained")
+            return lambda images, return_tensors="pt": {"pixel_values": "PV_TENSOR"}
+
+    class FakeAutoProcessor:
+        @staticmethod
+        def from_pretrained(*_a, **_kw):
+            raise AssertionError("native InternVL must use AutoImageProcessor, not AutoProcessor")
+
+    fake_transformers = types.SimpleNamespace(
+        AutoModel=FakeAutoModel,
+        AutoModelForCausalLM=FakeAutoModel,
+        AutoTokenizer=FakeAutoTokenizer,
+        AutoProcessor=FakeAutoProcessor,
+        AutoImageProcessor=FakeAutoImageProcessor,
+    )
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
+
+    model, proc, tok = _default_model_loader(tmp_path, "internvl3", None)
+    assert "AutoImageProcessor.from_pretrained" in loader_calls
+    backend = TransformersBackend(
+        model_id="OpenGVLab/InternVL3-8B@sha256:1",
+        temperature=0.2,
+        seed=42,
+        model=model,
+        processor=proc,
+        tokenizer=tok,
+        image_loader=lambda p: p.name,
+    )
+    res = backend.infer_one(_make_request(tmp_path / "r3_internvl"))
+    assert res.status == "success"
+    assert res.raw_output == LEGAL_JSON
+    assert "torch.manual_seed(42)" in loader_calls
+
+    # 3. Interruption mid-batch checkpoints run_meta (never 0 bytes) alongside flushed predictions.
+    rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r3_interrupt", cid="c00")
+    _, entries2 = _write_eight_frames(frames_dir, cid="c01")
+    rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    manifest = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
+
+    class InterruptOnSecondBackend:
+        backend_name = "http"
+
+        def __init__(self):
+            self.n = 0
+
+        def run_identity(self):
+            return {"backend": "http", "model_id": "Qwen3-VL-8B-Instruct@1"}
+
+        def infer_one(self, request):
+            from script.five_label_eval.backends import InferenceResult
+
+            self.n += 1
+            if self.n == 2:
+                raise KeyboardInterrupt("simulated ctrl-c")
+            return InferenceResult(status="success", raw_output=LEGAL_JSON, latency_seconds=0.1)
+
+        def close(self):
+            return None
+
+    preds_path = tmp_path / "interrupted_preds.jsonl"
+    meta_path = tmp_path / "interrupted_meta.json"
+    with pytest.raises(KeyboardInterrupt):
+        infer.run_inference(
+            [rec1, rec2],
+            manifest,
+            backend=InterruptOnSecondBackend(),
+            run_id="r-int",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir,
+            output_path=preds_path,
+            meta_output_path=meta_path,
+        )
+
+    pred_lines = [l for l in preds_path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    assert len(pred_lines) == 1
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert meta["run_status"] == "interrupted"
+    assert meta["total_requests"] == 1
+    assert meta["backend_identity"]["backend"] == "http"
+    assert len(meta["requests"]) == 1

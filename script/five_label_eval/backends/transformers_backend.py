@@ -176,9 +176,10 @@ def verify_trusted_snapshot_sha256(
             )
         verified[rel_norm] = actual
 
-    # Reject external repo references in auto_map (e.g. "org/repo--module.Class") so
+    # Reject external repo references in auto_map (e.g. "org/repo--module.Class") across
+    # model, processor, and tokenizer configs (both dict and legacy list forms) so
     # trust_remote_code=True can only execute verified local .py files inside model_path.
-    for cfg_name in ("config.json", "processor_config.json", "preprocessor_config.json"):
+    for cfg_name in ("config.json", "processor_config.json", "preprocessor_config.json", "tokenizer_config.json"):
         cfg_file = root / cfg_name
         if not cfg_file.is_file():
             continue
@@ -196,6 +197,13 @@ def verify_trusted_snapshot_sha256(
                             f"external auto_map reference {ref!r} in {cfg_name}[{key!r}] "
                             "is refused under fail-closed local trust_remote_code verification"
                         )
+        elif isinstance(auto_map, list):
+            for idx, ref in enumerate(auto_map):
+                if isinstance(ref, str) and "--" in ref:
+                    raise InputError(
+                        f"external auto_map reference {ref!r} in {cfg_name}[{idx}] "
+                        "is refused under fail-closed local trust_remote_code verification"
+                    )
     return verified
 
 
@@ -340,7 +348,17 @@ def _default_model_loader(
     except Exception:
         model = AutoModelForCausalLM.from_pretrained(str(model_path), **common_kwargs).eval()
     tokenizer = AutoTokenizer.from_pretrained(str(model_path), local_files_only=True, trust_remote_code=True)
-    processor = AutoProcessor.from_pretrained(str(model_path), **processor_kwargs)
+    if hasattr(model, "chat"):
+        # Native OpenGVLab InternVL checkpoints define an image feature extractor in
+        # preprocessor_config.json rather than a registered AutoProcessor (which would
+        # silently fall back to AutoTokenizer and reject images=...).
+        from transformers import AutoImageProcessor
+
+        processor = AutoImageProcessor.from_pretrained(
+            str(model_path), local_files_only=True, trust_remote_code=True
+        )
+    else:
+        processor = AutoProcessor.from_pretrained(str(model_path), **processor_kwargs)
     return model, processor, tokenizer
 
 

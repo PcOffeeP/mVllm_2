@@ -284,6 +284,34 @@ def run_inference(
 
     predictions: list[dict] = []
     request_metas: list[dict[str, Any]] = []
+
+    def _build_run_meta(run_status: str) -> dict[str, Any]:
+        return {
+            "run_id": run_id,
+            "model_id": model_id,
+            "prompt_id": prompt_id,
+            "run_status": run_status,
+            "sampling_policy": batch_sampling_policy,
+            "backend_identity": backend.run_identity(),
+            "total_requests": len(predictions),
+            "status_counts": {
+                status: sum(1 for row in predictions if row["status"] == status)
+                for status in ("success", "request_failed", "timeout")
+            },
+            "requests": request_metas,
+        }
+
+    def _checkpoint_meta(run_status: str) -> dict[str, Any]:
+        payload = _build_run_meta(run_status)
+        if meta_stream is not None:
+            meta_stream.seek(0)
+            meta_stream.truncate(0)
+            meta_stream.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+            meta_stream.flush()
+        return payload
+
+    completed = False
+    run_meta = _checkpoint_meta("running")
     try:
         for cid, record, frame_paths, frame_pts, frame_bytes in prepared:
             req = InferenceRequest(
@@ -323,24 +351,16 @@ def run_inference(
             if stream is not None:
                 stream.write(json.dumps(row, ensure_ascii=False) + "\n")
                 stream.flush()
+            run_meta = _checkpoint_meta("running")
 
-        run_meta: dict[str, Any] = {
-            "run_id": run_id,
-            "model_id": model_id,
-            "prompt_id": prompt_id,
-            "sampling_policy": batch_sampling_policy,
-            "backend_identity": backend.run_identity(),
-            "total_requests": len(predictions),
-            "status_counts": {
-                status: sum(1 for row in predictions if row["status"] == status)
-                for status in ("success", "request_failed", "timeout")
-            },
-            "requests": request_metas,
-        }
-        if meta_stream is not None:
-            meta_stream.write(json.dumps(run_meta, ensure_ascii=False, indent=2) + "\n")
-            meta_stream.flush()
+        completed = True
+        run_meta = _checkpoint_meta("completed")
     finally:
+        if not completed:
+            try:
+                _checkpoint_meta("interrupted")
+            except OSError:
+                pass
         if stream is not None:
             stream.close()
         if meta_stream is not None:

@@ -148,6 +148,10 @@ class HttpBackend:
         seed = decode.get("seed", self.seed)
         if seed is not None:
             payload["seed"] = seed
+        if self.max_pixels is not None:
+            # Forward max_pixels to OpenAI-compatible vLLM/SGLang servers so the
+            # recorded run_identity pixel budget is actively sent in the request.
+            payload["mm_processor_kwargs"] = {"max_pixels": self.max_pixels}
         if self.extra_body:
             payload.update(self.extra_body)
         return payload
