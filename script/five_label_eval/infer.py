@@ -59,11 +59,29 @@ def _validate_safe_component(value: str, label: str) -> None:
         raise InputError(f"{label} must be a single safe path component, got {value!r}")
 
 
+def _dumps_jsonl_line(obj: dict[str, Any]) -> str:
+    """Serialize one JSONL object, escaping Unicode line separators so splitlines() never splits a record."""
+    return (
+        json.dumps(obj, ensure_ascii=False)
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+        .replace("\u0085", "\\u0085")
+    )
+
+
 def _validate_manifest_samples(manifest) -> dict[str, dict]:
     rows = manifest.get("samples") if isinstance(manifest, dict) else None
     if not isinstance(rows, list):
         raise InputError("manifest must contain samples array")
-    return {row["candidate_id"]: row for row in rows if isinstance(row, dict) and "candidate_id" in row}
+    samples: dict[str, dict] = {}
+    for row in rows:
+        if not isinstance(row, dict) or "candidate_id" not in row:
+            continue
+        cid = row["candidate_id"]
+        if cid in samples:
+            raise InputError(f"duplicate candidate_id in manifest: {cid}")
+        samples[cid] = row
+    return samples
 
 
 def _validate_record_against_manifest(record: Any, samples: dict[str, dict]) -> str:
@@ -411,7 +429,7 @@ def run_inference(
                 "extra_meta": result.extra_meta,
             })
             if stream is not None:
-                stream.write(json.dumps(row, ensure_ascii=False) + "\n")
+                stream.write(_dumps_jsonl_line(row) + "\n")
                 stream.flush()
             run_meta = _checkpoint_meta("running")
 

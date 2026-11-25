@@ -2119,3 +2119,75 @@ def test_r14_regression_qwen3_vl_min_transformers_version_and_dangling_config_sy
     )
     with pytest.raises(InputError, match="dangling symlink"):
         backend.infer_one(_make_request(tmp_path / "r14_dangling"))
+
+
+def test_r15_regression_jsonl_line_separators_and_duplicate_manifest_candidate(tmp_path):
+    """Regression tests for U+2028/U+2029 JSONL round-trip with score.read_jsonl and duplicate manifest candidate_id."""
+    from script.five_label_eval.score import read_jsonl
+
+    # 1. Model output containing literal U+2028 / U+2029 survives predictions.jsonl -> score.read_jsonl() intact.
+    rec, manifest, frames_dir = _build_record_and_manifest(tmp_path / "r15_sep", cid="c00")
+    raw_with_sep = LEGAL_JSON + "\u2028\u2029"
+    preds_path = tmp_path / "r15_preds.jsonl"
+
+    http_backend = HttpBackend(
+        endpoint="http://127.0.0.1:8000",
+        model_id="Qwen3-VL-8B-Instruct@1",
+        transport=httpx.MockTransport(
+            lambda _req: httpx.Response(200, json={"choices": [{"message": {"content": raw_with_sep}}]})
+        ),
+    )
+    try:
+        infer.run_inference(
+            [rec],
+            manifest,
+            backend=http_backend,
+            run_id="r15-sep",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir,
+            output_path=preds_path,
+        )
+    finally:
+        http_backend.close()
+
+    parsed_rows = read_jsonl(preds_path)
+    assert len(parsed_rows) == 1
+    assert parsed_rows[0]["raw_output"] == raw_with_sep
+
+    # 2. Duplicate candidate_id in manifest["samples"] fails closed before creating output or calling backend.
+    dup_manifest = {
+        "manifest_version": "test/1",
+        "samples": [
+            {**manifest["samples"][0], "clip_sha256": "0" * 64},
+            manifest["samples"][0],
+        ],
+    }
+    out_should_not_exist = tmp_path / "r15_dup_preds.jsonl"
+
+    class FailBackend:
+        backend_name = "http"
+
+        def run_identity(self):
+            return {"backend": "http"}
+
+        def infer_one(self, request):
+            raise AssertionError("backend must not run on duplicate manifest candidate_id")
+
+        def close(self):
+            return None
+
+    with pytest.raises(InputError, match="duplicate candidate_id in manifest"):
+        infer.run_inference(
+            [rec],
+            dup_manifest,
+            backend=FailBackend(),
+            run_id="r15-dup",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir,
+            output_path=out_should_not_exist,
+        )
+    assert not out_should_not_exist.exists()
