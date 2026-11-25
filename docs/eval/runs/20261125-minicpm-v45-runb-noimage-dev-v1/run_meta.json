@@ -1,0 +1,14 @@
+{
+  "run_id": "20261125-minicpm-v45-runb-noimage-dev-v1",
+  "model_id": "MiniCPM-V-4.5",
+  "prompt_id": "prompt@sha256:cf299d672281e12ea5f3964bb08ffbe2d237e1dfad3503861e7e21a5872cc4cf",
+  "input_id": "noimage-control:eval-dev-v1:text-only",
+  "n_samples": 210,
+  "status_counts": {
+    "success": 210
+  },
+  "total_elapsed_seconds": 363.112,
+  "mean_latency_seconds": 1.729,
+  "min_latency_seconds": 1.719,
+  "max_latency_seconds": 1.767
+}
