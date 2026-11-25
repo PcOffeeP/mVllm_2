@@ -268,7 +268,7 @@ script/five_label_eval/
 | --- | --- | --- |
 | **阶段 0（决策与体检）** | 用户确认模型梯队与抽帧口径（DEC-005 前置条件 1）；在训练机执行 §2.2 只读体检并留档；完成媒体全量逐文件 `sha256sum` 核对 | 产出训练机 Pre-flight 核对记录；确认无文件缺失或哈希不符 |
 | **阶段 1（本机开发与单测）** | 1. 补齐 `frames.py` 8 帧默认口径与 L3 宽高/SHA-256；<br>2. 实现 `backends/` 抽象层 + `http_backend` + `transformers_backend` 骨架 + `infer.py` 逐条落盘与前置校验；<br>3. 补齐 `DF-037` 跨模型报告拦截 `fake` 的守卫 | **本机纯单测/mock 与本地回环集成测试（无 GPU、无真实权重）**：<br>- `http_backend`：用 `httpx.MockTransport` 覆盖 200 正常、4xx/5xx、空 content、连接断开、8 帧 base64 顺序保真、`prompt_text` 字节零修改、严禁泄露 `candidate_id`/文件路径；**并补充本地真实 HTTP 测试服务（监听回环）验证慢响应头与慢响应体均被端到端总 deadline 可取消中止并映射 `timeout`**；<br>- `transformers_backend`：用 stub processor/model 覆盖加载前可信快照 SHA-256 fail-closed 拒接、`temporal_ids` 透传、帧序一致、`SIGALRM` 超时、OOM 映射 `request_failed`；<br>- 回归全量 `pytest` + `script.checks.facts`（`gone == 0`, `ambiguous == 0`） |
-| **阶段 2（训练机冒烟验证）** | 填充并核对 `config/eval_paths.json` 的 `gpu-train`；在 **5–10 条开发集片段**上实跑 MiniCPM-V-4.5（`transformers`）与 Qwen3-VL-8B / InternVL3-8B（`http`/vLLM） | 核对冷启动耗时、单条 P50/P95、显存峰值、`predictions.jsonl` 通过 `score.py` 评分，并验证 `DEC-005` 按次抽帧取证闭环；开发集冒烟结果不得混作正式 test 结论 |
+| **阶段 2（训练机冒烟验证）** | 填充并核对 `config/eval_paths.json` 的 `gpu-train`；在 **5–10 条开发集片段**上实跑首轮全部 4 款基座：`MiniCPM-V-4.5`（`transformers`）与 `Qwen3-VL-8B-Instruct` / `InternVL3-8B` / `InternVL3.5-8B`（`http`/vLLM） | 核对冷启动耗时、单条 P50/P95、显存峰值、`predictions.jsonl` 通过 `score.py` 评分，并验证 `DEC-005` 按次抽帧取证闭环；开发集冒烟结果不得混作正式 test 结论 |
 | **阶段 3（授权后正式 run A）** | 取得用户正式评测授权后，在已审完的 B1 固定 test（314 条）上按 [base-model-eval-plan.md](../eval/base-model-eval-plan.md) §4、§8.1 执行 run A | 按 §8.1 (a) 类判据验收 run 完整性，按画幅三档与来源级/片段级并列报告，再由用户决定是否进入 run B/C 及确定后续微调与阈值 |
 
 ---
