@@ -1235,7 +1235,23 @@ def test_r5_regression_internvl_native_full_frame_preservation_and_max_pixels(tm
 
     captured_runs: dict[int, tuple[np.ndarray, list[int]]] = {}
 
-    for budget in (1024, 4096, 12288):
+    # Budget smaller than a single 64x64 tile (4096 px) must fail closed rather than silently emitting 4096 px.
+    class RejectInternVL:
+        def chat(self, *_a, **_kw):
+            raise AssertionError("chat must not run when max_pixels < single tile area")
+
+    too_small_backend = TransformersBackend(
+        model_id="OpenGVLab/InternVL3-8B@sha256:1",
+        max_pixels=1024,
+        model=RejectInternVL(),
+        processor=InternVLNativeImageProcessor(image_size=64, max_num=12, use_thumbnail=True),
+        tokenizer=object(),
+        image_loader=lambda _p, img=pattern_img: img.copy(),
+    )
+    with pytest.raises(InputError, match="smaller than a single"):
+        too_small_backend.infer_one(_make_request(tmp_path / "r5_budget_1024"))
+
+    for budget in (4096, 12288):
         class CaptureInternVL:
             def chat(self, tokenizer, pixel_values, question, generation_config, num_patches_list=None):
                 captured_runs[budget] = (np.asarray(pixel_values), list(num_patches_list or []))
@@ -1252,15 +1268,11 @@ def test_r5_regression_internvl_native_full_frame_preservation_and_max_pixels(tm
         res = backend.infer_one(_make_request(tmp_path / f"r5_budget_{budget}"))
         assert res.status == "success"
 
-    pv_1024, patches_1024 = captured_runs[1024]
     pv_4096, patches_4096 = captured_runs[4096]
     pv_12288, patches_12288 = captured_runs[12288]
 
-    assert patches_1024 == [1] * 8 and pv_1024.shape == (8, 3, 64, 64)
     assert patches_4096 == [1] * 8 and pv_4096.shape == (8, 3, 64, 64)
     assert patches_12288 == [3] * 8 and pv_12288.shape == (24, 3, 64, 64)
-    # Different single-tile budgets must NOT produce identical visual tensors.
-    assert not np.allclose(pv_1024, pv_4096)
 
     # 4. Injected custom processor also receives images pre-downscaled to <= max_pixels.
     seen_input_sizes: list[tuple[int, int]] = []
@@ -2025,3 +2037,37 @@ def test_r12_regression_payload_timeout_tokenizer_json_pin_and_sampling_indices(
             model_id="Qwen3-VL-8B-Instruct@1",
             frames_dir=frames_dir_short,
         )
+
+
+def test_r13_regression_finite_temperature_timeout_and_decode_deadline(tmp_path):
+    """Regression tests for non-finite temperature/timeout rejection and local frame-decoding deadline."""
+    for bad_val in (float("nan"), float("inf"), float("-inf"), -0.1):
+        with pytest.raises(InputError, match="temperature"):
+            HttpBackend(endpoint="http://127.0.0.1:8000", model_id="Qwen3-VL-8B-Instruct@1", temperature=bad_val)
+        with pytest.raises(InputError, match="temperature"):
+            TransformersBackend(model_id="Qwen/Qwen3-VL-8B-Instruct@1", temperature=bad_val)
+    for bad_timeout in (float("nan"), float("inf"), 0.0, -1.0):
+        with pytest.raises(InputError, match="timeout_seconds"):
+            HttpBackend(endpoint="http://127.0.0.1:8000", model_id="Qwen3-VL-8B-Instruct@1", timeout_seconds=bad_timeout)
+        with pytest.raises(InputError, match="timeout_seconds"):
+            TransformersBackend(model_id="Qwen/Qwen3-VL-8B-Instruct@1", timeout_seconds=bad_timeout)
+
+    # Slow frame decoding must count toward local TransformersBackend timeout budget.
+    class FastModel:
+        def chat(self, **_kwargs):
+            return LEGAL_JSON
+
+    def slow_loader(_path):
+        time.sleep(0.04)
+        return "IMG"
+
+    backend = TransformersBackend(
+        model_id="openbmb/MiniCPM-V-4_5@sha256:1",
+        timeout_seconds=0.05,
+        model=FastModel(),
+        tokenizer=object(),
+        image_loader=slow_loader,
+    )
+    res = backend.infer_one(_make_request(tmp_path / "r13_slow_decode", timeout=0.05))
+    assert res.status == "timeout"
+    assert res.raw_output is None

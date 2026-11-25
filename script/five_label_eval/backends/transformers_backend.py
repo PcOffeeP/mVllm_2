@@ -491,7 +491,12 @@ class InternVLNativeImageProcessor:
         if max_pixels is None:
             return self.min_num, self.max_num, self.use_thumbnail
         tile_pixels = self.image_size * self.image_size
-        max_total_tiles = max(1, max_pixels // tile_pixels)
+        if max_pixels < tile_pixels:
+            raise InputError(
+                f"InternVL native max_pixels={max_pixels} is smaller than a single "
+                f"{self.image_size}x{self.image_size} tile ({tile_pixels} pixels)"
+            )
+        max_total_tiles = max_pixels // tile_pixels
         if self.use_thumbnail:
             if max_total_tiles >= 3:
                 eff_max = min(self.max_num, max_total_tiles - 1)
@@ -747,8 +752,20 @@ class TransformersBackend:
             raise InputError("transformers backend requires a non-empty model_id")
         if model_id.strip() == "fake":
             raise InputError("transformers backend refuses --model-id fake")
-        if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float)) or timeout_seconds <= 0:
-            raise InputError(f"timeout_seconds must be positive, got {timeout_seconds!r}")
+        if (
+            isinstance(timeout_seconds, bool)
+            or not isinstance(timeout_seconds, (int, float))
+            or not math.isfinite(timeout_seconds)
+            or timeout_seconds <= 0
+        ):
+            raise InputError(f"timeout_seconds must be a positive finite number, got {timeout_seconds!r}")
+        if (
+            isinstance(temperature, bool)
+            or not isinstance(temperature, (int, float))
+            or not math.isfinite(temperature)
+            or temperature < 0
+        ):
+            raise InputError(f"temperature must be a finite number >= 0, got {temperature!r}")
         if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
             raise InputError(f"max_tokens must be a positive integer, got {max_tokens!r}")
         if max_pixels is not None and (isinstance(max_pixels, bool) or not isinstance(max_pixels, int) or max_pixels <= 0):
@@ -885,6 +902,15 @@ class TransformersBackend:
             "model_family": self.model_family,
             "model_path": str(self.model_path) if self.model_path is not None else None,
             "max_pixels": self.max_pixels,
+            "max_pixels_scope": (
+                "pre_processor_source_resize"
+                if self.model_family == "minicpm-v-4.5"
+                else (
+                    "native_tile_and_source_budget"
+                    if self.model_family in ("internvl3", "internvl3.5")
+                    else "native_processor_budget"
+                )
+            ),
             "sampling_policy": self.sampling_policy,
             "temporal_ids_policy": self.temporal_ids_policy,
             "temporal_ids_grid_seconds": self.temporal_grid_seconds,
@@ -1080,22 +1106,24 @@ class TransformersBackend:
         # before per-sample execution rather than being swallowed as per-sample failures.
         self._ensure_loaded()
         started = time.monotonic()
-        timeout = float(request.timeout_seconds if request.timeout_seconds is not None else self.timeout_seconds)
-        try:
-            if request.frame_bytes is not None and self._image_loader is _default_image_loader:
-                images = [_default_bytes_image_loader(raw) for raw in request.frame_bytes]
-            else:
-                images = [self._image_loader(path) for path in request.frame_paths]
-        except OSError as exc:
-            return InferenceResult(
-                status="request_failed",
-                raw_output=None,
-                latency_seconds=time.monotonic() - started,
-                error_detail=f"failed to load L3 frame image: {exc}",
-            )
-
+        raw_timeout = request.timeout_seconds if request.timeout_seconds is not None else self.timeout_seconds
+        if isinstance(raw_timeout, bool) or not isinstance(raw_timeout, (int, float)) or not math.isfinite(raw_timeout) or raw_timeout <= 0:
+            raise InputError(f"request timeout_seconds must be a positive finite number, got {raw_timeout!r}")
+        timeout = float(raw_timeout)
         try:
             with _sigalrm_timeout(timeout, enabled=self.use_sigalrm):
+                try:
+                    if request.frame_bytes is not None and self._image_loader is _default_image_loader:
+                        images = [_default_bytes_image_loader(raw) for raw in request.frame_bytes]
+                    else:
+                        images = [self._image_loader(path) for path in request.frame_paths]
+                except OSError as exc:
+                    return InferenceResult(
+                        status="request_failed",
+                        raw_output=None,
+                        latency_seconds=time.monotonic() - started,
+                        error_detail=f"failed to load L3 frame image: {exc}",
+                    )
                 if self.model_family == "minicpm-v-4.5":
                     raw_text, meta = self._run_minicpm(images, request)
                 else:
@@ -1107,7 +1135,7 @@ class TransformersBackend:
                 latency_seconds=time.monotonic() - started,
                 error_detail=str(exc),
             )
-        except _TimeoutGuardUnavailableError:
+        except (InputError, _TimeoutGuardUnavailableError):
             raise
         except Exception as exc:
             return InferenceResult(

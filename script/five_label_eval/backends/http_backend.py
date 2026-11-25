@@ -12,6 +12,7 @@ import base64
 from concurrent.futures import Future, ThreadPoolExecutor
 import ipaddress
 import json
+import math
 import os
 from pathlib import Path
 import threading
@@ -131,8 +132,20 @@ class HttpBackend:
             raise InputError("http backend requires a non-empty model_id")
         if model_id.strip() == "fake":
             raise InputError("http backend refuses --model-id fake")
-        if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float)) or timeout_seconds <= 0:
-            raise InputError(f"timeout_seconds must be positive, got {timeout_seconds!r}")
+        if (
+            isinstance(timeout_seconds, bool)
+            or not isinstance(timeout_seconds, (int, float))
+            or not math.isfinite(timeout_seconds)
+            or timeout_seconds <= 0
+        ):
+            raise InputError(f"timeout_seconds must be a positive finite number, got {timeout_seconds!r}")
+        if (
+            isinstance(temperature, bool)
+            or not isinstance(temperature, (int, float))
+            or not math.isfinite(temperature)
+            or temperature < 0
+        ):
+            raise InputError(f"temperature must be a finite number >= 0, got {temperature!r}")
         if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
             raise InputError(f"max_tokens must be a positive integer, got {max_tokens!r}")
         if max_pixels is not None and (isinstance(max_pixels, bool) or not isinstance(max_pixels, int) or max_pixels <= 0):

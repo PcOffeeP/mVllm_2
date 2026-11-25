@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -268,6 +269,17 @@ def run_inference(
     require_text({"model_id": model_id}, "model_id", "run")
     if backend.backend_name != "fake" and model_id.strip() == "fake":
         raise InputError(f"{backend.backend_name} backend refuses --model-id fake")
+    if (
+        isinstance(timeout_seconds, bool)
+        or not isinstance(timeout_seconds, (int, float))
+        or not math.isfinite(timeout_seconds)
+        or timeout_seconds <= 0
+    ):
+        raise InputError(f"timeout_seconds must be a positive finite number, got {timeout_seconds!r}")
+    if isinstance(decode_config, dict) and "temperature" in decode_config and decode_config["temperature"] is not None:
+        temp_val = decode_config["temperature"]
+        if isinstance(temp_val, bool) or not isinstance(temp_val, (int, float)) or not math.isfinite(temp_val) or temp_val < 0:
+            raise InputError(f"temperature must be a finite number >= 0, got {temp_val!r}")
 
     samples = _validate_manifest_samples(manifest)
     prepared: list[tuple[str, dict, tuple[Path, ...], tuple[float, ...], tuple[bytes, ...]]] = []
