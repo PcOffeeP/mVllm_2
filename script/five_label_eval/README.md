@@ -169,6 +169,27 @@ TP、FN、FP、TN 只由人工明确“是／否”和模型明确“是／否�
 
 `results.json` 的 `groups.real` 与 `groups.virtual` 各自有完整片段 `full_clip`、实际输入 `actual_input` 和 `by_source`。前两者均包含逐叶字段结果（准确率、`classes` 逐类召回／精确率、`uncertain_rate`、多选 `over_uncertain_rate`、顶层 TP/FN/FP/TN 与识别比例／精确率／误报率）、取值／未标／无效数量、来源数、混淆、预测字段状态和失败；`by_source` 与 `actual_input.evidence_by_field` 共用同一 `field_metrics()`，因此也带上述键。`actual_input.evidence_by_field` 按证据状态再分组。`samples` 保存锁定身份、原回答与 JSONL 行引用、逐项人审、提取状态、输入证据和冲突；CLI 的 `input_files` 保存所读取文件摘要。`report.md` 逐字段打印准确率、`classes` 各标签的召回／精确率、`uncertain_rate`、多选 `over_uncertain_rate` 与顶层指标，并展示逐片段结果；JSON 保留完整可追溯内容。**已知展示层限制：**`report.md` 的“逐来源”与“输入证据”子区块仍只打印准确率（多选另加识别比例），不打印 `classes`／`uncertain_rate`／`over_uncertain_rate`；完整逐类指标见 `results.json`。来源层只展示其自身片段统计，不合成加权总分。
 
+## 抽帧口径与双后端推理入口（`frames.py` / `infer.py`）
+
+### 1. L3 预抽帧口径（`frames.py`）
+
+- **默认帧数**：`--clips-per-record` 默认为 **8**（对齐单请求 8 帧契约）。
+- **抽帧策略**：`evenly_spaced_inclusive`（全片均匀含首尾：`idx[i] = round(i * (total_frames - 1) / (num_frames - 1))`，确定性 0 基解码整数帧号）。
+- **极短片段策略**：`short_clip_policy = "fail_closed"`——当 `total_frames < num_frames`（默认 `< 8`）时显式抛 `InputError` 拒绝，绝不静默降帧、重复末帧或补齐。
+- **L3 像素保真**：`resize: null`——落盘 L3 PNG 保持 L2 原始画幅不缩放，写入每帧 `clip_to_model_input` 与记录顶层 `sampling` 块并计入 `input_id` 摘要；模型侧缩放由各模型 processor 处理并记入运行身份元数据。
+
+### 2. 推理入口与可插拔后端（`infer.py` + `backends/`）
+
+`python -m script.five_label_eval.infer` 支持三种 `--backend`：
+
+| 后端 | 用途 | 关键参数与运行身份记录 |
+| --- | --- | --- |
+| `fake` | 纯离线链路自检（默认） | 仅接受 `--model-id fake`，按固定 `CATEGORY_ORDER` 轮转，不触碰媒体或网络 |
+| `http` | OpenAI-compatible `POST /v1/chat/completions`（覆盖 vLLM / SGLang 等） | `--endpoint`（必填）、`--api-model-name`、`--api-key-env`（仅从环境变量读密钥）、`--timeout`（端到端墙钟 deadline，默认 `600.0` s）、`--max-pixels`；有序发送 8 张 L3 PNG（base64 data URL）+ 原样 prompt 字节；运行身份写入 `<output>.meta.json`（含脱敏 `base_url`、`model_id`、`max_pixels`、`sampling_policy`） |
+| `transformers` | 薄本地 HF Transformers 适配器（惰性导入 `torch`/`transformers`/`PIL`，本机无 GPU/权重可正常单测） | `--model-path`（必填）、`--model-family`（支持 `minicpm-v-4.5` / `qwen3-vl` / `internvl3` / `internvl3.5`）、`--max-slice-nums`、`--max-pixels`、`--trusted-sha256-file`（加载前 fail-closed SHA-256 核验）。`MiniCPM-V-4.5` 自动计算 `0.1 s` 量化 `temporal_ids` 并默认 `max_slice_nums=1`，写入运行身份 |
+
+所有后端共用严格单 JSON 输出契约：非 `success` 强制 `raw_output: null`，`success` 原样落盘模型文本（**不做 `<answer>` 解包、不剥离代码围栏、不旁挂结构化标签字段**），输出 `predictions.jsonl` 独占创建、不覆盖已有文件。
+
 ## 验证和边界
 
 合成测试使用独立手算期望，覆盖 TP/FN/FP/TN、失败仍在分母、人工“无法判断”作为多选合法类别、未标与空白、未处理、无正例/无负例、部分字段缺失、重键、空数组、组合冲突、多修订锁定、同名不同摘要、来源隔离和实际输入证据不足。测试命令见首节。可以将 `score(manifest, reviews, predictions, input_reviews=())` 用作纯 Python 接口；它不读文件，CLI 负责严格 JSON/JSONL 解码和文件摘要。
