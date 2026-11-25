@@ -24,7 +24,7 @@
 | --- | --- | --- | --- | --- | --- |
 | **`MiniCPM-V-4.5`** | **Run A 主榜**：`transformers`（DEC-006，`0.1 s` 量化 `temporal_ids`，`max_slice_nums=1`） | 已完成（2026-11-25） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-tf-dev-v1/`](20261125-minicpm-v45-tf-dev-v1/) |
 | **`MiniCPM-V-4.5`** | **Run A 对照**：`vLLM HTTP`（同 8 帧输入服务化对照） | 已完成（2026-11-25） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-vllm-dev-v1/`](20261125-minicpm-v45-vllm-dev-v1/) |
-| **`MiniCPM-V-4.5`** | **Run B 无画面盲答**：纯文本对照（剥离全部图像帧） | 已完成（2026-11-25） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-runb-noimage-dev-v1/`](20261125-minicpm-v45-runb-noimage-dev-v1/) |
+| **`MiniCPM-V-4.5`** | **Run B 无画面盲答**：`vLLM 0.34.0` HTTP 纯文本对照（剥离全部图像帧，对应 `vllm-dev-v1` 后端；解码参数未记入 `run_meta.json`） | 已完成（2026-11-25） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-runb-noimage-dev-v1/`](20261125-minicpm-v45-runb-noimage-dev-v1/) |
 | `Qwen3-VL-8B-Instruct` | Run A 主榜 / Run B 对照（权重已就绪 `/data/models/Qwen3-VL-8B-Instruct`） | 待评测（预留） | — | — | 待归档 |
 | `InternVL3-8B` | Run A 主榜 / Run B 对照（权重已就绪 `/data/models/InternVL3-8B`，原生非 `-HF`） | 待评测（预留） | — | — | 待归档 |
 | `InternVL3_5-8B` | Run A 主榜 / Run B 对照（权重已就绪 `/data/models/InternVL3_5-8B`，标准版不含 ViR） | 待评测（预留） | — | — | 待归档 |
@@ -72,4 +72,4 @@
 | [`20261125-minicpm-v45-vllm-dev-v1`](20261125-minicpm-v45-vllm-dev-v1/) | Run A 对照（`vLLM HTTP`） | [`report.md`](20261125-minicpm-v45-vllm-dev-v1/report.md) | [`results.json`](20261125-minicpm-v45-vllm-dev-v1/results.json) | [`predictions.jsonl.meta.json`](20261125-minicpm-v45-vllm-dev-v1/predictions.jsonl.meta.json) |
 | [`20261125-minicpm-v45-runb-noimage-dev-v1`](20261125-minicpm-v45-runb-noimage-dev-v1/) | Run B 无画面盲答对照（纯文本） | [`report.md`](20261125-minicpm-v45-runb-noimage-dev-v1/report.md) | [`results.json`](20261125-minicpm-v45-runb-noimage-dev-v1/results.json) | [`run_meta.json`](20261125-minicpm-v45-runb-noimage-dev-v1/run_meta.json) |
 
-> 注：上述 9 份归档文件均从训练机 `/home/liuyang/文档/TensileAgent-Finetune/evaluations/runs/` 原样同步（零字节修改）。Run A 两组的元数据文件保留推理入口 `script/five_label_eval/infer.py` 的原生命名 `predictions.jsonl.meta.json`，Run B 保留原生命名 `run_meta.json`。完整分档必报项另见 [`width-band-breakdown.md`](width-band-breakdown.md)。
+> 注：上述 9 份归档文件均从训练机 `/home/liuyang/文档/TensileAgent-Finetune/evaluations/runs/` 原样同步（零字节修改）。Run A 两组的元数据文件保留推理入口 `script/five_label_eval/infer.py` 的原生命名 `predictions.jsonl.meta.json`，Run B 保留原生命名 `run_meta.json`（经核对训练机同目录 `vllm.log`，Run B 由 `vLLM 0.34.0` HTTP 服务以 `bfloat16` / `max_model_len=8192` 产出，对应 `vllm-dev-v1` 后端，其解码参数未写入 `run_meta.json`；`tf-dev-v1` 暂无独立 `transformers` 后端 Run B）。完整分档必报项与预处理边界另见 [`width-band-breakdown.md`](width-band-breakdown.md)。
