@@ -4,7 +4,7 @@
 
 **失效条件：** 当 `eval-dev-v1` 成员、`script/five_label_eval/score.py`（当前 `five-label-score/3`）、三画幅档判据（`width <= 200` / `200 < width < 400` / `width >= 400`）或对应 Run 归档文件变更时，须重新生成本报告。
 
-## Run A 主榜（`MiniCPM-V-4.5` / `transformers` DEC-006）（`20261125-minicpm-v45-tf-dev-v1`）
+## Run A 初步观测（`MiniCPM-V-4.5` / `transformers` DEC-006 方向）（`20261125-minicpm-v45-tf-dev-v1`）
 
 - **归档产物**：[`report.md`](20261125-minicpm-v45-tf-dev-v1/report.md) · [`results.json`](20261125-minicpm-v45-tf-dev-v1/results.json) · [`predictions.jsonl.meta.json`](20261125-minicpm-v45-tf-dev-v1/predictions.jsonl.meta.json)
 - **像素上限与预处理说明**：L3 `resize: null`；元数据中的 `max_pixels: null`（`max_pixels_scope: pre_processor_source_resize`）仅表示适配器在送入模型前未对源图额外缩放，不代表 processor 内部像素上限；模型侧经 `MiniCPMVImageProcessor`（`preprocessor_config.json`：`scale_resolution=448`、`patch_size=14`、`slice_mode=true`）并由适配器显式传入 `max_slice_nums=1`、`temporal_ids: quantized_0.1s`（解码：`temperature=0.0`、`max_tokens=512`、`seed=null`），processor 内部实际生效的逐帧像素上限未在运行元数据中实测记录（**未核实**）
@@ -35,7 +35,7 @@
 | 断裂现象.界面分离 | 2/112 (1.79%) | 110/112 (98.21%)（人工 0/112 (0.00%)） | 6/42 (14.29%) | 35/42 (83.33%)（人工 1/42 (2.38%)） | 21/56 (37.50%) | 34/56 (60.71%)（人工 0/56 (0.00%)） |
 | 断裂现象.断后脱夹 | 2/112 (1.79%) | 110/112 (98.21%)（人工 0/112 (0.00%)） | 9/42 (21.43%) | 32/42 (76.19%)（人工 1/42 (2.38%)） | 21/56 (37.50%) | 32/56 (57.14%)（人工 0/56 (0.00%)） |
 
-## Run A 对照（`MiniCPM-V-4.5` / `vLLM HTTP`）（`20261125-minicpm-v45-vllm-dev-v1`）
+## Run A 初步观测（`MiniCPM-V-4.5` / `vLLM HTTP` 对照）（`20261125-minicpm-v45-vllm-dev-v1`）
 
 - **归档产物**：[`report.md`](20261125-minicpm-v45-vllm-dev-v1/report.md) · [`results.json`](20261125-minicpm-v45-vllm-dev-v1/results.json) · [`predictions.jsonl.meta.json`](20261125-minicpm-v45-vllm-dev-v1/predictions.jsonl.meta.json)
 - **像素上限与预处理说明**：L3 `resize: null`；客户端元数据 `max_pixels: null` 仅表示 HTTP 客户端未传入该参数，vLLM 服务端实际生效的 MiniCPM-V-4.5 processor 像素上限未在运行元数据中记录（**未知**，待后续 vLLM 评测补录服务端启动参数）
@@ -66,7 +66,7 @@
 | 断裂现象.界面分离 | 35/112 (31.25%) | 74/112 (66.07%)（人工 0/112 (0.00%)） | 19/42 (45.24%) | 24/42 (57.14%)（人工 1/42 (2.38%)） | 27/56 (48.21%) | 29/56 (51.79%)（人工 0/56 (0.00%)） |
 | 断裂现象.断后脱夹 | 38/112 (33.93%) | 74/112 (66.07%)（人工 0/112 (0.00%)） | 19/42 (45.24%) | 23/42 (54.76%)（人工 1/42 (2.38%)） | 25/56 (44.64%) | 29/56 (51.79%)（人工 0/56 (0.00%)） |
 
-## Run B 无画面盲答对照（`MiniCPM-V-4.5` / 纯文本）（`20261125-minicpm-v45-runb-noimage-dev-v1`）
+## Run B 描述性纯文本先验对照（`MiniCPM-V-4.5` / `vLLM 0.34.0` HTTP）（`20261125-minicpm-v45-runb-noimage-dev-v1`）
 
 - **归档产物**：[`report.md`](20261125-minicpm-v45-runb-noimage-dev-v1/report.md) · [`results.json`](20261125-minicpm-v45-runb-noimage-dev-v1/results.json) · [`run_meta.json`](20261125-minicpm-v45-runb-noimage-dev-v1/run_meta.json)
 - **后端、对照归属与预处理说明**：无图像帧输入（剥离全部 8 帧，仅输入纯文本提示词）。经核对训练机同目录 `vllm.log`，本 Run 由 **`vLLM 0.34.0` HTTP 服务**产出（`model=/data/models/MiniCPM-V-4.5`、`trust_remote_code=True`、`dtype=bfloat16`、`max_model_len=8192`、`gpu_memory_utilization=0.88`、`max_num_seqs=1`），与 **`vllm-dev-v1`** 属于同后端对照（`tf-dev-v1` 的 `transformers` 后端暂无独立纯文本 Run B）；原样归档的 `run_meta.json` 未记录解码参数（`temperature` / `max_tokens` / `seed` **未在归档元数据中记录**，待后续 Run B 补齐完整运行身份）

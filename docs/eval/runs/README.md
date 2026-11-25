@@ -22,9 +22,9 @@
 
 | 模型（[DEC-006](../../decisions/0006-eval-frame-sampling-and-model-lineup.md) 第一梯队） | Run 定位与后端 | 状态 | 格式严格合法 | 请求失败 / 超时 / 未处理 | 直达目录 |
 | --- | --- | --- | --- | --- | --- |
-| **`MiniCPM-V-4.5`** | **Run A 主榜**：`transformers`（DEC-006，`0.1 s` 量化 `temporal_ids`，`max_slice_nums=1`） | 已完成（2026-11-25） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-tf-dev-v1/`](20261125-minicpm-v45-tf-dev-v1/) |
-| **`MiniCPM-V-4.5`** | **Run A 对照**：`vLLM HTTP`（同 8 帧输入服务化对照） | 已完成（2026-11-25） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-vllm-dev-v1/`](20261125-minicpm-v45-vllm-dev-v1/) |
-| **`MiniCPM-V-4.5`** | **Run B 无画面盲答**：`vLLM 0.34.0` HTTP 纯文本对照（剥离全部图像帧，对应 `vllm-dev-v1` 后端；解码参数未记入 `run_meta.json`） | 已完成（2026-11-25） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-runb-noimage-dev-v1/`](20261125-minicpm-v45-runb-noimage-dev-v1/) |
+| **`MiniCPM-V-4.5`** | **Run A（`transformers` DEC-006 方向）**：`0.1 s` 量化 `temporal_ids`，`max_slice_nums=1` | 历史初步观测（2026-11-25；processor 实际逐帧像素上限未核实，补齐运行身份前不入正式跨模型主榜） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-tf-dev-v1/`](20261125-minicpm-v45-tf-dev-v1/) |
+| **`MiniCPM-V-4.5`** | **Run A（`vLLM HTTP` 对照）**：同 8 帧输入服务化对照 | 历史初步观测（2026-11-25；服务端 processor 实际像素上限未记录，补齐前不入正式跨模型主榜） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-vllm-dev-v1/`](20261125-minicpm-v45-vllm-dev-v1/) |
+| **`MiniCPM-V-4.5`** | **Run B 无画面盲答**：`vLLM 0.34.0` HTTP 描述性纯文本先验对照（剥离全部图像帧，解码参数未记入 `run_meta.json`） | 历史初步观测（2026-11-25；仅作描述性先验对照，非严格配对实验） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-runb-noimage-dev-v1/`](20261125-minicpm-v45-runb-noimage-dev-v1/) |
 | `Qwen3-VL-8B-Instruct` | Run A 主榜 / Run B 对照（权重已就绪 `/data/models/Qwen3-VL-8B-Instruct`） | 待评测（预留） | — | — | 待归档 |
 | `InternVL3-8B` | Run A 主榜 / Run B 对照（权重已就绪 `/data/models/InternVL3-8B`，原生非 `-HF`） | 待评测（预留） | — | — | 待归档 |
 | `InternVL3_5-8B` | Run A 主榜 / Run B 对照（权重已就绪 `/data/models/InternVL3_5-8B`，标准版不含 ViR） | 待评测（预留） | — | — | 待归档 |
@@ -54,7 +54,8 @@
 ### 3.2 Run B 无画面文字先验红灯结论（按三画幅档分述）
 
 - **盲答坍缩现象**：在完全剥离图像帧的 Run B（[`20261125-minicpm-v45-runb-noimage-dev-v1/`](20261125-minicpm-v45-runb-noimage-dev-v1/)）中，`MiniCPM-V-4.5` 在三个画幅档（`w_le_200` 112 条、`w_200_400` 42 条、`w_gt_400` 56 条）均恒定输出 `断裂状态 = 已断裂` 与 `断裂现象.伸长 = 是`，对其余 9 个字段均 100% 输出 `无法判断`。
-- **两项红灯警示（按档口径）**：
+- **两项红灯警示（按档口径；描述性先验对照边界）**：
+  > **对照边界说明**：本 Run B 仅作为**描述性纯文本先验对照**，不是“只改变有无画面、其余变量严格一致”的受控配对实验——同属 `vLLM 0.34.0` 后端并不能证明权重快照与解码参数（`run_meta.json` 未落盘）逐项一致，且 `tf-dev-v1` 的 `transformers` 后端暂无同后端纯文本 Run B。
   1. **「伸长」字段在中/高画幅档出现盲答反超**：
      - **`w_gt_400`**（`n=56`）：Run B 恒定猜 `"是"` 拿到 **41/56 (73.21%)**，大幅高于带画面视觉推理的 `tf-dev-v1`（28/56 = 50.00%，`unc` 44.64%）与 `vllm-dev-v1`（25/56 = 44.64%，`unc` 51.79%）；
      - **`w_200_400`**（`n=42`）：Run B 拿到 **10/42 (23.81%)**，高于 `tf-dev-v1`（6/42 = 14.29%，`unc` 40.48%），低于 `vllm-dev-v1`（12/42 = 28.57%，`unc` 57.14%）；
@@ -66,10 +67,12 @@
 
 ## 4. 各 Run 归档目录与产物直达链接
 
-| Run ID | 角色与后端 | 可读评分报告 | 结构化评分结果 | 运行元数据 |
+> **审计与引用边界**：下表原样归档的 `report.md` 与 `results.json` 为评分器原始输出，内含跨档总体标签指标，**仅供审计复算**；正式引用与跨模型比较须一律使用按三画幅档拆分的 [`width-band-breakdown.md`](width-band-breakdown.md)。
+
+| Run ID | 角色与后端 | 可读评分报告（原件，仅供审计） | 结构化评分结果（原件，仅供审计） | 运行元数据 |
 | --- | --- | --- | --- | --- |
-| [`20261125-minicpm-v45-tf-dev-v1`](20261125-minicpm-v45-tf-dev-v1/) | Run A 主榜（`transformers` DEC-006） | [`report.md`](20261125-minicpm-v45-tf-dev-v1/report.md) | [`results.json`](20261125-minicpm-v45-tf-dev-v1/results.json) | [`predictions.jsonl.meta.json`](20261125-minicpm-v45-tf-dev-v1/predictions.jsonl.meta.json) |
-| [`20261125-minicpm-v45-vllm-dev-v1`](20261125-minicpm-v45-vllm-dev-v1/) | Run A 对照（`vLLM HTTP`） | [`report.md`](20261125-minicpm-v45-vllm-dev-v1/report.md) | [`results.json`](20261125-minicpm-v45-vllm-dev-v1/results.json) | [`predictions.jsonl.meta.json`](20261125-minicpm-v45-vllm-dev-v1/predictions.jsonl.meta.json) |
-| [`20261125-minicpm-v45-runb-noimage-dev-v1`](20261125-minicpm-v45-runb-noimage-dev-v1/) | Run B 无画面盲答对照（纯文本） | [`report.md`](20261125-minicpm-v45-runb-noimage-dev-v1/report.md) | [`results.json`](20261125-minicpm-v45-runb-noimage-dev-v1/results.json) | [`run_meta.json`](20261125-minicpm-v45-runb-noimage-dev-v1/run_meta.json) |
+| [`20261125-minicpm-v45-tf-dev-v1`](20261125-minicpm-v45-tf-dev-v1/) | Run A 初步观测（`transformers` DEC-006 方向） | [`report.md`](20261125-minicpm-v45-tf-dev-v1/report.md) | [`results.json`](20261125-minicpm-v45-tf-dev-v1/results.json) | [`predictions.jsonl.meta.json`](20261125-minicpm-v45-tf-dev-v1/predictions.jsonl.meta.json) |
+| [`20261125-minicpm-v45-vllm-dev-v1`](20261125-minicpm-v45-vllm-dev-v1/) | Run A 初步观测（`vLLM HTTP` 对照） | [`report.md`](20261125-minicpm-v45-vllm-dev-v1/report.md) | [`results.json`](20261125-minicpm-v45-vllm-dev-v1/results.json) | [`predictions.jsonl.meta.json`](20261125-minicpm-v45-vllm-dev-v1/predictions.jsonl.meta.json) |
+| [`20261125-minicpm-v45-runb-noimage-dev-v1`](20261125-minicpm-v45-runb-noimage-dev-v1/) | Run B 描述性纯文本先验对照（`vLLM 0.34.0` HTTP） | [`report.md`](20261125-minicpm-v45-runb-noimage-dev-v1/report.md) | [`results.json`](20261125-minicpm-v45-runb-noimage-dev-v1/results.json) | [`run_meta.json`](20261125-minicpm-v45-runb-noimage-dev-v1/run_meta.json) |
 
 > 注：上述 9 份归档文件均从训练机 `/home/liuyang/文档/TensileAgent-Finetune/evaluations/runs/` 原样同步（零字节修改）。Run A 两组的元数据文件保留推理入口 `script/five_label_eval/infer.py` 的原生命名 `predictions.jsonl.meta.json`，Run B 保留原生命名 `run_meta.json`（经核对训练机同目录 `vllm.log`，Run B 由 `vLLM 0.34.0` HTTP 服务以 `bfloat16` / `max_model_len=8192` 产出，对应 `vllm-dev-v1` 后端，其解码参数未写入 `run_meta.json`；`tf-dev-v1` 暂无独立 `transformers` 后端 Run B）。完整分档必报项与预处理边界另见 [`width-band-breakdown.md`](width-band-breakdown.md)。
