@@ -2191,3 +2191,15 @@ def test_r15_regression_jsonl_line_separators_and_duplicate_manifest_candidate(t
             output_path=out_should_not_exist,
         )
     assert not out_should_not_exist.exists()
+
+    # 3. Uppercase config filename (PROCESSOR_CONFIG.JSON) must also be pinned and auto_map-scanned.
+    upper_dir = tmp_path / "r15_upper_cfg"
+    upper_dir.mkdir()
+    (upper_dir / "config.json").write_bytes(b"{}")
+    (upper_dir / "PROCESSOR_CONFIG.JSON").write_bytes(b'{"auto_map": {"AutoProcessor": "evil/repo--p.P"}}')
+    cfg_sha = hashlib.sha256(b"{}").hexdigest()
+    up_sha = hashlib.sha256((upper_dir / "PROCESSOR_CONFIG.JSON").read_bytes()).hexdigest()
+    with pytest.raises(InputError, match="PROCESSOR_CONFIG.JSON"):
+        verify_trusted_snapshot_sha256(upper_dir, {"config.json": cfg_sha})
+    with pytest.raises(InputError, match="external auto_map"):
+        verify_trusted_snapshot_sha256(upper_dir, {"config.json": cfg_sha, "PROCESSOR_CONFIG.JSON": up_sha})

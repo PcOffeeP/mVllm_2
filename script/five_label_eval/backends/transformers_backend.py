@@ -181,18 +181,29 @@ def verify_trusted_snapshot_sha256(
             raise InputError(f"trusted snapshot file missing: {target}")
         normalized_map[rel_norm] = expected
 
-    # Every Python module, JSON config/tokenizer file, and Jinja template in the local snapshot must be pinned.
+    # Every Python module, JSON config/tokenizer file, and Jinja template in the local snapshot must be pinned
+    # (case-insensitive suffix check to prevent bypass on case-insensitive filesystems such as macOS APFS).
     # Reject any symlink (including dangling symlinks) for executable/config files inside the verified root.
     required_files: set[str] = set()
-    for pattern in ("*.py", "*.json", "*.jinja"):
-        for req_file in sorted(root.rglob(pattern)):
-            rel_posix = req_file.relative_to(root).as_posix()
-            if req_file.is_symlink():
-                raise InputError(
-                    f"trusted snapshot file {rel_posix!r} must be a regular file (not a symlink) during verification"
-                )
-            if req_file.is_file():
-                required_files.add(rel_posix)
+    seen_lower: dict[str, str] = {}
+    for req_file in sorted(root.rglob("*")):
+        if req_file.is_dir() and not req_file.is_symlink():
+            continue
+        if req_file.suffix.lower() not in TRUSTED_STAGED_COPY_SUFFIXES:
+            continue
+        rel_posix = req_file.relative_to(root).as_posix()
+        lowered = rel_posix.lower()
+        if lowered in seen_lower and seen_lower[lowered] != rel_posix:
+            raise InputError(
+                f"case-colliding trusted snapshot files {seen_lower[lowered]!r} and {rel_posix!r} are refused"
+            )
+        seen_lower[lowered] = rel_posix
+        if req_file.is_symlink():
+            raise InputError(
+                f"trusted snapshot file {rel_posix!r} must be a regular file (not a symlink) during verification"
+            )
+        if req_file.is_file():
+            required_files.add(rel_posix)
 
     uncovered = sorted(required_files - set(normalized_map))
     if uncovered:
@@ -262,8 +273,8 @@ def verify_trusted_snapshot_sha256(
             for idx, item in enumerate(node):
                 _scan_trusted_config_node(item, cfg_name, f"{loc}[{idx}]")
 
-    for cfg_file in sorted(root.rglob("*.json")):
-        if not cfg_file.is_file():
+    for cfg_file in sorted(root.rglob("*")):
+        if not cfg_file.is_file() or cfg_file.suffix.lower() != ".json":
             continue
         cfg_name = cfg_file.relative_to(root).as_posix()
         try:
