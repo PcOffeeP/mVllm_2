@@ -7,12 +7,12 @@
 - **源级输入**：110 个真实源视频（89 开发三折 + 21 固定 test；2026-11-25 [去重审计](research/source-video-dedup-audit.md)与 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 按选项 A 在 `data/splits/dev-exclusions.json` 中强制排除与 test 近重复的 `video_0006`/`video_0079`，原 `data/splits/three-fold/*.json` 逐字节不动，有效开发源 **87**、每折 `58/29`，虚拟视频隔离由 12 升至 **15**），当前源标注表 [data/annotation-table-full.csv](../data/annotation-table-full.csv)（SHA-256 `c928bea3…c1ec354c`）与 ROI 清单 [data/roi/manifest.json](../data/roi/manifest.json)（110/110 `success`，2026-11-20 重扫）已就位。
 - **候选子视频批次**：第 2 批（`basic` 档）已于 2026-11-20 在训练机生成并回传，共 **1,633 条**候选（开发集 1,319、固定 test 314；扣除选项 A 排除的 `video_0006` 19 条与 `video_0079` 1 条后有效开发候选 1,299 条），三份清单（`manifest.json`、`summary.json`、`audit.json`）已入库，本机媒体逐条 SHA-256 核对 `1,633/1,633` 一致。
 - **人工审核进度**（以 [reviews.json](../data/subvideo-review/reviews.json) 实测为准，最新时间戳 `2026-11-25T08:46:05.068136+00:00`）：本批次身份有效确认 **527 / 1,633**（B0 校准批 `32/32`、B1 固定 test 批 `314/314`、B2 三折 val 抽样批 `180/180`、清单外试审 `1` 条 = `video_0050_coverage_02`），未审核 **1,106** 条，草稿／疑问／退回均为 0。**B0、B1、B2 已全部审完**，下一批次为 B3（开发集其余未审候选）。
-- **正式评测进展**：2026-11-25 已在冻结开发集 `eval-dev-v1`（210 条 / 87 源）完成首款基座 `MiniCPM-V-4.5` 三次正式评测（Run A `transformers` DEC-006 主榜、`vLLM` 对照与 Run B 无画面盲答），轻量报告与跨模型对照总表已归档至 [正式评测结果总入口](eval/runs/README.md)。
-- **尚未启动项**：真实模型训练、其余 3 款第一梯队基座（`Qwen3-VL-8B-Instruct`、`InternVL3-8B`、`InternVL3_5-8B`）正式评测、固定封存测试集 `eval-test-v1` 终测、数据发布与旧 `versioning` 晋级接入均**未执行**；源标注表发现的疑似错标已登记在 `§8 SOURCE-RELABEL`（9 源 12 字段），当前暂不改表。
+- **评测归档进展**：2026-11-25 已在冻结开发集 `eval-dev-v1`（210 条 / 87 源）完成首款基座 `MiniCPM-V-4.5` 三次运行并归档轻量报告至 [正式评测结果总入口](eval/runs/README.md)（Run A `transformers` DEC-006 方向、`vLLM` 对照与 Run B 描述性纯文本先验对照）；因两个视觉 Run 尚未核实模型 processor 实际生效的像素上限，目前标为**历史初步观测**，补齐运行身份前不计入正式跨模型主榜。
+- **尚未启动项**：真实模型训练、`MiniCPM-V-4.5` 正式主榜准入（补齐 processor 实际像素上限运行身份）、其余 3 款第一梯队基座（`Qwen3-VL-8B-Instruct`、`InternVL3-8B`、`InternVL3_5-8B`）正式评测、固定封存测试集 `eval-test-v1` 终测、数据发布与旧 `versioning` 晋级接入均**未执行**；源标注表发现的疑似错标已登记在 `§8 SOURCE-RELABEL`（9 源 12 字段），当前暂不改表。
 
 | 编号与代号 | 任务名称 | 当前状态 | 当前关键进展／下一步 |
 | --- | --- | --- | --- |
-| [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径、6 篇输入契约、PR #20 三篇调研、PR #21 独立取证 CLI、[DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（8 帧抽帧口径与首轮 3+1 基座名单）、PR #23 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)、[DEC-007](decisions/0007-dev-test-dedup-exclusion.md)（选项 A 排除清单）及首批 `MiniCPM-V-4.5` 开发集正式评测归档（见 [正式评测结果总入口](eval/runs/README.md)）已就位；待其余 3 款基座评测、样本充分性与正式阈值 |
+| [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径、6 篇输入契约、PR #20 三篇调研、PR #21 独立取证 CLI、[DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（8 帧抽帧口径与首轮 3+1 基座名单）、PR #23 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)、[DEC-007](decisions/0007-dev-test-dedup-exclusion.md)（选项 A 排除清单）及首批 `MiniCPM-V-4.5` 开发集初步观测归档（见 [正式评测结果总入口](eval/runs/README.md)）已就位；待 `MiniCPM-V-4.5` 正式主榜准入（补齐 processor 像素上限）、其余 3 款基座评测、样本充分性与正式阈值 |
 | [3. EVAL-VERSIONING](#3-eval-versioning--按新评价设计更新-versioning-评价与晋级门槛) | 更新 `versioning` 评价与晋级门槛 | 待处理 | 依赖 `EVAL-DESIGN` 定稿与真实测评证据 |
 | [4. DATA-HANDOFF](#4-data-handoff--梳理新标注到数据生成的衔接方案) | 梳理新标注到数据生成的衔接方案 | 进行中 | 1,633 条新批次已回传核验；审核进度移交 `§6`，选项 A 排除清单 `data/splits/dev-exclusions.json` 已落地，待定虚拟视频切分策略与发布衔接 |
 | [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 已冻结（2026-11-25） | 已按方案 A 冻结 [`data/eval-subsets/eval-dev-v1.json`](../data/eval-subsets/eval-dev-v1.json)（210 条 / 87 源，严格排除 `DEC-007` 近重复源）与 [`data/eval-subsets/eval-test-v1.json`](../data/eval-subsets/eval-test-v1.json)（314 条 / 21 源，封存终测），并在 `script/five_label_eval/` 落地 `DEC-007` 代码防漏网守卫；登记见 [eval-subset.md](eval/eval-subset.md) §6.1 |
@@ -25,7 +25,7 @@
 
 ## 2. EVAL-DESIGN — 设计并确认评价体系
 
-**状态：** 进行中。本轮五类评价口径已按 [DEC-003](decisions/0003-five-label-eval-scope.md)（2026-11-14）确认，片段层删除「无」与分层评分已按 [DEC-004](decisions/0004-fragment-label-no-value-removal.md)（2026-11-16）确认，帧对应抽帧取证设计已按 [DEC-005](decisions/0005-frame-correspondence-evidence.md)（2026-11-23）确认且独立取证 CLI 已于 PR #21（2026-11-24）落地于 `script/frame_correspondence/`，PR #20（2026-11-24）三篇多模型评测调研已合入，首轮 8 帧抽帧口径与第一梯队 3+1 基座名单已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（2026-11-25）确认；测评子集 `eval-dev-v1` / `eval-test-v1` 已冻结（PR #26，见 [§5 EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集)），首款基座 `MiniCPM-V-4.5` 的 `eval-dev-v1` 三次正式评测已完成并归档至 [正式评测结果总入口](eval/runs/README.md)；其余 3 款第一梯队基座评测、样本充分性与正式阈值尚未落地。
+**状态：** 进行中。本轮五类评价口径已按 [DEC-003](decisions/0003-five-label-eval-scope.md)（2026-11-14）确认，片段层删除「无」与分层评分已按 [DEC-004](decisions/0004-fragment-label-no-value-removal.md)（2026-11-16）确认，帧对应抽帧取证设计已按 [DEC-005](decisions/0005-frame-correspondence-evidence.md)（2026-11-23）确认且独立取证 CLI 已于 PR #21（2026-11-24）落地于 `script/frame_correspondence/`，PR #20（2026-11-24）三篇多模型评测调研已合入，首轮 8 帧抽帧口径与第一梯队 3+1 基座名单已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（2026-11-25）确认；测评子集 `eval-dev-v1` / `eval-test-v1` 已冻结（PR #26，见 [§5 EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集)），首款基座 `MiniCPM-V-4.5` 的 `eval-dev-v1` 三次开发集运行已完成并作为历史初步观测归档至 [正式评测结果总入口](eval/runs/README.md)；`MiniCPM-V-4.5` 正式主榜准入（补齐 processor 实际像素上限运行身份）、其余 3 款第一梯队基座评测、样本充分性与正式阈值尚未落地。
 
 ### 目标
 
@@ -45,8 +45,8 @@
   4. `MiniCPM-V-4.5` 时序与切片参数：首轮采用官方风格（`0.1 s` 量化 `temporal_ids` + `max_slice_nums=1`），**并登记为后续对照/优化项**（首轮基线后可另起独立 `run_id` 与旧链路配置对照）；
   5. 首轮 8B–9B 基座名单：锁定第一梯队 3+1 款（`MiniCPM-V-4.5`、`Qwen3-VL-8B-Instruct`、`InternVL3-8B`、`InternVL3.5-8B` 标准版不含 ViR），第二/三梯队延后至首轮基线之后；
   6. `GLM-4.1V` `<answer>...</answer>` 处置：主榜采用方案 1（原生格式罚分），不预埋解包分支（未来若测试须另起独立 `run_id` 对照）。
-- **首批真实基座开发集评测已归档（2026-11-25）**：`MiniCPM-V-4.5` 在冻结开发集 `eval-dev-v1`（210 条 / 87 源）的三次正式评测（Run A `transformers` DEC-006 主榜、`vLLM` 对照、Run B 无画面盲答）轻量报告与三画幅档/盲答先验分析已统一归档至 [正式评测结果总入口](eval/runs/README.md)；大体积 PNG 帧、原始 `predictions.jsonl` 与日志保留在训练机 `evaluations/`（由 `.gitignore` 忽略）。
-- **未落地项**：训练／业务契约、其余 3 款第一梯队基座评测、正式通过阈值与晋级衔接尚未落地。
+- **首批真实基座开发集初步观测已归档（2026-11-25）**：`MiniCPM-V-4.5` 在冻结开发集 `eval-dev-v1`（210 条 / 87 源）的三次运行（Run A `transformers` DEC-006 方向、`vLLM` 对照、Run B 描述性纯文本先验对照）轻量报告与三画幅档/盲答先验分析已统一归档至 [正式评测结果总入口](eval/runs/README.md)；因两个视觉 Run 尚未核实模型 processor 实际生效的像素上限，当前标为历史初步观测（补齐运行身份前不入正式跨模型主榜）；大体积 PNG 帧、原始 `predictions.jsonl` 与日志保留在训练机 `evaluations/`（由 `.gitignore` 忽略）。
+- **未落地项**：训练／业务契约、`MiniCPM-V-4.5` 正式主榜准入（补齐 processor 实际像素上限运行身份）、其余 3 款第一梯队基座评测、正式通过阈值与晋级衔接尚未落地。
 
 ### 下一步
 
