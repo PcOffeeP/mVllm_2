@@ -2,22 +2,22 @@
 
 本项目唯一任务台账（最新核对日期：**2026-11-25**，对应主线 `feat/tensileagent-finetune`）。设计与代码事实见 [facts.yaml](facts.yaml)，重要已确认决定见 [决策总览](decisions/README.md)，专题文档入口见 [项目导航](guide.md)。
 
-## 项目现状总览（2026-11-24 实测）
+## 项目现状总览（2026-11-25 实测）
 
-- **源级输入**：110 个真实源视频（89 开发三折 + 21 固定 test），当前源标注表 [data/annotation-table-full.csv](../data/annotation-table-full.csv)（SHA-256 `c928bea3…c1ec354c`）与 ROI 清单 [data/roi/manifest.json](../data/roi/manifest.json)（110/110 `success`，2026-11-20 重扫）已就位。
-- **候选子视频批次**：第 2 批（`basic` 档）已于 2026-11-20 在训练机生成并回传，共 **1,633 条**候选（开发集 1,319、固定 test 314），三份清单（`manifest.json`、`summary.json`、`audit.json`）已入库，本机媒体逐条 SHA-256 核对 `1,633/1,633` 一致。
-- **人工审核进度**（以 [reviews.json](../data/subvideo-review/reviews.json) 实测为准）：本批次身份有效确认 **347 / 1,633**（B0 校准批 `32/32`、B1 固定 test 批 `314/314`、清单外试审 `1` 条），未审核 **1,286** 条，草稿／疑问／退回均为 0。**B2 每折 val 抽样 60 条（共 180 条）已定稿并置为 `ready`**，可直接开审。
-- **尚未启动项**：真实模型训练、真实 GPU 推理、正式模型评测、数据发布与旧 `versioning` 晋级接入均**未执行**；源标注表发现的疑似错标已登记在 `§8 SOURCE-RELABEL`，当前暂不改表。
+- **源级输入**：110 个真实源视频（89 开发三折 + 21 固定 test；2026-11-25 [去重审计](research/source-video-dedup-audit.md)与 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 按选项 A 在 `data/splits/dev-exclusions.json` 中强制排除与 test 近重复的 `video_0006`/`video_0079`，原 `data/splits/three-fold/*.json` 逐字节不动，有效开发源 **87**、每折 `58/29`，虚拟视频隔离由 12 升至 **15**），当前源标注表 [data/annotation-table-full.csv](../data/annotation-table-full.csv)（SHA-256 `c928bea3…c1ec354c`）与 ROI 清单 [data/roi/manifest.json](../data/roi/manifest.json)（110/110 `success`，2026-11-20 重扫）已就位。
+- **候选子视频批次**：第 2 批（`basic` 档）已于 2026-11-20 在训练机生成并回传，共 **1,633 条**候选（开发集 1,319、固定 test 314；扣除选项 A 排除的 `video_0006` 19 条与 `video_0079` 1 条后有效开发候选 1,299 条），三份清单（`manifest.json`、`summary.json`、`audit.json`）已入库，本机媒体逐条 SHA-256 核对 `1,633/1,633` 一致。
+- **人工审核进度**（以 [reviews.json](../data/subvideo-review/reviews.json) 实测为准，最新时间戳 `2026-11-25T08:46:05.068136+00:00`）：本批次身份有效确认 **527 / 1,633**（B0 校准批 `32/32`、B1 固定 test 批 `314/314`、B2 三折 val 抽样批 `180/180`、清单外试审 `1` 条 = `video_0050_coverage_02`），未审核 **1,106** 条，草稿／疑问／退回均为 0。**B0、B1、B2 已全部审完**，下一批次为 B3（开发集其余未审候选）。
+- **尚未启动项**：真实模型训练、真实 GPU 推理、正式模型评测、数据发布与旧 `versioning` 晋级接入均**未执行**；源标注表发现的疑似错标已登记在 `§8 SOURCE-RELABEL`（9 源 12 字段），当前暂不改表。
 
 | 编号与代号 | 任务名称 | 当前状态 | 当前关键进展／下一步 |
 | --- | --- | --- | --- |
-| [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径、6 篇输入契约、PR #20 三篇调研、PR #21 独立取证 CLI 及 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（8 帧抽帧口径与首轮 3+1 基座名单）已就位；待训练机体检、适配器代码、样本充分性与正式阈值 |
+| [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径、6 篇输入契约、PR #20 三篇调研、PR #21 独立取证 CLI、[DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（8 帧抽帧口径与首轮 3+1 基座名单）、PR #23 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)及 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md)（选项 A 排除清单）已就位；待训练机体检、适配器代码、样本充分性与正式阈值 |
 | [3. EVAL-VERSIONING](#3-eval-versioning--按新评价设计更新-versioning-评价与晋级门槛) | 更新 `versioning` 评价与晋级门槛 | 待处理 | 依赖 `EVAL-DESIGN` 定稿与真实测评证据 |
-| [4. DATA-HANDOFF](#4-data-handoff--梳理新标注到数据生成的衔接方案) | 梳理新标注到数据生成的衔接方案 | 进行中 | 1,633 条新批次已回传核验；审核进度移交 `§6`，待定虚拟视频切分策略与发布衔接 |
-| [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 进行中 | 已产出子视频 1,633 条分层统计与 B2 抽样草稿 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)（非冻结集，属子视频侧，区别于 `docs/eval/` 整体模型测评契约）；待确认冻结口径 |
-| [6. SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段) | 人工审核新批次候选片段 | 进行中 | **当前主线**：B0（32/32）与 B1（314/314）已完成；**B2（180 条）已就绪待审** → B3 |
+| [4. DATA-HANDOFF](#4-data-handoff--梳理新标注到数据生成的衔接方案) | 梳理新标注到数据生成的衔接方案 | 进行中 | 1,633 条新批次已回传核验；审核进度移交 `§6`，选项 A 排除清单 `data/splits/dev-exclusions.json` 已落地，待定虚拟视频切分策略与发布衔接 |
+| [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 进行中 | 已产出子视频 1,633 条分层统计与 B2 抽样草稿 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)（非冻结集，属子视频侧，区别于 `docs/eval/` 整体模型测评契约）；B2（180/180）已审完，待确认冻结口径 |
+| [6. SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段) | 人工审核新批次候选片段 | 进行中 | **当前主线**：B0（32/32）、B1（314/314）与 **B2（180/180，2026-11-25）** 已全部完成，累计有效确认 **527/1,633** → 下一步 B3（未审 1,106） |
 | [7. MAPPING-NODE-RENAME](#7-mapping-node-rename--重命名映射节点消除-source_to_media-的方向误读) | 重命名映射节点 | 已解决（2026-11-24） | 已改用 `clip_to_model_input`／`clip_to_roi`／`roi_to_original`（`five-label-input-record/3`，显式拒绝旧 v2），见 `DF-052` |
-| [8. SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正) | 源标注待改清单与集中修正 | 等待确认／未开始 | 已登记 7 源 9 字段（均为 test 源）；暂不改表，建议 B2/B3 审完后集中复核 |
+| [8. SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正) | 源标注待改清单与集中修正 | 等待确认／未开始 | 已登记 9 源 12 字段（7 个 test 源 + 2 个开发集源）；暂不改表，建议 B3 审完、正式微调前集中复核 |
 | [1. LABEL-ANNOTATION](#1-label-annotation--确认标签基准并进行人工标注) | 确认标签基准并进行人工标注 | 已解决（2026-11-07） | 110 条源标注与材料类型补全已完成；后续修正由 `§8` 跟踪 |
 
 ---
@@ -68,7 +68,7 @@
 
 - [x] 位置视觉规则典型样例校准：已按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 7 条收敛至 [样例集](label-calibration/README.md) 9 例与 `docs/label.md` 第 5 节。
 - [x] 评分工具合成验证：已用人工构造小例核验多选未知、缺字段、失败、组合冲突与已确认分母（仅合成数据，不代表真实测评）。
-- [ ] 补齐源视频近似素材去重核查及新增虚拟视频来源核查（现有 110 源划分覆盖与 65 条既有虚拟视频溯源见 [测评数据覆盖建议](research/evaluation-data-requirements.md) 与 [虚拟视频溯源](research/virtual-video-provenance.md)，近似素材与历史暴露仍待核查）。
+- [ ] 补齐源视频近似素材去重核查及新增虚拟视频来源核查：2026-11-25 已完成 110 源全量 5,995 对去重审计与 65 条虚拟视频泄漏审查（PR #23，见 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)）并按 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 落地选项 A 排除清单 [`data/splits/dev-exclusions.json`](../data/splits/dev-exclusions.json)（排除 `video_0006`/`video_0079` 及其 20 条子视频，隔离 15 条虚拟视频）；余下未决项为 32 条 `1280×720` 复材固定机位簇其余未复核配对（含 5 条 test）及训练机仓外历史暴露核查。
 - [x] 完成多模型输入及训练机资源适配调研：已完成 [MiniCPM 视频加载核查](research/minicpm-video-loading.md) 与 PR #20 三篇专项调研（[8B/9B 模型选型](research/vlm-8b-9b-model-comparison.md)、[8 帧抽帧口径](research/model-input-frame-sampling-options.md)、[训练机前置体检与适配器规划](research/eval-preflight-and-adapter-plan.md)），6 项核心边界已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 拍板；待执行训练机只读体检与推理适配器落地。
 - [ ] 核对实际待测模型权重、微调结果、数据、输入及评分规则的完整身份。
 - [ ] （后续优化/对照项，首轮基线后）`MiniCPM-V-4.5` 时序与切片参数对照：首轮按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 采用官方风格（`0.1 s` 量化 `temporal_ids` + `max_slice_nums=1`），后续可另起独立 `run_id` 与旧链路配置（`temporal_ids=None`、`max_slice_nums=2`、`max_pixels=65,536` 规整）做同口径对照优化。
@@ -217,7 +217,7 @@
 
 ## 6. SUBVIDEO-HUMAN-REVIEW — 人工审核新批次候选片段
 
-**状态：** 进行中（**当前主线任务**）。B0 校准批已完成 `32/32`（2026-11-23），B1 固定 test 批已完成 `314/314`（2026-11-24，PR #16 合并）；本批次身份有效确认累计 **347 / 1,633**（B0 32 条 + B1 314 条 + B0 清单外试审 `video_0050_coverage_02` 1 条），草稿 0、疑问 0、退回 0，未审核 **1,286 / 1,633**。**B2 每折 val 抽样 60 条（共 180 条）已按用户确认规则生成并切为 `ready`**，可直接开审。
+**状态：** 进行中（**当前主线任务**）。B0 校准批已完成 `32/32`（2026-11-23），B1 固定 test 批已完成 `314/314`（2026-11-24，PR #16 合并），**B2 三折 val 抽样批已完成 `180/180`（2026-11-25）**；本批次身份有效确认累计 **527 / 1,633**（B0 32 条 + B1 314 条 + B2 180 条 + B0 清单外试审 `video_0050_coverage_02` 1 条），草稿 0、疑问 0、退回 0，未审核 **1,106 / 1,633**。下一步推进 B3（开发集其余未审候选，可按 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 跳过已排除的 `video_0006`/`video_0079` 未审子视频）。
 
 ### 目标
 
@@ -225,7 +225,8 @@
 
 ### 当前进展
 
-- **实测数字口径（2026-11-24）**：以 [reviews.json](../data/subvideo-review/reviews.json)（SHA-256 `c2a0ab5df72023de2527a3bf0a35ade758ffd3da994eac5563d4a21bb38cb3c8`）及当前批次清单（`manifest_sha256` = `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f`）为准：不可变修订总数 397 条 = 本批次身份 360 条（对应 347 条有效确认候选）+ 旧批次身份 37 条（属历史隔离记录，不计入有效进度，不改写、不删除）。
+- **实测数字口径（2026-11-25）**：以 [reviews.json](../data/subvideo-review/reviews.json)（SHA-256 `dfe682763c8308c66387642ddb0d0ce67d2c25a2a21c4ac404ac1f7478592f27`，最新时间戳 `2026-11-25T08:46:05.068136+00:00`）及当前批次清单（`manifest_sha256` = `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f`）为准：不可变修订总数 **578** 条 = 本批次身份 **541** 条（对应 **527** 条有效确认候选：B0 32 + B1 314 + B2 180 + 试审 1）+ 旧批次身份 **37** 条（属历史隔离记录，不计入有效进度，不改写、不删除）。
+- **B2 审完与同源同角色比对（2026-11-25）**：B2 全部 180 条已确认（覆盖 87 个开发源及全部 37 条未审待关注候选）；同源同角色（≥2 条）共 31 组，其中 9 组存在字段取值差异（`video_0013`、`0024`、`0028`、`0040`、`0045`、`0057`、`0068`、`0084`、`0110`），均属不同切片窗口可见范围差异（不自动视为源表错误，亦未擅自改表）；B2 审核期间用户直接确认的开发集源表待改项（`video_0043` 2 字段、`video_0046` 1 字段）已登记至 [§8 SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正)。
 - **审核工具与批次选择已就绪**：[审核工具](../script/subvideo_review/README.md)打开候选时按候选标签预填 11 项作为草稿初值，确认仍须人工点击（DF-047），源标签只作另列参考、不参与预填，不回写生成清单或源标注；`audit.json` 经身份核对后提供 63 条重点提示。`B0`（32 条）、`B1`（314 条）、`B2`（180 条 `explicit_ids`：三折 val 池 `432 / 440 / 447` 各抽 60 条未审候选，全收 37 条未审待关注、100% 覆盖 87 个未审开发源，详见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §4）、`B3`（1,319 条开发集）在 [batches.json](../data/subvideo-review/batches.json) 中均已为 `ready`。
 - **审核方法约定**：按来源聚簇连续审核；采用「两遍填法」（第一遍按画面给值，第二遍复核不确定与组合冲突项）；隔批做防漂移抽检。
 - **历史规则与旧批次说明**：2026-11-16 起片段层模式／位置删除「无」，改按第 4 节证据门槛判断并按断裂状态分层评分（[DEC-004](decisions/0004-fragment-label-no-value-removal.md)、DF-049）；旧 1,621 批次的 18 条已确认候选（含 10 条旧值修订及早期 `video_0001` 试审）均随批次切换自然隔离为历史记录。生成层旧规则写入的「无」在审核展示与预填时映射为「无法判断」并提示，不改写清单字节。
@@ -252,13 +253,13 @@
   - `video_0099`：`video_0099_fracture_01`、`video_0099_fracture_02`
   - `video_0106`：`video_0106_fracture_01`、`video_0106_post_01`、`video_0106_post_02`
 - [x] B1 固定 test 批已审完并入库（314/314 已确认，2026-11-24，PR #16）：test 划分内未审核 0 条，草稿／疑问／退回均为 0；审核中发现的疑似源表错标已登记至 [§8 SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正)。
-- [ ] **当前批次 B2（每折 val 新抽 60 条，共 180 条，已 `ready`）**：规则已于 2026-11-24 确认并以 `explicit_ids` 写入 `data/subvideo-review/batches.json`（`seed=20261124`，不含已审 33 条，全收 37 条未审待关注，详见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §4）；在审核页选 B2 推进人工看片确认。
-- [ ] B3 开发集三折 train 全量（`batches.json` 返回全部 1,319 条开发候选，审核时在页面按状态筛选跳过已确认项）：在 B2 之后推进，每批完成后同步进度与遗留问题。
+- [x] B2 三折 val 抽样批已审完并入库（180/180 已确认，2026-11-25）：规则以 `explicit_ids` 写入 `data/subvideo-review/batches.json`（`seed=20261124`，不含已审 33 条，全收 37 条未审待关注，详见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §4）；已确认项全部归档于 `reviews.json`，审核中补充确认的开发集源表待改项已登记至 [§8 SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正)。
+- [ ] B3 开发集三折 train 全量（`batches.json` 返回全部 1,319 条开发候选，审核时在页面按状态筛选跳过已确认项，并按 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 跳过已排除源 `video_0006`/`video_0079` 的未审候选）：在 B2 之后推进，每批完成后同步进度与遗留问题。
 - [ ] 建立防漂移抽检记录（抽检片段、复看结论与差异处理）。
 
 ### 完成标准
 
-- [ ] B0、B1、B2、B3 各批完成并有可核对的审核记录（截至 2026-11-24：B0、B1 已完成，B2 已就绪待审，B3 未完成）。
+- [ ] B0、B1、B2、B3 各批完成并有可核对的审核记录（截至 2026-11-25：B0、B1、B2 已完成，B3 未完成）。
 - [ ] 审阅中发现的重复问题已归纳，需要改规则的已提交确认。
 - [ ] 全部拟发布片段的审核记录均可追溯到片段、来源与生成身份；未审片段不发布。
 
@@ -314,9 +315,9 @@
 
 ### 当前进展
 
-2026-11-24 对 [reviews.json](../data/subvideo-review/reviews.json)（SHA-256 `c2a0ab5df72023de2527a3bf0a35ade758ffd3da994eac5563d4a21bb38cb3c8`）做同源同角色比对：31 个来源中 17 个存在字段取值差异（`video_0005`、`0010`、`0019`、`0025`、`0038`、`0041`、`0062`、`0063`、`0067`、`0078`、`0082`、`0087`、`0088`、`0089`、`0093`、`0094`、`0095`），多数属窗口可见范围不同；以下 **7 个来源、9 个字段级条目**（均为固定测试集 `test.json`，行号为 CSV 物理行号，第 1 行为表头）判为疑似源表错误并纳入待核清单：
+2026-11-24 对 [reviews.json](../data/subvideo-review/reviews.json)（当时 SHA-256 `c2a0ab5df72023de2527a3bf0a35ade758ffd3da994eac5563d4a21bb38cb3c8`）做同源同角色比对：31 个来源中 17 个存在字段取值差异（`video_0005`、`0010`、`0019`、`0025`、`0038`、`0041`、`0062`、`0063`、`0067`、`0078`、`0082`、`0087`、`0088`、`0089`、`0093`、`0094`、`0095`），多数属窗口可见范围不同，其中 7 个固定测试集来源、9 个字段级条目纳入待核清单；2026-11-25 补充登记开发集来源 `video_0043`（2 个字段）与 `video_0046`（1 个字段）。当前合计 **9 个来源、12 个字段级条目**（7 个固定测试集 `test.json` + 2 个开发集，行号为 CSV 物理行号，第 1 行为表头）：
 
-#### 已确认待改项（6 源 7 字段）
+#### 已确认待改项（8 源 10 字段）
 
 精简版清单见 [待修改原视频源标注字段](pending-source-relabels.md)；完整依据、待定项与改表流程以本节为唯一真源。
 
@@ -328,6 +329,9 @@
 | `video_0025` | 26 | `断裂位置` | 无法判断 → 夹持根部 | 已确认 10 条 `fracture` 中 `_08`–`_10` 与 3 条 `post` 判「夹持根部」，`_01`–`_07` 判「无法判断」；**附带备注待清**：原 `标注备注` 为「下夹具不可见，导致断裂位置不确定。」，改表须一并确认清空或改写 |
 | `video_0025` | 26 | `异常_视频异常` | 是 → 否 | **与已确认片段相左**：10 条 `fracture` 中 7 条（`_01`–`_07`）判「是」、3 条（`_08`–`_10`）判「否」；15 条 `pre` 全部判「否」 |
 | `video_0041` | 42 | `现象_断后脱夹` | 是 → 否 | **与已确认片段部分相左**：8 条 `fracture` 中 `_07`、`_08` 判「是」，其余 6 条判「否」 |
+| `video_0043` | 44 | `现象_伸长` | 否 → 是 | 2026-11-25 审核补充（属开发集 `fold_0_train`／`fold_1_val`／`fold_2_train`，非 `test.json`）；用户直接确认 |
+| `video_0043` | 44 | `断裂模式` | 脆性断裂 → 半脆半韧断裂 | 2026-11-25 审核补充（同上，属开发集）；用户直接确认；**注意**：属开发集，正式改表时须评估是否重跑开发三折划分 |
+| `video_0046` | 47 | `现象_伸长` | 否 → 是 | 2026-11-25 审核补充（属开发集 `fold_0_val`／`fold_1_train`／`fold_2_train`，非 `test.json`）；用户直接确认 |
 | `video_0063` | 64 | `断裂位置` | 标距外非根部 → 标距内 | 已确认 8 条 `fracture`（`_01`–`_08`）全部判「标距内」；10 条 `pre` 与 1 条 `post` 判「无法判断」 |
 
 #### 审查比对新发现待定项（2 源 2 字段）
@@ -339,7 +343,7 @@
 
 ### 下一步
 
-- [ ] 复核整片：对上述 7 个来源逐条回看源视频，区分源表错误与片段窗口可见范围差异。
+- [ ] 复核整片：对上述 9 个来源逐条回看源视频，区分源表错误与片段窗口可见范围差异。
 - [ ] 定最终值：逐项给出定案值与依据（含与已确认片段相左的两项及 `video_0025` 关联备注）。
 - [ ] 备份 CSV：改动前将 `data/annotation-table-full.csv` 备份至仓库外位置，并记录改前／改后 SHA-256。
 - [ ] 占坑改表：按 `AGENTS.md` 全局共享只读项流程先开 Draft PR 占坑，再仅修改已定案字段与备注（保持 UTF-8 BOM、全 CRLF 与行序不变）。
@@ -347,17 +351,17 @@
 
 ### 完成标准
 
-- [ ] 全部 7 个来源、9 个字段级条目（含 `video_0025` 关联备注）复核完毕，每项有明确结论与可追溯依据。
+- [ ] 全部 9 个来源、12 个字段级条目（含 `video_0025` 关联备注）复核完毕，每项有明确结论与可追溯依据。
 - [ ] 若执行改表：具备仓外备份、改前后 SHA-256 记录，且改动范围严格限于定案字段与备注。
 - [ ] 「后续前置工作」各项连带影响核对完毕，结论写入 `docs/changes/` 变更单。
 
 ### 后续前置工作
 
-- **历史划分指纹保留**：`data/splits/three-fold/manifest.json` 的 `inputs."labels.csv".sha256` 记录的是 2026-11-19 生成划分时的历史指纹（`c928bea3…c1ec354c`），检查项 L1-02（见 [checks.md](checks.md)）当前为黄灯；改表后应保留历史划分清单，另在变更单与 `docs/facts.yaml` DF-033 追加新 CSV 指纹，不为消黄改写历史划分清单（若全部改动均在固定 test，开发三折亦无需重跑）。
+- **历史划分指纹保留**：`data/splits/three-fold/manifest.json` 的 `inputs."labels.csv".sha256` 记录的是 2026-11-19 生成划分时的历史指纹（`c928bea3…c1ec354c`），检查项 L1-02（见 [checks.md](checks.md)）当前为黄灯；改表后应保留历史划分清单，另在变更单与 `docs/facts.yaml` DF-033 追加新 CSV 指纹，不为消黄改写历史划分清单（当前已含开发集来源 `video_0043`、`video_0046`，正式改表时须评估是否重跑开发三折划分）。
 - **源级统计与文档同步**：同步更新 [整体标签分布](label-distribution.md)、[划分设计](split/data-split-design.md)、[测评数据覆盖建议](research/evaluation-data-requirements.md) 与 `data/split-inputs/source-groups-20261107.json` 的来源指纹。
-- **事实链与规则边界**：在 `docs/facts.yaml` DF-033 的标注表 SHA 链（`9970d259…` → `2f046b06…` → `c928bea3…`）追加新 SHA，不就地覆盖旧值；在变更单与 `docs/facts.yaml` 中显式写明 `docs/label.md` 与 DF-049 的「源标注层不动」仅指片段层删除「无」不连带改源表，而非禁止修正源表错标——**切勿为此顺手编辑 `docs/label.md`**（审核身份包含该文件字节哈希 `label_rules_sha256`，哪怕只改说明文字，重启审核服务后也会将全部 347 条现有确认记录归入历史）。
+- **事实链与规则边界**：在 `docs/facts.yaml` DF-033 的标注表 SHA 链（`9970d259…` → `2f046b06…` → `c928bea3…`）追加新 SHA，不就地覆盖旧值；在变更单与 `docs/facts.yaml` 中显式写明 `docs/label.md` 与 DF-049 的「源标注层不动」仅指片段层删除「无」不连带改源表，而非禁止修正源表错标——**切勿为此顺手编辑 `docs/label.md`**（审核身份包含该文件字节哈希 `label_rules_sha256`，哪怕只改说明文字，重启审核服务后也会将全部 527 条现有确认记录归入历史）。
 - **ROI 清单评估**：明确是否重扫 `data/roi/manifest.json`（重扫只刷标签快照与指纹、不重编码视频；不重扫则清单快照滞后），将取舍写入变更单。
-- **红线（严禁重生成子视频）**：无论源表如何修正，**不得因此重生成 `data/sub_video/` 清单或重新生成已审片段**。单改 CSV 不会使已确认的 347 条审核记录失效；但改表后直接对当前批次跑 `--audit-only` 会因输入身份指纹不符而拒跑，复验当前批次须使用生成时的输入快照。
+- **红线（严禁重生成子视频）**：无论源表如何修正，**不得因此重生成 `data/sub_video/` 清单或重新生成已审片段**。单改 CSV 不会使已确认的 527 条审核记录失效；但改表后直接对当前批次跑 `--audit-only` 会因输入身份指纹不符而拒跑，复验当前批次须使用生成时的输入快照。
 
 ### 等待确认
 

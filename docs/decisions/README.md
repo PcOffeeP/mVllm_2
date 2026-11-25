@@ -20,6 +20,7 @@
 | 新评价与晋级 | 现有 v4.1 评分、七门阈值和晋级链不直接套用新五类标签；新评价稿仍待确认。 | DF-003～DF-006；[TODO 的 EVAL-DESIGN 与 EVAL-VERSIONING](../TODO.md)；本轮评价口径见 [DEC-003](0003-five-label-eval-scope.md)，阈值与晋级衔接仍未确认。 |
 | 帧对应抽帧取证 | 设计已定、独立 CLI 已落地（PR #21，`script/frame_correspondence/`）、前置条件 1 已拍板（DEC-006）；按次取证、不替代机器证明。 | [DEC-005](0005-frame-correspondence-evidence.md)；DF-051、DF-052。 |
 | 评测抽帧口径与首轮模型名单 | 2026-11-25 确认：固定 8 帧 `evenly_spaced_inclusive`、短片 `< 8` 帧 `fail_closed`、L3 PNG `resize: null`、MiniCPM 首轮用官方风格（0.1 s `temporal_ids` + `max_slice_nums=1`，登记为后续可另起 `run_id` 对照优化项）、首轮锁定第一梯队 3+1 款（MiniCPM-V-4.5 / Qwen3-VL-8B-Instruct / InternVL3-8B / InternVL3.5-8B 标准版不含 ViR）、GLM-4.1V 主榜保留原生格式罚分不预埋解包分支。 | [DEC-006 评测抽帧口径与首轮模型名单](0006-eval-frame-sampling-and-model-lineup.md)；DF-053。 |
+| 跨 dev↔test 近重复排除与虚拟隔离 | 2026-11-25 确认选项 A（最小扰动）：保 `data/splits/three-fold/*.json` 原字节不变（守住 527 条审核身份），通过 `data/splits/dev-exclusions.json` 在训练与开发调参中强制排除 `video_0006`/`video_0079`（有效开发源 89→87，每折 `58/29`，有效开发子视频 1,319→1,299），虚拟视频隔离由 12 升至 15 条（余 50 条纯 dev）。 | [DEC-007 跨 dev↔test 近重复排除](0007-dev-test-dedup-exclusion.md)；DF-054。 |
 
 ### 实施和验证进展另看什么
 
@@ -59,7 +60,7 @@
 | DF-014 | 新旧契约身份衔接的既有记录与证据缺口；具体新身份及转换流程待定。 |
 | DF-015 | 历史已确认、尚未落地的观察窗要求；本轮接入方式待明确。 |
 | DF-043、DF-044、DF-045、DF-046、DF-047 | 2026-11-14 记录的本轮评价口径、模型与输入配置、coverage 判据与初值规则变更、数据与运行位置迁移；审查台按候选标签预填 11 个字段的草稿初值口径；当前决定见本目录 DEC-003。 |
-| DF-049、DF-051、DF-052、DF-053 | 片段层删除「无」与分层评分（DEC-004）、帧对应抽帧取证设计（DEC-005）、映射节点重命名与输入记录 v3（`clip_to_model_input` / `clip_to_roi` / `roi_to_original`），以及 2026-11-25 拍板的 8 帧抽帧口径与首轮模型名单（DEC-006）。 |
+| DF-049、DF-051、DF-052、DF-053、DF-054 | 片段层删除「无」与分层评分（DEC-004）、帧对应抽帧取证设计（DEC-005）、映射节点重命名与输入记录 v3（`clip_to_model_input` / `clip_to_roi` / `roi_to_original`）、2026-11-25 拍板的 8 帧抽帧口径与首轮模型名单（DEC-006），以及跨 dev↔test 近重复选项 A 排除与 15 条虚拟视频隔离口径（DEC-007）。 |
 
 原条目及常见误读统一见 [facts.yaml](../facts.yaml)。其中声明的 `scripts/verify_design_facts.py` 已随历史 `scripts/` 目录按用户要求删除，不再在仓库内，当前无替代的文档路径自动校验器；它必须实跑才算校验——早先稀疏检出未包含该脚本，当时的记录只能写「未运行」，不能把脚本声明当作已执行校验。本轮合并（2026-11-12）后，于 2026-11-13 在临时补入被引用路径的稀疏检出中实跑两种模式各一次（默认校验与 `--check-doc-paths`），运行后已还原检出范围；两次均 exit 0：合计 170 项检查全部 PASS、FAIL 0（其中带 `expect` 的 evidence 164 条全部命中）；路径自检扫描 63 个受跟踪 md、538 处引用，存在 471 处、不存在 0 处、白名单豁免 67 处。上述数字是历史记录；该脚本已删除、当前无法执行，不能当作现行校验；纪律不变：在未运行该脚本的工作区，不得引用上述结果当作已执行校验。
 

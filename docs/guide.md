@@ -19,10 +19,11 @@
 | 专题 | 文档及状态 |
 | --- | --- |
 | 人工标签 | [标签说明](label.md)：本轮五类 11 叶字段人工标注依据。 |
+| 源标注待改清单 | [待修改原视频源标注字段](pending-source-relabels.md)：已确认的源表待改项精简清单（8 源 10 字段，完整台账与待定项见 `docs/TODO.md` §8）。 |
 | 标签分布 | [整体标签分布](label-distribution.md)：110 条源视频标注的当前分布快照。 |
 | 位置样例校准 | [位置校准样例集](label-calibration/README.md)：`DEC-003` 第 7 条确认的 9 例位置校准参考图与说明。 |
 | 视频 ROI 裁剪 | [视频 ROI 裁剪规则](roi-rules.md)：ROI 裁剪、补边、审核与验收规则。 |
-| 数据划分 | [划分规则设计](split/data-split-design.md) · [本轮划分结果](split/data-split-result.md)：89 开发三折与 21 固定 test 划分规则及当前计数。 |
+| 数据划分 | [划分规则设计](split/data-split-design.md) · [本轮划分结果](split/data-split-result.md) · [DEC-007 选项 A 排除口径](decisions/0007-dev-test-dedup-exclusion.md)：89 开发三折与 21 固定 test 划分规则及当前计数；2026-11-25 按 `DEC-007` 与 `data/splits/dev-exclusions.json` 在训练与开发调参中排除近重复开发源 `video_0006`/`video_0079`（有效开发源 87，每折 `58/29`）。 |
 
 ### 子视频生成、审核与跨机运行
 
@@ -48,7 +49,7 @@
 | 专题 | 文档及状态 |
 | --- | --- |
 | 检查机制台账 | [检查机制台账](checks.md)：全项目 134 处检查的位置、触发方式与快照状态。 |
-| 专项调研 | [测评数据覆盖与虚拟数据建议](research/evaluation-data-requirements.md) · [MiniCPM 视频加载核查](research/minicpm-video-loading.md) · [65 条虚拟视频溯源](research/virtual-video-provenance.md) · [8B/9B 开源视频多模态基座选型](research/vlm-8b-9b-model-comparison.md) · [模型输入 8 帧抽帧口径方案](research/model-input-frame-sampling-options.md) · [训练机前置体检与推理适配器规划](research/eval-preflight-and-adapter-plan.md)。 |
+| 专项调研 | [测评数据覆盖与虚拟数据建议](research/evaluation-data-requirements.md) · [MiniCPM 视频加载核查](research/minicpm-video-loading.md) · [65 条虚拟视频溯源](research/virtual-video-provenance.md) · [虚拟视频测试集泄漏审查与 110 条真实源视频去重审计](research/source-video-dedup-audit.md) · [8B/9B 开源视频多模态基座选型](research/vlm-8b-9b-model-comparison.md) · [模型输入 8 帧抽帧口径方案](research/model-input-frame-sampling-options.md) · [训练机前置体检与推理适配器规划](research/eval-preflight-and-adapter-plan.md)。 |
 | 变更窗口声明 | `docs/changes/`：按 `AGENTS.md` 规范留存，自「已完成」记录之日起保留 7 天，期满直接删除。 |
 
 > 注：原 `mVllm_2` 冻结线的架构说明（`ARCHITECTURE.md`）与历史模型清单（`docs/results/model-inventory.md`）未在本 sparse-checkout 工作区检出；追溯历史信息请回原 `mVllm_2` 工作区。
