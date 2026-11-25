@@ -24,8 +24,7 @@ STATUS = ("success", "request_failed", "timeout", "unprocessed")
 EVIDENCE = ("sufficient", "insufficient", "unknown")
 
 
-class InputError(ValueError):
-    """Ambiguous or malformed local input identity."""
+from .errors import InputError
 
 
 class Pairs(list):
@@ -227,7 +226,7 @@ def request_identity(row):
     return tuple(row.get(k) for k in ("candidate_id", "clip_sha256") + REQUEST_KEYS)
 
 
-def prepare(manifest, reviews, predictions, input_reviews=()):
+def prepare(manifest, reviews, predictions, input_reviews=(), *, exclusions=None, enforce_exclusions=True):
     if not isinstance(manifest, dict) or not isinstance(manifest.get("samples"), list):
         raise InputError("manifest must contain samples array")
     require_text(manifest, "manifest_version", "manifest")
@@ -248,6 +247,10 @@ def prepare(manifest, reviews, predictions, input_reviews=()):
             raise InputError(f"source_type conflict: {sid}")
         source_types[sid] = sample["source_type"]
         samples[cid] = sample
+    if enforce_exclusions:
+        from .exclusions import load_dev_exclusions
+        active_exclusions = exclusions if exclusions is not None else load_dev_exclusions()
+        active_exclusions.assert_no_excluded(list(samples.values()), context="score manifest")
     review_index = {}
     for review in reviews:
         validate_identity(review, "review")
@@ -271,6 +274,7 @@ def prepare(manifest, reviews, predictions, input_reviews=()):
         review_index[key] = review
     pred_index = {}
     run_identity = None
+    subset_ids_seen = set()
     for pred in predictions:
         for key in ("candidate_id", "clip_sha256") + REQUEST_KEYS:
             require_text(pred, key, "prediction")
@@ -284,12 +288,30 @@ def prepare(manifest, reviews, predictions, input_reviews=()):
         if run_identity is not None and run_identity != current_run:
             raise InputError("one scoring batch must have one run_id/model_id/prompt_id")
         run_identity = current_run
+        if "eval_subset_id" in pred and pred["eval_subset_id"] is not None:
+            require_text(pred, "eval_subset_id", "prediction")
+            subset_ids_seen.add(pred["eval_subset_id"])
         cid = pred["candidate_id"]
         if cid not in samples or pred["clip_sha256"] != samples[cid]["clip_sha256"]:
             raise InputError(f"prediction candidate/digest mismatch: {cid}")
         if cid in pred_index:
             raise InputError(f"multiple predictions for {cid}; explicitly select one request per batch")
         pred_index[cid] = pred
+    if len(subset_ids_seen) > 1:
+        raise InputError(f"one scoring batch cannot mix eval_subset_id values: {sorted(subset_ids_seen)}")
+    manifest_subset_id = manifest.get("eval_subset_id")
+    if manifest_subset_id is not None:
+        if not isinstance(manifest_subset_id, str) or not manifest_subset_id.strip():
+            raise InputError(f"manifest eval_subset_id must be nonempty string, got {manifest_subset_id!r}")
+        if subset_ids_seen and manifest_subset_id not in subset_ids_seen:
+            raise InputError(
+                f"score eval_subset_id mismatch: manifest={manifest_subset_id!r} != predictions={sorted(subset_ids_seen)}"
+            )
+        subset_ids_seen.add(manifest_subset_id)
+    if len(subset_ids_seen) == 1:
+        from .exclusions import verify_frozen_subset_samples
+        bound_subset_id = next(iter(subset_ids_seen))
+        verify_frozen_subset_samples(bound_subset_id, samples.values(), context="score manifest")
     input_index = {}
     for review in input_reviews:
         for key in ("candidate_id", "clip_sha256") + REQUEST_KEYS + ("input_review_id",):
@@ -447,8 +469,9 @@ def aggregate(rows, truth_key):
             "fields": {f: field_metrics(rows, f, truth_key) for f in FIELDS}}
 
 
-def score(manifest, reviews, predictions, input_reviews=()):
-    rows = prepare(manifest, reviews, predictions, input_reviews)
+def _score_impl(manifest, reviews, predictions, input_reviews=(), *, exclusions=None, enforce_exclusions=True):
+    rows = prepare(manifest, reviews, predictions, input_reviews,
+                   exclusions=exclusions, enforce_exclusions=enforce_exclusions)
     groups = {}
     for source_type in ("real", "virtual"):
         selected = [r for r in rows if r["sample"]["source_type"] == source_type]
@@ -469,6 +492,10 @@ def score(manifest, reviews, predictions, input_reviews=()):
             "groups": groups, "samples": rows,
             "limits": ["No media opened; human reviews are supplied inputs, not independently verified.",
                        "Full-clip and actual-input truth remain separate. No weighted overall score, thresholds, promotion or release."]}
+
+
+def score(manifest, reviews, predictions, input_reviews=()):
+    return _score_impl(manifest, reviews, predictions, input_reviews)
 
 
 def display_ratio(metric):
@@ -537,10 +564,16 @@ def main(argv=None):
     parser.add_argument("--predictions", required=True)
     parser.add_argument("--input-reviews")
     parser.add_argument("--output", required=True, help="New output directory; refuses existing directory")
+    parser.add_argument("--exclusions", help="DEC-007 dev-exclusions JSON; defaults to data/splits/dev-exclusions.json")
+    parser.add_argument("--allow-excluded", action="store_true", help="Disable DEC-007 exclusion guard (forensic use only)")
     args = parser.parse_args(argv)
     try:
-        paths = {k: Path(v) for k, v in vars(args).items() if k != "output" and v is not None}
-        result = score(read_json(args.manifest), read_jsonl(args.reviews), read_jsonl(args.predictions), read_jsonl(args.input_reviews))
+        from .exclusions import load_dev_exclusions
+        exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
+        paths = {k: Path(v) for k, v in vars(args).items()
+                 if k not in ("output", "exclusions", "allow_excluded") and v is not None}
+        result = _score_impl(read_json(args.manifest), read_jsonl(args.reviews), read_jsonl(args.predictions),
+                             read_jsonl(args.input_reviews), exclusions=exclusions, enforce_exclusions=not args.allow_excluded)
         result["input_files"] = {k: {"path": str(p), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for k, p in paths.items()}
         output = Path(args.output)
         output.mkdir(parents=True, exist_ok=False)

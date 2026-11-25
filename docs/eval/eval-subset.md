@@ -67,6 +67,17 @@
 - 冻结后的子集不得因中间结果而调整；确需调整时，旧批次保留并声明作废原因，不得改写旧产物。
 - 抽样清单、随机种子、`max_pixels` 取值三样必须与该批次记录同存，否则该批次的分档结论不可复现。
 
+### 6.1 已冻结正式子集登记（2026-11-25，方案 A）
+
+2026-11-25 用户确认采用方案 A 冻结两份正式评测子集，由确定性构建脚本 [`script/five_label_eval/freeze_subsets.py`](../../script/five_label_eval/freeze_subsets.py)（`--verify` 可逐字节复核）生成，并在所有评测清单/抽帧/推理/评分入口通过 [`script/five_label_eval/exclusions.py`](../../script/five_label_eval/exclusions.py) 强制执行 [DEC-007](../decisions/0007-dev-test-dedup-exclusion.md)（`data/splits/dev-exclusions.json`）防漏网守卫：
+
+| 子集 ID | 文件路径 | 规模（片段／来源） | 画幅三档（片段／来源） | 文件 SHA-256 | 用途边界 |
+| --- | --- | --- | --- | --- | --- |
+| `eval-dev-v1` | [`data/eval-subsets/eval-dev-v1.json`](../../data/eval-subsets/eval-dev-v1.json) | **210 / 87 源**（`dev_all_clean`：B0 32 + 试审 1 + 干净 B2 177；三折 val 分别为 69/29、73/29、68/29） | `w_le_200` 112/48；`w_200_400` 42/20；`w_gt_400` 56/19 | `96ea3a4826dc9307389fee9579dfd0c01842516dad152707c884e4b2dd34fac7` | 开发侧基座对照、Prompt 迭代与误差分析；严格排除 `video_0006`、`video_0079`（含 B2 已审的 `video_0006_pre_06`、`video_0006_pre_13`、`video_0079_fracture_01`） |
+| `eval-test-v1` | [`data/eval-subsets/eval-test-v1.json`](../../data/eval-subsets/eval-test-v1.json) | **314 / 21 源**（`test_B1` 全量已审） | `w_le_200` 90/7；`w_200_400` 140/8；`w_gt_400` 84/6 | `df45cdf3fa771f8532f96d248622eeb91cebcf9472a1403e7237fae63a58bbd7` | **固定封存终测集**，严禁用于调参、选 Prompt 或迭代开发 |
+
+两份冻结子集均绑定上游输入摘要：`manifest_sha256` = `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f`、`reviews_sha256` = `dfe682763c8308c66387642ddb0d0ce67d2c25a2a21c4ac404ac1f7478592f27`、`dev_exclusions_sha256` = `52d9b04af7924cab58c95451dd48eb1e597a61582e5bd47fc7f603c7844b0758`。`manifest_convert`、`build_manifest`、`frames`、`infer` 的 `--candidate-ids` 均支持直接传入上述 `tensile-eval-subset/1` JSON 文件。
+
 ## 7. 旧批次退流声明
 
 远程 `data/derived/subvideos` 属历史产物，**新链路不读**。理由：它不携带本文要求的四层画面谱系（帧号、实际像素尺寸、视频内容摘要三项缺失），无法支撑 §2 的实际画幅口径与帧号回溯。引用旧结果时必须标注其来源为旧链路，且不得与采用本契约的新批次合并成一个数字。

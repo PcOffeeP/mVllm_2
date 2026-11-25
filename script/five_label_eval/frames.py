@@ -31,6 +31,7 @@ import subprocess
 import sys
 
 from . import paths
+from .exclusions import load_candidate_selection, load_dev_exclusions
 from .score import InputError, decode_file, require_text
 
 RECORD_SCHEMA = "five-label-input-record/3"
@@ -969,7 +970,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", default="mac", help="Path profile name from config/eval_paths.json")
     parser.add_argument("--manifest", help="Source sub-video manifest; defaults to the profile value")
-    parser.add_argument("--candidate-ids", help="JSON array of candidate IDs in the wanted order")
+    parser.add_argument("--candidate-ids", help="JSON array or frozen eval-subset JSON of candidate IDs in the wanted order")
     parser.add_argument("--output", required=True,
                         help="New records JSONL (extract mode) or lineage summary JSON (--coverage-scan)")
     parser.add_argument("--out-dir", help="New directory for extracted frame images; required unless --coverage-scan")
@@ -979,20 +980,30 @@ def main(argv=None) -> int:
     parser.add_argument("--coverage-scan", action="store_true",
                         help="Only parse the manifest and count decoded frames: no extraction, no PNG; "
                              "write the batch coverage summary to --output")
+    parser.add_argument("--exclusions", help="DEC-007 dev-exclusions JSON; defaults to data/splits/dev-exclusions.json")
+    parser.add_argument("--allow-excluded", action="store_true",
+                        help="Disable DEC-007 exclusion guard (forensic use only)")
     args = parser.parse_args(argv)
     try:
         profiles = paths.load_profile(args.profile)
         manifest_path = Path(args.manifest) if args.manifest else profiles["sub_video_manifest"]
         manifest_obj = decode_file((raw := manifest_path.read_bytes()).decode("utf-8"), str(manifest_path))
         by_id = _candidates(manifest_obj)
+        exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
+        manifest_sha256 = hashlib.sha256(raw).hexdigest()
         selected = list(by_id)
+        selection = None
         if args.candidate_ids:
-            selected = decode_file(Path(args.candidate_ids).read_text(encoding="utf-8"), args.candidate_ids)
-            if not isinstance(selected, list) or not selected:
-                raise InputError("candidate IDs must be a nonempty JSON array")
+            selection = load_candidate_selection(args.candidate_ids)
+            selection.assert_manifest_sha256(manifest_sha256, context="frames")
+            selected = selection.candidate_ids
             if missing := [cid for cid in selected if cid not in by_id]:
                 raise InputError(f"candidate_id not found in source manifest: {missing}")
-        manifest_sha256 = hashlib.sha256(raw).hexdigest()
+            if exclusions is not None:
+                exclusions.assert_no_excluded([by_id[cid] for cid in selected], context="frames candidate_ids")
+        elif exclusions is not None:
+            kept, _removed = exclusions.filter_candidates([by_id[cid] for cid in selected])
+            selected = [row["candidate_id"] for row in kept]
         index = source_evidence_index(manifest_obj)
         if args.coverage_scan:
             # 批级口径：探测全部来源，才能给整批的覆盖率结论。
@@ -1012,6 +1023,9 @@ def main(argv=None) -> int:
                                   manifest_sha256=manifest_sha256,
                                   source_evidence=evidence.get(by_id[cid].get("source_video_id")))
                    for cid in selected]
+        if selection is not None and selection.subset_id is not None:
+            for record in records:
+                record["eval_subset_id"] = selection.subset_id
         with Path(args.output).open("x", encoding="utf-8") as stream:
             for record in records:
                 stream.write(json.dumps(record, ensure_ascii=False) + "\n")

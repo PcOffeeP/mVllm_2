@@ -13,9 +13,10 @@ data/
 ├── videos/                            # 真实源视频（不入 Git）
 ├── roi/                               # 真实 ROI（decisions.json / manifest.json 入 Git；videos/ 不入 Git）
 ├── split-inputs/                      # 真实来源组输入
-├── splits/three-fold/                 # 真实三折划分与固定 test
+├── splits/three-fold/                 # 真实三折划分与固定 test（含 ../dev-exclusions.json）
 ├── sub_video/                         # 真实子视频清单/摘要/核验（媒体按 DF-046 默认留训练机）
 ├── subvideo-review/                   # 真实子视频人工审核记录 reviews.json
+├── eval-subsets/                      # 正式冻结评测子集（eval-dev-v1.json / eval-test-v1.json，入 Git）
 │
 └── virtual/                           # === 虚拟视频及其处理链路（按数据集版本隔离）===
     └── <dataset-version>/             # 如 video-V1、未来 video-V2
