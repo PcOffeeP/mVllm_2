@@ -186,7 +186,7 @@ TP、FN、FP、TN 只由人工明确“是／否”和模型明确“是／否�
 | --- | --- | --- |
 | `fake` | 纯离线链路自检（默认） | 仅接受 `--model-id fake`，按固定 `CATEGORY_ORDER` 轮转，不触碰媒体或网络 |
 | `http` | OpenAI-compatible `POST /v1/chat/completions`（覆盖 vLLM / SGLang 等） | `--endpoint`（必填）、`--api-model-name`、`--api-key-env`（仅从环境变量读密钥）、`--timeout`（端到端墙钟 deadline，默认 `600.0` s）、`--max-pixels`；有序发送 8 张 L3 PNG（base64 data URL）+ 原样 prompt 字节；运行身份写入 `<output>.meta.json`（含脱敏 `base_url`、`model_id`、`max_pixels`、`sampling_policy`） |
-| `transformers` | 薄本地 HF Transformers 适配器（惰性导入 `torch`/`transformers`/`PIL`，本机无 GPU/权重可正常单测） | `--model-path`（必填）、`--model-family`（支持 `minicpm-v-4.5` / `qwen3-vl` / `internvl3` / `internvl3.5`）、`--max-slice-nums`、`--max-pixels`、`--trusted-sha256-file`（加载前 fail-closed SHA-256 核验）。`MiniCPM-V-4.5` 自动计算 `0.1 s` 量化 `temporal_ids` 并默认 `max_slice_nums=1`，写入运行身份 |
+| `transformers` | 薄本地 HF Transformers 适配器（惰性导入 `torch`/`transformers`/`PIL`，本机无 GPU/权重可正常单测） | `--model-path`（必填）、`--model-family`（支持 `minicpm-v-4.5` / `qwen3-vl` / `internvl3` / `internvl3.5`）、`--max-slice-nums`、`--max-pixels`、`--trusted-sha256-file`（加载前在私有 `0o700` 暂存目录对全部 `.py`/`.json`/`.jinja` 做 fail-closed SHA-256 核验）。`MiniCPM-V-4.5` 自动计算 `0.1 s` 量化 `temporal_ids` 并默认 `max_slice_nums=1`；原生 `InternVL3/3.5` 使用自有全画幅动态切块预处理器；**注意：`qwen3-vl` 本地加载要求训练机独立环境安装 `transformers>=4.57.0`（仓库基线 `requirements.txt` 锁定 `4.56.1`，在该基线环境下请改用 `--backend http` 走 vLLM）** |
 
 所有后端共用严格单 JSON 输出契约：非 `success` 强制 `raw_output: null`，`success` 原样落盘模型文本（**不做 `<answer>` 解包、不剥离代码围栏、不旁挂结构化标签字段**），输出 `predictions.jsonl` 独占创建、不覆盖已有文件。
 

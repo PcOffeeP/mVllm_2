@@ -940,7 +940,12 @@ class TransformersBackend:
                 else (
                     "native_tile_and_source_budget"
                     if self.model_family in ("internvl3", "internvl3.5")
-                    else "native_processor_budget"
+                    and isinstance(self._processor, InternVLNativeImageProcessor)
+                    else (
+                        "pre_processor_source_resize"
+                        if self.model_family in ("internvl3", "internvl3.5")
+                        else "native_processor_budget"
+                    )
                 )
             ),
             "sampling_policy": self.sampling_policy,

@@ -1930,6 +1930,7 @@ def test_r11_regression_auto_map_local_module_allowlist_and_hf_internvl_max_pixe
         image_loader=lambda _p: Image.new("RGB", (400, 200)),
     )
     assert hf_backend.infer_one(_make_request(tmp_path / "r11_hf_px")).status == "success"
+    assert hf_backend.run_identity()["max_pixels_scope"] == "pre_processor_source_resize"
     assert len(seen_sizes) == 8
     assert all(w * h <= 10000 for w, h in seen_sizes)
 
