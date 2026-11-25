@@ -12,10 +12,10 @@
     "tokenizer_config.json": "705d8fbba57dae6bff1e6a1d695ba116fbf27761a4e8373bb68f5d4f0d88f19d"
   },
   "weight_shards": [
-    {"file": "model-00001-of-00004.safetensors", "bytes": 4991123960},
-    {"file": "model-00002-of-00004.safetensors", "bytes": 4958443072},
-    {"file": "model-00003-of-00004.safetensors", "bytes": 4796984024},
-    {"file": "model-00004-of-00004.safetensors", "bytes": 1142280864}
+    {"file": "model-00001-of-00004.safetensors", "bytes": 4991123960, "sha256": "7ea1f92eaae35cb927e7c7b0f87568ccc046a2446aa68066dfdccb7ebbe0c7f0"},
+    {"file": "model-00002-of-00004.safetensors", "bytes": 4958443072, "sha256": "05f9f1bf63d946d2963bd68c9d1ee7f93bdc5fc05a9b39a3fb91734d5ef4362d"},
+    {"file": "model-00003-of-00004.safetensors", "bytes": 4796984024, "sha256": "904aa0f2fbdbf504cd7bce1a8ec5633ee4e3e1769b48c5b3e08369a23875aaa1"},
+    {"file": "model-00004-of-00004.safetensors", "bytes": 1142280864, "sha256": "50e048a88254db95e0aa397a4e4012a353eaf650a18d7b291e1522d16e83d389"}
   ],
   "resolved_visual_processor": {
     "dynamic_image_size": true,
