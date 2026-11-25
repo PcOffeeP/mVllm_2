@@ -367,28 +367,45 @@ def test_frozen_subset_rejects_mismatched_manifest_sha256_before_writing(tmp_pat
 
 
 def test_frozen_v1_verification_survives_appended_b3_reviews(tmp_path: Path) -> None:
-    """Finding 2 regression: appending later B3 confirmed reviews must not break v1 --verify."""
+    """Finding 2 regression: appending later ReviewApp-matching B3 confirmed reviews must not break v1 --verify."""
+    from script.subvideo_review.server import ReviewApp
+
+    app = ReviewApp(REPO_ROOT)
+    b3_cand = app.candidates["video_0001_pre_01"]
     reviews_obj = json.loads((REPO_ROOT / "data/subvideo-review/reviews.json").read_text(encoding="utf-8"))
-    real_manifest_sha = hashlib.sha256((REPO_ROOT / "data/sub_video/manifest.json").read_bytes()).hexdigest()
-    # Append a simulated B3 confirmed review for video_0001_pre_01 after v1 freeze cutoff.
-    reviews_obj["revisions"].append(
-        {
-            "candidate_id": "video_0001_pre_01",
-            "manifest_sha256": real_manifest_sha,
-            "review_id": "simulated-b3-rev-1",
-            "review_status": "confirmed",
-            "created_at": "2026-11-26T00:00:00+00:00",
-            "labels": {"断裂状态": "未断裂"},
-        }
-    )
+    # Append a ReviewApp.matches-valid B3 confirmed review for video_0001_pre_01 after v1 freeze cutoff.
+    b3_row = {
+        "candidate_id": b3_cand["candidate_id"],
+        "clip_sha256": b3_cand["clip_sha256"],
+        "review_subject_sha256": b3_cand["review_subject_sha256"],
+        "source_id": b3_cand["source_id"],
+        "source_type": b3_cand["source_type"],
+        "manifest_sha256": app.manifest_sha256,
+        "review_id": "simulated-b3-rev-1",
+        "review_status": "confirmed",
+        "created_at": "2026-11-26T00:00:00+00:00",
+        "labels": {"断裂状态": "未断裂"},
+    }
+    assert ReviewApp.matches(b3_row, b3_cand)
+    reviews_obj["revisions"].append(b3_row)
     extended_reviews = tmp_path / "reviews-with-b3.json"
     extended_reviews.write_text(json.dumps(reviews_obj, ensure_ascii=False), encoding="utf-8")
 
+    # With cutoff enforced, v1 verification still passes with exact 210 / 314 counts.
     results = verify_frozen_subsets(
         REPO_ROOT / "data/eval-subsets",
         reviews_path=extended_reviews,
     )
     assert [count for _path, _digest, count in results] == [210, 314]
+
+    # Without cutoff (cutoff=None), the appended ReviewApp-matching B3 revision IS picked up (211 dev clips).
+    dev_unbounded, _test_unbounded = build_frozen_subsets(
+        reviews_path=extended_reviews,
+        reviews_cutoff_created_at=None,
+        enforce_v1_pins=False,
+    )
+    assert dev_unbounded["summary"]["candidate_count"] == 211
+    assert "video_0001_pre_01" in dev_unbounded["candidate_ids"]
 
 
 def test_empty_custom_exclusions_file_cannot_bypass_official_dec007(tmp_path: Path) -> None:
@@ -601,5 +618,106 @@ def test_score_module_cli_subprocess_exits_cleanly_on_dec007_violation(tmp_path:
     assert "ERROR:" in proc.stderr
     assert "DEC-007" in proc.stderr
     assert "Traceback" not in proc.stderr
+
+
+def test_infer_rejects_superset_manifest_for_frozen_subset_and_accepts_exact_subset(tmp_path: Path) -> None:
+    """Round-4 Finding 1 regression: infer with frozen eval-dev-v1 must reject full manifest and accept exact 210-clip manifest."""
+    dev_subset_path = REPO_ROOT / "data/eval-subsets/eval-dev-v1.json"
+    full_manifest_out = tmp_path / "full-scoring-manifest.json"
+    dev_manifest_out = tmp_path / "dev-scoring-manifest.json"
+
+    assert manifest_convert.main(
+        [
+            "--input",
+            str(REPO_ROOT / "data/sub_video/manifest.json"),
+            "--manifest-version",
+            "full-clean/1",
+            "--output",
+            str(full_manifest_out),
+        ]
+    ) == 0
+    assert manifest_convert.main(
+        [
+            "--input",
+            str(REPO_ROOT / "data/sub_video/manifest.json"),
+            "--candidate-ids",
+            str(dev_subset_path),
+            "--manifest-version",
+            "dev-v1/1",
+            "--output",
+            str(dev_manifest_out),
+        ]
+    ) == 0
+
+    dev_manifest = json.loads(dev_manifest_out.read_text(encoding="utf-8"))
+    # Build minimal input records matching the 210 dev samples for fake backend.
+    records_path = tmp_path / "records.jsonl"
+    with records_path.open("w", encoding="utf-8") as stream:
+        for idx, sample in enumerate(dev_manifest["samples"]):
+            rec = {
+                "record_schema": "five-label-input-record/3",
+                "candidate_id": sample["candidate_id"],
+                "clip_sha256": sample["clip_sha256"],
+                "manifest_sha256": sample["manifest_sha256"],
+                "input_id": f"input-{idx:04d}",
+            }
+            stream.write(json.dumps(rec) + "\n")
+    prompt_path = tmp_path / "prompt.txt"
+    prompt_path.write_text("synthetic prompt\n", encoding="utf-8")
+
+    # 1. Full 1,613-sample manifest (contains sealed test clips) MUST be rejected with --candidate-ids eval-dev-v1.json
+    bad_preds = tmp_path / "bad-preds.jsonl"
+    err = io.StringIO()
+    with redirect_stderr(err):
+        rc_bad = infer.main(
+            [
+                "--manifest",
+                str(full_manifest_out),
+                "--candidate-ids",
+                str(dev_subset_path),
+                "--input-config",
+                str(records_path),
+                "--prompt-file",
+                str(prompt_path),
+                "--run-id",
+                "run-bad",
+                "--backend",
+                "fake",
+                "--model-id",
+                "fake",
+                "--output",
+                str(bad_preds),
+            ]
+        )
+    assert rc_bad == 2
+    assert "do not match frozen subset" in err.getvalue()
+    assert not bad_preds.exists()
+
+    # 2. Exact 210-sample dev manifest succeeds through infer AND score with exactly 210 scored samples!
+    good_preds = tmp_path / "good-preds.jsonl"
+    rc_good = infer.main(
+        [
+            "--manifest",
+            str(dev_manifest_out),
+            "--candidate-ids",
+            str(dev_subset_path),
+            "--input-config",
+            str(records_path),
+            "--prompt-file",
+            str(prompt_path),
+            "--run-id",
+            "run-good",
+            "--backend",
+            "fake",
+            "--model-id",
+            "fake",
+            "--output",
+            str(good_preds),
+        ]
+    )
+    assert rc_good == 0
+    scored = score.score(dev_manifest, [], score.read_jsonl(good_preds))
+    assert len(scored["samples"]) == 210
+    assert scored["groups"]["real"]["full_clip"]["clips"] == 210
 
 

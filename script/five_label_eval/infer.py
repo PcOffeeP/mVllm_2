@@ -545,10 +545,20 @@ def main(argv=None) -> int:
 
         manifest = read_json(args.manifest)
         if selection is not None:
-            for sample in _validate_manifest_samples(
+            manifest_samples = _validate_manifest_samples(
                 manifest, exclusions=exclusions, enforce_exclusions=not args.allow_excluded
-            ).values():
-                if sample.get("candidate_id") in set(selection.candidate_ids):
+            )
+            selected_set = set(selection.candidate_ids)
+            if selection.expected_manifest_sha256 is not None and set(manifest_samples) != selected_set:
+                extra = sorted(set(manifest_samples) - selected_set)
+                missing_in_manifest = sorted(selected_set - set(manifest_samples))
+                raise InputError(
+                    f"infer manifest samples do not match frozen subset {selection.subset_id or 'tensile-eval-subset/1'} "
+                    f"(extra={len(extra)} {extra[:5]}, missing={len(missing_in_manifest)} {missing_in_manifest[:5]}); "
+                    "build a subset-scoped scoring manifest with manifest_convert --candidate-ids"
+                )
+            for sample in manifest_samples.values():
+                if sample.get("candidate_id") in selected_set:
                     selection.assert_manifest_sha256(
                         sample.get("manifest_sha256", ""),
                         context=f"infer manifest {sample.get('candidate_id')}",

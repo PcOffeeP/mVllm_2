@@ -48,6 +48,7 @@ from .frames import SIZE_BUCKET_SOURCE, size_bucket
 from .score import InputError, decode_file
 
 FROZEN_DATE = "2026-11-25"
+V1_PINNED_REVIEWS_PATH = "data/subvideo-review/reviews.json"
 WIDTH_BUCKETS = ("w_le_200", "w_200_400", "w_gt_400")
 
 
@@ -425,7 +426,7 @@ def verify_frozen_subsets(
         frozen_date=FROZEN_DATE,
         reviews_cutoff_created_at=V1_REVIEWS_CUTOFF_CREATED_AT,
         pinned_reviews_file_sha256=V1_PINNED_INPUTS["reviews_sha256"],
-        pinned_reviews_path=dev_inputs.get("reviews_path"),
+        pinned_reviews_path=V1_PINNED_REVIEWS_PATH,
         enforce_v1_pins=True,
     )
     results: list[tuple[Path, str, int]] = []
