@@ -135,6 +135,8 @@ def main(argv=None) -> int:
         draft = convert(decode_file(raw.decode("utf-8"), args.input), raw, candidate_ids=candidate_ids,
                         limit=args.limit, manifest_version=args.manifest_version,
                         exclusions=exclusions, enforce_exclusions=not args.allow_excluded)
+        if selection is not None and selection.subset_id is not None:
+            draft["eval_subset_id"] = selection.subset_id
         draft["input_files"] = {"source_manifest": {"path": args.input, "sha256": raw_sha256}}
         with Path(args.output).open("x", encoding="utf-8") as stream:
             stream.write(json.dumps(draft, ensure_ascii=False, indent=2) + "\n")

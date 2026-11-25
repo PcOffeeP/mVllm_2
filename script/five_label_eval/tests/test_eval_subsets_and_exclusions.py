@@ -726,6 +726,40 @@ def test_infer_rejects_superset_manifest_for_frozen_subset_and_accepts_exact_sub
     with pytest.raises(InputError, match="do not match frozen subset"):
         score.score(full_manifest, [], good_pred_rows)
 
+    # 2c. Infer WITHOUT repeating --candidate-ids inherits eval_subset_id from dev_manifest_out and still blocks full_manifest in score!
+    inherited_preds = tmp_path / "inherited-preds.jsonl"
+    rc_inherited = infer.main(
+        [
+            "--manifest",
+            str(dev_manifest_out),
+            "--input-config",
+            str(records_path),
+            "--prompt-file",
+            str(prompt_path),
+            "--run-id",
+            "run-inherited",
+            "--backend",
+            "fake",
+            "--model-id",
+            "fake",
+            "--output",
+            str(inherited_preds),
+        ]
+    )
+    assert rc_inherited == 0
+    inherited_rows = score.read_jsonl(inherited_preds)
+    assert all(row.get("eval_subset_id") == "eval-dev-v1" for row in inherited_rows)
+    with pytest.raises(InputError, match="do not match frozen subset"):
+        score.score(full_manifest, [], inherited_rows)
+
+    # 2d. Score MUST reject a manifest with the same 210 IDs + clip_sha256 but a different manifest_sha256!
+    reserialized_manifest = json.loads(dev_manifest_out.read_text(encoding="utf-8"))
+    reserialized_manifest.pop("eval_subset_id", None)
+    for sample in reserialized_manifest["samples"]:
+        sample["manifest_sha256"] = "1" * 64
+    with pytest.raises(InputError, match="manifest_sha256"):
+        score.score(reserialized_manifest, [], inherited_rows)
+
     # 3. Mutating one sample's clip_sha256 (while keeping 210 IDs and manifest_sha256 intact) MUST be rejected by infer & build_manifest
     tampered_dev_manifest = json.loads(dev_manifest_out.read_text(encoding="utf-8"))
     tampered_dev_manifest["samples"][0]["clip_sha256"] = "0" * 64

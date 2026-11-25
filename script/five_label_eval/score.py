@@ -299,8 +299,17 @@ def prepare(manifest, reviews, predictions, input_reviews=(), *, exclusions=None
         pred_index[cid] = pred
     if len(subset_ids_seen) > 1:
         raise InputError(f"one scoring batch cannot mix eval_subset_id values: {sorted(subset_ids_seen)}")
+    manifest_subset_id = manifest.get("eval_subset_id")
+    if manifest_subset_id is not None:
+        if not isinstance(manifest_subset_id, str) or not manifest_subset_id.strip():
+            raise InputError(f"manifest eval_subset_id must be nonempty string, got {manifest_subset_id!r}")
+        if subset_ids_seen and manifest_subset_id not in subset_ids_seen:
+            raise InputError(
+                f"score eval_subset_id mismatch: manifest={manifest_subset_id!r} != predictions={sorted(subset_ids_seen)}"
+            )
+        subset_ids_seen.add(manifest_subset_id)
     if len(subset_ids_seen) == 1:
-        from .exclusions import V1_PINNED_MEMBERS, candidate_ids_sha256
+        from .exclusions import V1_PINNED_INPUTS, V1_PINNED_MEMBERS, candidate_ids_sha256
         bound_subset_id = next(iter(subset_ids_seen))
         if bound_subset_id in V1_PINNED_MEMBERS:
             pin = V1_PINNED_MEMBERS[bound_subset_id]
@@ -310,6 +319,13 @@ def prepare(manifest, reviews, predictions, input_reviews=(), *, exclusions=None
                     f"score manifest samples do not match frozen subset {bound_subset_id!r} "
                     f"(expected count={pin['candidate_count']}, got count={len(manifest_cids)})"
                 )
+            expected_msha = V1_PINNED_INPUTS["manifest_sha256"]
+            for cid, sample in samples.items():
+                if sample.get("manifest_sha256") != expected_msha:
+                    raise InputError(
+                        f"score manifest {cid}: manifest_sha256 {sample.get('manifest_sha256')!r} != "
+                        f"frozen subset {bound_subset_id!r} {expected_msha!r}"
+                    )
     input_index = {}
     for review in input_reviews:
         for key in ("candidate_id", "clip_sha256") + REQUEST_KEYS + ("input_review_id",):

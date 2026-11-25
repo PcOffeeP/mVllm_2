@@ -87,6 +87,8 @@ def main(argv=None):
         draft = build_draft(reviews, candidate_ids, args.manifest_version,
                             exclusions=exclusions, enforce_exclusions=not args.allow_excluded)
         selection.assert_samples_match_source_manifest(draft["samples"], context="build_manifest")
+        if selection.subset_id is not None:
+            draft["eval_subset_id"] = selection.subset_id
         draft["input_files"] = {
             "reviews": {"path": args.reviews, "sha256": hashlib.sha256(export_bytes).hexdigest()},
             "candidate_ids": {"path": args.candidate_ids, "sha256": hashlib.sha256(ids_bytes).hexdigest()},

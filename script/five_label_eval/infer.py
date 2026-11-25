@@ -551,6 +551,15 @@ def main(argv=None) -> int:
                 )
 
         manifest = read_json(args.manifest)
+        manifest_subset_id = manifest.get("eval_subset_id") if isinstance(manifest, dict) else None
+        if manifest_subset_id is not None and (not isinstance(manifest_subset_id, str) or not manifest_subset_id.strip()):
+            raise InputError(f"manifest eval_subset_id must be nonempty string, got {manifest_subset_id!r}")
+        selection_subset_id = selection.subset_id if selection is not None else None
+        if selection_subset_id is not None and manifest_subset_id is not None and selection_subset_id != manifest_subset_id:
+            raise InputError(
+                f"infer eval_subset_id mismatch: --candidate-ids={selection_subset_id!r} != manifest={manifest_subset_id!r}"
+            )
+        effective_subset_id = selection_subset_id or manifest_subset_id
         if selection is not None:
             manifest_samples = _validate_manifest_samples(
                 manifest, exclusions=exclusions, enforce_exclusions=not args.allow_excluded
@@ -579,7 +588,7 @@ def main(argv=None) -> int:
                 model_id=args.model_id,
                 exclusions=exclusions,
                 enforce_exclusions=not args.allow_excluded,
-                eval_subset_id=selection.subset_id if selection is not None else None,
+                eval_subset_id=effective_subset_id,
             )
             with Path(args.output).open("x", encoding="utf-8") as stream:
                 for row in predictions:
@@ -653,7 +662,7 @@ def main(argv=None) -> int:
                 meta_output_path=meta_output,
                 exclusions=exclusions,
                 enforce_exclusions=not args.allow_excluded,
-                eval_subset_id=selection.subset_id if selection is not None else None,
+                eval_subset_id=effective_subset_id,
             )
         finally:
             backend.close()
