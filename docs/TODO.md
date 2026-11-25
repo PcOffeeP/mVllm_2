@@ -25,7 +25,7 @@
 
 ## 2. EVAL-DESIGN — 设计并确认评价体系
 
-**状态：** 进行中。本轮五类评价口径已按 [DEC-003](decisions/0003-five-label-eval-scope.md)（2026-11-14）确认，片段层删除「无」与分层评分已按 [DEC-004](decisions/0004-fragment-label-no-value-removal.md)（2026-11-16）确认，帧对应抽帧取证设计已按 [DEC-005](decisions/0005-frame-correspondence-evidence.md)（2026-11-23）确认且独立取证 CLI 已于 PR #21（2026-11-24）落地于 `script/frame_correspondence/`，PR #20（2026-11-24）三篇多模型评测调研已合入，首轮 8 帧抽帧口径与第一梯队 3+1 基座名单已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（2026-11-25）确认；评分工具与身份清单草稿工具已有合成验证；真实推理适配器、训练机前置体检、样本充分性、正式阈值与测评子集冻结尚未落地。
+**状态：** 进行中。本轮五类评价口径已按 [DEC-003](decisions/0003-five-label-eval-scope.md)（2026-11-14）确认，片段层删除「无」与分层评分已按 [DEC-004](decisions/0004-fragment-label-no-value-removal.md)（2026-11-16）确认，帧对应抽帧取证设计已按 [DEC-005](decisions/0005-frame-correspondence-evidence.md)（2026-11-23）确认且独立取证 CLI 已于 PR #21（2026-11-24）落地于 `script/frame_correspondence/`，PR #20（2026-11-24）三篇多模型评测调研已合入，首轮 8 帧抽帧口径与第一梯队 3+1 基座名单已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（2026-11-25）确认；测评子集 `eval-dev-v1` / `eval-test-v1` 已冻结（PR #26，见 [§5 EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集)），首款基座 `MiniCPM-V-4.5` 的 `eval-dev-v1` 三次正式评测已完成并归档至 [正式评测结果总入口](eval/runs/README.md)；其余 3 款第一梯队基座评测、样本充分性与正式阈值尚未落地。
 
 ### 目标
 
