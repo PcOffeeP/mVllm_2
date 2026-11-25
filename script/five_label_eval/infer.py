@@ -261,7 +261,7 @@ def run_inference(
         if cid in seen_cids:
             raise InputError(f"duplicate candidate_id in input records: {cid}")
         seen_cids.add(cid)
-        if verify_record_lineage and "lineage_media" in record:
+        if verify_record_lineage:
             if failures := verify_lineage(record):
                 raise InputError(f"{cid}: lineage check failed before inference: {' | '.join(failures)}")
         policy = _record_sampling_policy(record)

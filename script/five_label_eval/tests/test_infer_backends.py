@@ -121,6 +121,17 @@ def _build_record_and_manifest(tmp_path: Path, cid: str = "c00") -> tuple[dict, 
             "resize": None,
         },
         "media": {"width": 320, "height": 240, "fps": 30.0, "total_frames": 240, "sha256": clip_sha},
+        "verification": {
+            "method": "manifest_anchors",
+            "verdict_id": "v1",
+            "evidence_sha256": "e" * 64,
+            "conditions": {"explicit_pairs": [True, True, True]},
+        },
+        "lineage_media": {
+            "l0": {"total_frames": 2000, "total_frames_source": "decoded", "sha256": "0" * 64, "declared_sha256": "0" * 64},
+            "l1": {"total_frames": 2000, "total_frames_source": "decoded", "sha256": "1" * 64, "declared_sha256": "1" * 64},
+            "l2": {"total_frames": 240, "total_frames_source": "decoded", "sha256": clip_sha, "declared_sha256": clip_sha},
+        },
         "frames": frame_entries,
     }
     record["input_id"] = compute_record_input_id(record)
@@ -1726,3 +1737,122 @@ def test_r9_regression_trusted_snapshot_private_staging_closes_toctou(tmp_path):
     finally:
         backend.close()
     assert not staged_dir.exists()
+
+
+def test_r10_regression_chat_template_hf_blobs_plaintext_auth_missing_lineage_and_dns_exit(tmp_path, monkeypatch):
+    """Regression tests for R10 Codex blocking findings + cloud thread PRRT_kwDOTJFipM67uP-T."""
+    import subprocess
+
+    # 1. chat_template.jinja must be pinned in trusted_files_sha256 (missing or modified rejected).
+    tmpl_dir = tmp_path / "qwen_tmpl"
+    tmpl_dir.mkdir()
+    (tmpl_dir / "config.json").write_bytes(b'{"model_type": "qwen3_vl"}')
+    (tmpl_dir / "chat_template.jinja").write_bytes(b"{{ messages }}")
+    cfg_sha = hashlib.sha256((tmpl_dir / "config.json").read_bytes()).hexdigest()
+    tmpl_sha = hashlib.sha256((tmpl_dir / "chat_template.jinja").read_bytes()).hexdigest()
+    with pytest.raises(InputError, match="chat_template.jinja"):
+        verify_trusted_snapshot_sha256(tmpl_dir, {"config.json": cfg_sha})
+    assert verify_trusted_snapshot_sha256(
+        tmpl_dir, {"config.json": cfg_sha, "chat_template.jinja": tmpl_sha}
+    ) == {"config.json": cfg_sha, "chat_template.jinja": tmpl_sha}
+
+    # 2. Standard HuggingFace cache layout (snapshots/<rev> -> ../../blobs/<hash>) stages cleanly.
+    repo_cache = tmp_path / "models--OpenGVLab--InternVL3-8B"
+    blobs_dir = repo_cache / "blobs"
+    snap_rev = repo_cache / "snapshots" / "abc123"
+    blobs_dir.mkdir(parents=True)
+    snap_rev.mkdir(parents=True)
+    blob_cfg = blobs_dir / "blob_cfg"
+    blob_py = blobs_dir / "blob_py"
+    blob_cfg.write_bytes(b'{"version": "3"}')
+    blob_py.write_bytes(b"OK = True\n")
+    (snap_rev / "config.json").symlink_to(blob_cfg)
+    (snap_rev / "modeling_internvl.py").symlink_to(blob_py)
+    trusted_hf = {
+        "config.json": hashlib.sha256(blob_cfg.read_bytes()).hexdigest(),
+        "modeling_internvl.py": hashlib.sha256(blob_py.read_bytes()).hexdigest(),
+    }
+
+    class FakeModel:
+        def chat(self, **_kwargs):
+            return LEGAL_JSON
+
+    hf_backend = TransformersBackend(
+        model_id="openbmb/MiniCPM-V-4_5@sha256:1",
+        model_path=snap_rev,
+        trusted_files_sha256=trusted_hf,
+        model_loader=lambda p, _f, _m: (FakeModel(), None, object()),
+        image_loader=lambda p: p.name,
+    )
+    try:
+        assert hf_backend.infer_one(_make_request(tmp_path / "r10_hf_blobs")).status == "success"
+    finally:
+        hf_backend.close()
+
+    # 3. Reject plaintext http:// with credentials to non-loopback hosts (both api_key_env and URL userinfo).
+    monkeypatch.setenv("REMOTE_API_KEY", "secret-val")
+    with pytest.raises(InputError, match="plaintext http://"):
+        HttpBackend(
+            endpoint="http://remote-gpu.example.com:8000/v1",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            api_key_env="REMOTE_API_KEY",
+        )
+    with pytest.raises(InputError, match="plaintext http://"):
+        HttpBackend(
+            endpoint="http://user:pass@remote-gpu.example.com:8000/v1",
+            model_id="Qwen3-VL-8B-Instruct@1",
+        )
+    # https:// to non-loopback host with credentials is allowed.
+    ok_https = HttpBackend(
+        endpoint="https://remote-gpu.example.com:8000/v1",
+        model_id="Qwen3-VL-8B-Instruct@1",
+        api_key_env="REMOTE_API_KEY",
+    )
+    ok_https.close()
+
+    # 4. Missing lineage_media must be rejected when verify_record_lineage=True (default).
+    rec_nolin, m_nolin, frames_dir_nolin = _build_record_and_manifest(tmp_path / "r10_nolin", cid="c00")
+    rec_nolin.pop("lineage_media")
+    rec_nolin["input_id"] = compute_record_input_id(rec_nolin)
+
+    class NeverBackend:
+        backend_name = "http"
+
+        def run_identity(self):
+            return {"backend": "http"}
+
+        def infer_one(self, request):
+            raise AssertionError("should fail closed on missing lineage_media")
+
+        def close(self):
+            return None
+
+    with pytest.raises(InputError, match="lineage check failed"):
+        infer.run_inference(
+            [rec_nolin],
+            m_nolin,
+            backend=NeverBackend(),
+            run_id="r10-nolin",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir_nolin,
+        )
+
+    # 5. Subprocess CLI exits within timeout budget even when socket.getaddrinfo blocks for 5s.
+    script = (
+        "import socket, time\n"
+        "from pathlib import Path\n"
+        "from script.five_label_eval.backends.http_backend import HttpBackend\n"
+        "from script.five_label_eval.backends import InferenceRequest\n"
+        "socket.getaddrinfo = lambda *a, **k: (time.sleep(5.0), (_ for _ in ()).throw(socket.gaierror('slow')))[1]\n"
+        "b = HttpBackend(endpoint='http://slow-exit.example.invalid:8000/v1', model_id='Qwen3-VL-8B-Instruct@1', timeout_seconds=0.15)\n"
+        "req = InferenceRequest(candidate_id='c00', record={}, frame_paths=(), frame_pts_seconds=(), prompt_text='p', timeout_seconds=0.15, frame_bytes=())\n"
+        "res = b.infer_one(req)\n"
+        "assert res.status == 'timeout', res\n"
+    )
+    started = time.monotonic()
+    proc = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=3.0)
+    elapsed = time.monotonic() - started
+    assert proc.returncode == 0, proc.stderr
+    assert elapsed < 1.5, f"subprocess hung on DNS thread exit ({elapsed:.2f}s)"

@@ -54,6 +54,7 @@ TRUSTED_REQUIRED_CONFIG_FILES = (
     "tokenizer_config.json",
     "generation_config.json",
     "chat_template.json",
+    "chat_template.jinja",
 )
 
 
@@ -227,6 +228,8 @@ def verify_trusted_snapshot_sha256(
                 _scan_trusted_config_node(item, cfg_name, f"{loc}[{idx}]")
 
     for cfg_name in TRUSTED_REQUIRED_CONFIG_FILES:
+        if not cfg_name.endswith(".json"):
+            continue
         cfg_file = root / cfg_name
         if not cfg_file.is_file():
             continue
@@ -806,6 +809,12 @@ class TransformersBackend:
                 ):
                     copy_rels.add(rel_posix)
 
+            hf_blobs_root: Path | None = None
+            if source_root.parent.name == "snapshots":
+                candidate_blobs = (source_root.parent.parent / "blobs").resolve()
+                if candidate_blobs.is_dir():
+                    hf_blobs_root = candidate_blobs
+
             for entry in sorted(source_root.rglob("*")):
                 rel = entry.relative_to(source_root)
                 dest = staged_root / rel
@@ -816,12 +825,20 @@ class TransformersBackend:
                 rel_posix = rel.as_posix()
                 if rel_posix in copy_rels:
                     resolved_src = entry.resolve()
-                    try:
-                        resolved_src.relative_to(source_root)
-                    except ValueError as exc:
+                    allowed = False
+                    for allowed_root in (source_root, hf_blobs_root):
+                        if allowed_root is None:
+                            continue
+                        try:
+                            resolved_src.relative_to(allowed_root)
+                            allowed = True
+                            break
+                        except ValueError:
+                            continue
+                    if not allowed:
                         raise InputError(
                             f"trusted snapshot file {rel_posix!r} escapes model directory {source_root}"
-                        ) from exc
+                        )
                     shutil.copyfile(resolved_src, dest)
                 else:
                     dest.symlink_to(entry.resolve())
