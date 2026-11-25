@@ -8,12 +8,14 @@ import json
 from pathlib import Path
 import sys
 
+from .exclusions import DevExclusions, load_candidate_ids_input, load_dev_exclusions
 from .score import IDENTITY, InputError, decode_file, prepare, require_text, validate_identity
 
 DRAFT_VERSION = "five-label-manifest-draft/1"
 
 
-def build_draft(reviews, candidate_ids, manifest_version):
+def build_draft(reviews, candidate_ids, manifest_version, *, exclusions: DevExclusions | None = None,
+                enforce_exclusions: bool = True):
     """Use one supplied current row per candidate; never choose a review revision."""
     require_text({"manifest_version": manifest_version}, "manifest_version", "draft")
     if not isinstance(candidate_ids, list) or not candidate_ids:
@@ -34,6 +36,10 @@ def build_draft(reviews, candidate_ids, manifest_version):
     missing = [cid for cid in candidate_ids if cid not in by_id]
     if missing:
         raise InputError(f"selected candidate IDs missing from review export: {missing}")
+    active_exclusions = None
+    if enforce_exclusions:
+        active_exclusions = exclusions if exclusions is not None else load_dev_exclusions()
+        active_exclusions.assert_no_excluded([by_id[cid] for cid in candidate_ids], context="build_manifest candidate_ids")
     samples = []
     for cid in candidate_ids:
         row = by_id[cid]
@@ -45,7 +51,7 @@ def build_draft(reviews, candidate_ids, manifest_version):
     draft = {"manifest_version": manifest_version, "draft_schema": DRAFT_VERSION,
              "draft_status": "identity_snapshot_not_frozen", "samples": samples}
     # Reuse scorer identity/state validation; no prediction, media or model is used.
-    prepare(draft, reviews, [])
+    prepare(draft, reviews, [], exclusions=active_exclusions, enforce_exclusions=enforce_exclusions)
     counts = dict(Counter(s["review_status"] for s in samples))
     not_confirmed = [{"candidate_id": s["candidate_id"], "review_status": s["review_status"],
                       "review_id": s["review_id"]} for s in samples if s["review_status"] != "confirmed"]
@@ -59,9 +65,11 @@ def build_draft(reviews, candidate_ids, manifest_version):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reviews", required=True, help="Current-decisions JSONL export, one row per candidate")
-    parser.add_argument("--candidate-ids", required=True, help="JSON array of explicitly selected candidate IDs")
+    parser.add_argument("--candidate-ids", required=True, help="JSON array or frozen eval-subset JSON of selected candidate IDs")
     parser.add_argument("--manifest-version", required=True, help="User-specified manifest identity")
     parser.add_argument("--output", required=True, help="New JSON file; never overwrites")
+    parser.add_argument("--exclusions", help="DEC-007 dev-exclusions JSON; defaults to data/splits/dev-exclusions.json")
+    parser.add_argument("--allow-excluded", action="store_true", help="Disable DEC-007 exclusion guard (forensic use only)")
     args = parser.parse_args(argv)
     try:
         export_bytes = Path(args.reviews).read_bytes()
@@ -73,8 +81,10 @@ def main(argv=None):
                 if not isinstance(row, dict):
                     raise InputError(f"{args.reviews}:{number}: expected review object")
                 reviews.append(row)
-        candidate_ids = decode_file(ids_bytes.decode("utf-8"), args.candidate_ids)
-        draft = build_draft(reviews, candidate_ids, args.manifest_version)
+        candidate_ids = load_candidate_ids_input(args.candidate_ids)
+        exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
+        draft = build_draft(reviews, candidate_ids, args.manifest_version,
+                            exclusions=exclusions, enforce_exclusions=not args.allow_excluded)
         draft["input_files"] = {
             "reviews": {"path": args.reviews, "sha256": hashlib.sha256(export_bytes).hexdigest()},
             "candidate_ids": {"path": args.candidate_ids, "sha256": hashlib.sha256(ids_bytes).hexdigest()},

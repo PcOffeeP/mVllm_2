@@ -18,6 +18,7 @@ import tempfile
 from typing import Any
 
 from . import paths
+from .exclusions import DevExclusions, load_candidate_ids_input, load_dev_exclusions
 from .backends import InferenceBackend, InferenceRequest, normalize_result
 from .backends.fake_backend import CATEGORY_ORDER, LEGAL, NON_ANSWERS, fake_raw_output
 from .backends.transformers_backend import SUPPORTED_MODEL_FAMILIES, TransformersBackend
@@ -69,7 +70,12 @@ def _dumps_jsonl_line(obj: dict[str, Any]) -> str:
     )
 
 
-def _validate_manifest_samples(manifest) -> dict[str, dict]:
+def _validate_manifest_samples(
+    manifest,
+    *,
+    exclusions: DevExclusions | None = None,
+    enforce_exclusions: bool = True,
+) -> dict[str, dict]:
     rows = manifest.get("samples") if isinstance(manifest, dict) else None
     if not isinstance(rows, list):
         raise InputError("manifest must contain samples array")
@@ -81,6 +87,9 @@ def _validate_manifest_samples(manifest) -> dict[str, dict]:
         if cid in samples:
             raise InputError(f"duplicate candidate_id in manifest: {cid}")
         samples[cid] = row
+    if enforce_exclusions:
+        active_exclusions = exclusions if exclusions is not None else load_dev_exclusions()
+        active_exclusions.assert_no_excluded(list(samples.values()), context="infer manifest")
     return samples
 
 
@@ -235,11 +244,20 @@ def _resolve_record_frames(
     return tuple(frame_paths), tuple(frame_pts), tuple(frame_bytes)
 
 
-def plan_predictions(records, manifest, run_id, prompt_id, model_id="fake") -> list[dict]:
+def plan_predictions(
+    records,
+    manifest,
+    run_id,
+    prompt_id,
+    model_id="fake",
+    *,
+    exclusions: DevExclusions | None = None,
+    enforce_exclusions: bool = True,
+) -> list[dict]:
     """Deterministic fake prediction planner (kept pure & backward compatible)."""
     require_text({"run_id": run_id}, "run_id", "run")
     require_text({"prompt_id": prompt_id}, "prompt_id", "run")
-    samples = _validate_manifest_samples(manifest)
+    samples = _validate_manifest_samples(manifest, exclusions=exclusions, enforce_exclusions=enforce_exclusions)
     predictions = []
     for index, record in enumerate(records):
         cid = _validate_record_against_manifest(record, samples)
@@ -284,6 +302,8 @@ def run_inference(
     output_path: Path | None = None,
     meta_output_path: Path | None = None,
     verify_record_lineage: bool = True,
+    exclusions: DevExclusions | None = None,
+    enforce_exclusions: bool = True,
 ) -> tuple[list[dict], dict[str, Any]]:
     """Validate all inputs up-front, reserve outputs exclusively, run backend, and stream predictions."""
     require_text({"run_id": run_id}, "run_id", "run")
@@ -303,7 +323,7 @@ def run_inference(
         if isinstance(temp_val, bool) or not isinstance(temp_val, (int, float)) or not math.isfinite(temp_val) or temp_val < 0:
             raise InputError(f"temperature must be a finite number >= 0, got {temp_val!r}")
 
-    samples = _validate_manifest_samples(manifest)
+    samples = _validate_manifest_samples(manifest, exclusions=exclusions, enforce_exclusions=enforce_exclusions)
     prepared: list[tuple[str, dict, tuple[Path, ...], tuple[float, ...], tuple[bytes, ...]]] = []
     seen_cids: set[str] = set()
     batch_sampling_policy: dict[str, Any] | None = None
@@ -454,7 +474,7 @@ def run_inference(
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, help="Scoring manifest to bind requests to")
-    parser.add_argument("--candidate-ids", help="JSON array of candidate IDs selecting record order")
+    parser.add_argument("--candidate-ids", help="JSON array or frozen eval-subset JSON of candidate IDs selecting record order")
     parser.add_argument("--profile", help="Path profile; only needed to default --input-config")
     parser.add_argument("--model-id", default="fake")
     parser.add_argument("--run-id", required=True)
@@ -485,6 +505,8 @@ def main(argv=None) -> int:
         "--trusted-sha256-file",
         help="JSON mapping {relative_file: sha256} verified fail-closed before trust_remote_code (required for local loading)",
     )
+    parser.add_argument("--exclusions", help="DEC-007 dev-exclusions JSON; defaults to data/splits/dev-exclusions.json")
+    parser.add_argument("--allow-excluded", action="store_true", help="Disable DEC-007 exclusion guard (forensic use only)")
     args = parser.parse_args(argv)
     try:
         profiles = paths.load_profile(args.profile) if args.profile else None
@@ -492,11 +514,12 @@ def main(argv=None) -> int:
             raise InputError("provide --input-config or --profile")
         input_config = Path(args.input_config) if args.input_config else profiles["output_dir"] / "records.jsonl"
         prompt_text, prompt_identity = load_prompt(args.prompt_file)
+        exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
         records = read_records(input_config)
         if args.candidate_ids:
-            selected = decode_file(Path(args.candidate_ids).read_text(encoding="utf-8"), args.candidate_ids)
-            if not isinstance(selected, list) or not selected:
-                raise InputError("candidate IDs must be a nonempty JSON array")
+            selected = load_candidate_ids_input(args.candidate_ids)
+            if exclusions is not None:
+                exclusions.assert_no_excluded(selected, context="infer candidate_ids")
             by_id: dict[Any, dict] = {}
             for record in records:
                 rcid = record.get("candidate_id") if isinstance(record, dict) else None
@@ -518,7 +541,13 @@ def main(argv=None) -> int:
             if args.model_id != "fake":
                 raise InputError("fake backend only accepts --model-id fake")
             predictions = plan_predictions(
-                records, manifest, args.run_id, prompt_identity, model_id=args.model_id
+                records,
+                manifest,
+                args.run_id,
+                prompt_identity,
+                model_id=args.model_id,
+                exclusions=exclusions,
+                enforce_exclusions=not args.allow_excluded,
             )
             with Path(args.output).open("x", encoding="utf-8") as stream:
                 for row in predictions:
@@ -590,6 +619,8 @@ def main(argv=None) -> int:
                 decode_config=decode_config,
                 output_path=Path(args.output),
                 meta_output_path=meta_output,
+                exclusions=exclusions,
+                enforce_exclusions=not args.allow_excluded,
             )
         finally:
             backend.close()

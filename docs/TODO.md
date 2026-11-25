@@ -14,7 +14,7 @@
 | [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径、6 篇输入契约、PR #20 三篇调研、PR #21 独立取证 CLI、[DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（8 帧抽帧口径与首轮 3+1 基座名单）、PR #23 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)及 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md)（选项 A 排除清单）已就位；待训练机体检、适配器代码、样本充分性与正式阈值 |
 | [3. EVAL-VERSIONING](#3-eval-versioning--按新评价设计更新-versioning-评价与晋级门槛) | 更新 `versioning` 评价与晋级门槛 | 待处理 | 依赖 `EVAL-DESIGN` 定稿与真实测评证据 |
 | [4. DATA-HANDOFF](#4-data-handoff--梳理新标注到数据生成的衔接方案) | 梳理新标注到数据生成的衔接方案 | 进行中 | 1,633 条新批次已回传核验；审核进度移交 `§6`，选项 A 排除清单 `data/splits/dev-exclusions.json` 已落地，待定虚拟视频切分策略与发布衔接 |
-| [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 进行中 | 已产出子视频 1,633 条分层统计与 B2 抽样草稿 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)（非冻结集，属子视频侧，区别于 `docs/eval/` 整体模型测评契约）；B2（180/180）已审完，待确认冻结口径 |
+| [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 已冻结（2026-11-25） | 已按方案 A 冻结 [`data/eval-subsets/eval-dev-v1.json`](../data/eval-subsets/eval-dev-v1.json)（210 条 / 87 源，严格排除 `DEC-007` 近重复源）与 [`data/eval-subsets/eval-test-v1.json`](../data/eval-subsets/eval-test-v1.json)（314 条 / 21 源，封存终测），并在 `script/five_label_eval/` 落地 `DEC-007` 代码防漏网守卫；登记见 [eval-subset.md](eval/eval-subset.md) §6.1 |
 | [6. SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段) | 人工审核新批次候选片段 | 进行中 | **当前主线**：B0（32/32）、B1（314/314）与 **B2（180/180，2026-11-25）** 已全部完成，累计有效确认 **527/1,633** → 下一步 B3（未审 1,106） |
 | [7. MAPPING-NODE-RENAME](#7-mapping-node-rename--重命名映射节点消除-source_to_media-的方向误读) | 重命名映射节点 | 已解决（2026-11-24） | 已改用 `clip_to_model_input`／`clip_to_roi`／`roi_to_original`（`five-label-input-record/3`，显式拒绝旧 v2），见 `DF-052` |
 | [8. SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正) | 源标注待改清单与集中修正 | 等待确认／未开始 | 已登记 9 源 12 字段（7 个 test 源 + 2 个开发集源）；暂不改表，建议 B3 审完、正式微调前集中复核 |
@@ -132,14 +132,14 @@
   - 子视频生成在训练机执行（入口 `ssh liuyang@100.70.83.68`，主机名 `dell-Precision-3660`，训练机落点 `~/文档/TensileAgent-Finetune`）；媒体产物默认留在训练机，需在本机审查时按 [跨机审查运行手册](training-machine-review-runbook.md) §5.1 单向同步（训练机→本机、逐文件 `rsync` 禁 `--delete`、按 `output.sha256` 全量核对，DF-048）。
   - 清单与人工审查记录回传 Mac 并提交 Git；人工审查服务以 HTTP 提供、经 SSH 隧道访问，服务本身仍只监听回环。
   - 2026-11-14 决策曾记「Mac 侧旧批次作废：`data/sub_video/videos` 待删除」，原旧批次三个 JSON 已于 2026-11-19 删除，2026-11-20 新批次媒体回传并完成 `1,633/1,633` 核对后已全面替代旧批次。
-- **当前生效批次（第 2 批，2026-11-20 生成，PR #2 合并）**：见 [重生成记录](changes/2026-11-20-subvideo-batch2-regeneration.md)。通过 [统一入口](../script/subvideo_generation/generate.py) 先跑 `--verification basic --output-dir data/sub_video`，再跑 `--audit-only --write-audit --output-dir data/sub_video` 产出 `audit.json`。共 **1,633 个候选**（开发集 1,319、固定 test 314；媒体 191,625,749 B 不入库，本机逐条核对 `output.sha256` `1,633/1,633` 一致）：
+- **当前生效批次（第 2 批，2026-11-20 生成，PR #2 合并）**：通过 [统一入口](../script/subvideo_generation/generate.py) 先跑 `--verification basic --output-dir data/sub_video`，再跑 `--audit-only --write-audit --output-dir data/sub_video` 产出 `audit.json`（该批重生成与训练机同步历史变更单已于 2026-11-25 经用户授权清理）。共 **1,633 个候选**（开发集 1,319、固定 test 314；媒体 191,625,749 B 不入库，本机逐条核对 `output.sha256` `1,633/1,633` 一致）：
   - 角色计数：`pre` 825、`fracture` 576、`post` 127、`coverage`（93）、`no_fracture` 9、`unclamped` 3；`excluded_windows=54`（pre 越下界保护 28、post 余量不足 2 秒 18、过渡未覆盖完整事件 6、未夹紧素材不足 2）。
   - 较历史 1,621 个候选新增的 12 个全部来自 `video_0040`（断裂模式由脆性改为半脆半韧，`pre` 由 3 增至 15）；其余 109 个来源逐源逐角色一致。
   - 审计记录 `candidates_needing_attention=63`（63 条均含「未断裂片段的断后脱夹需复核」，其中 15 条兼有「未断裂与爆炸性断裂互斥」）；`manifest_sha256` 与 `run_summary_sha256` 核对一致。按 [生成逻辑 §8](subvideo-current-logic.md)，`basic`／`none` 不提供任何帧对应证明。
 - **审核工具与专题文档已接入导航**：[独立审核工具](../script/subvideo_review/README.md)与 [审核与评分衔接](subvideo-review-workflow.md) 已接入第 2 批清单并完成 B0（32/32）与 B1（314/314）真实人工审核（详见 [§6](#6-subvideo-human-review--人工审核新批次候选片段)）；`docs/subvideo-current-logic.md`、`docs/subvideo-review-workflow.md` 与 `docs/training-machine-review-runbook.md` 均已于 PR #12 纳入 [项目导航](guide.md)「子视频生成、审核与跨机运行」节。
 - **历史已删除／已退役批次摘要（仅作追溯，不再作为可用产物）**：
   - 2026-11-09 开发集初裁批（67 源 / 1,123 片段，两段严格重放通过）：已于 2026-11-11 按用户要求删除，删除前未审核、未发布。
-  - 2026-11-11 统一第 1 批：本轮重新编码 1,621 个候选（开发集 1,307、固定测试集 314），通过源到 ROI、ROI 到片段严格重放与完整解码检查；该批次已退役，其清单、摘要和核验记录已删除，训练机仓外暂存副本亦已于 2026-11-20 核对后删除（见 [训练机同步与旧批次归档](changes/2026-11-20-training-machine-sync-and-batch-archive.md) §8）。
+  - 2026-11-11 统一第 1 批：本轮重新编码 1,621 个候选（开发集 1,307、固定测试集 314），通过源到 ROI、ROI 到片段严格重放与完整解码检查；该批次已退役，其清单、摘要和核验记录已删除，训练机仓外暂存副本亦已于 2026-11-20 核对后删除（历史变更单已于 2026-11-25 经用户授权清理）。
 
 ### 下一步
 
@@ -175,17 +175,20 @@
 
 ## 5. EVAL-SUBSET — 从新批次候选子视频构建测评候选子集
 
-**状态：** 进行中。2026-11-24 已基于第 2 批（1,633 条）产出子视频全量分层覆盖统计、63 条待关注优先核验清单与 B2 180 条人工审核抽样名单草稿，见 [子视频候选分层与 B2 抽样草稿（非冻结集）](subvideo-eval-subset-draft.md)（属子视频侧分层与审核抽样，区别于 `docs/eval/` 下的整体模型测评契约）；尚未进入正式冻结阶段。
+**状态：** 已冻结（2026-11-25）。用户已于 2026-11-25 拍板采用方案 A 正式冻结两份测评子集：开发评测集 [`data/eval-subsets/eval-dev-v1.json`](../data/eval-subsets/eval-dev-v1.json)（`dev_all_clean`，210 条 / 87 源，SHA-256 `e4fe6ff99a59f177732db6e8f8807b924585d5dba5e682ec7fae15fa2e0f95ff`）与固定封存终测集 [`data/eval-subsets/eval-test-v1.json`](../data/eval-subsets/eval-test-v1.json)（`test_B1`，314 条 / 21 源，SHA-256 `45275532df40b6f4052e3fe6c17794b086b773e1a472ca44bbfce7fe14777dee`），完整登记见 [评测子集专题](eval/eval-subset.md) §6.1；原 [子视频候选分层与 B2 抽样草稿](subvideo-eval-subset-draft.md) 保留作抽样过程留档。同步已在 `script/five_label_eval/` 全入口落地 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 代码防漏网守卫（`exclusions.py`）与离线回归测试。
 
 ### 目标
 
-从新批次清单（当前 1,633 条候选）中按片段角色、五类标签与画幅三档三个维度分层构建测评候选子集草稿，确保三个画幅档均有样本；旧批次曾有 1,621 个候选（开发集 1,307、固定测试集 314），现已退役。产出仅为候选清单草稿，不是冻结测评集。
+从新批次清单（当前 1,633 条候选）中按片段角色、五类标签与画幅三档分层构建并冻结正式测评子集，确保三个画幅档均有样本且严格执行 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 去重排除；旧批次曾有 1,621 个候选（开发集 1,307、固定测试集 314），现已退役。
 
 ### 当前进展
 
-- **全量 1,633 条分层统计草稿已产出（2026-11-24）**：见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)（非冻结集，子视频侧分层与审核抽样）。开发集 1,319 条、固定 test 314 条；三个画幅档在全部（`881/448/304`，`55/29/26` 源）、开发集（`791/308/220`，`48/21/20` 源）与固定 test（`90/140/84`，`7/8/6` 源）下均有样本且来源数均 ≥ 6；仅 `no_fracture`（2 源）与 `unclamped`（1 源）< 3 源，已标明仅报个案与计数。核验记录 `data/sub_video/audit.json` 的 **63 条**待关注候选中 26 条已确认（B1 23 + B0 3），其余 37 条已 100% 纳入 B2 优先核验。
+- **正式冻结子集已落盘并可复现核验（2026-11-25，方案 A）**：由 [`script/five_label_eval/freeze_subsets.py`](../script/five_label_eval/freeze_subsets.py) 确定性生成并支持 `--verify` 逐字节复核，登记见 [eval-subset.md](eval/eval-subset.md) §6.1 与 `docs/facts.yaml`（`DF-055`）：
+  - `eval-dev-v1`（[`data/eval-subsets/eval-dev-v1.json`](../data/eval-subsets/eval-dev-v1.json)，SHA-256 `e4fe6ff99a59f177732db6e8f8807b924585d5dba5e682ec7fae15fa2e0f95ff`）：`dev_all_clean` 全部 **210 条 / 87 源**（B0 32 + 试审 1 + 干净 B2 177；严格排除 `data/splits/dev-exclusions.json` 里的 `video_0006`/`video_0079` 及其 B2 已审的 `video_0006_pre_06`、`video_0006_pre_13`、`video_0079_fracture_01`）；三画幅档 `w_le_200` 112/48 源、`w_200_400` 42/20 源、`w_gt_400` 56/19 源；三折 val 分别为 69/29、73/29、68/29 源。
+  - `eval-test-v1`（[`data/eval-subsets/eval-test-v1.json`](../data/eval-subsets/eval-test-v1.json)，SHA-256 `45275532df40b6f4052e3fe6c17794b086b773e1a472ca44bbfce7fe14777dee`）：`test_B1` 全部 **314 条 / 21 源**（固定封存终测集，严禁用于调参或选 Prompt）；三画幅档 `w_le_200` 90/7 源、`w_200_400` 140/8 源、`w_gt_400` 84/6 源。
+- **DEC-007 代码防漏网守卫已落地（2026-11-25）**：新增 [`script/five_label_eval/exclusions.py`](../script/five_label_eval/exclusions.py)，并在 `manifest_convert`、`build_manifest`、`frames`、`infer`、`score` 全入口强制加载 `data/splits/dev-exclusions.json`（显式选中排除源/片段或隔离虚拟视频时 fail-closed 报错，全量转换/抽帧时自动过滤），同时支持 `--candidate-ids` 直接传入 `tensile-eval-subset/1` 冻结子集 JSON；离线回归测试见 `script/five_label_eval/tests/test_eval_subsets_and_exclusions.py`。
+- **全量 1,633 条分层统计草稿（2026-11-24，现作抽样过程留档）**：见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)。开发集 1,319 条、固定 test 314 条；三个画幅档在全部（`881/448/304`，`55/29/26` 源）、开发集（`791/308/220`，`48/21/20` 源）与固定 test（`90/140/84`，`7/8/6` 源）下均有样本且来源数均 ≥ 6；仅 `no_fracture`（2 源）与 `unclamped`（1 源）< 3 源，已标明仅报个案与计数。核验记录 `data/sub_video/audit.json` 的 **63 条**待关注候选均已完成人工确认（B1 23 + B0 3 + B2 37）。
 - **已退役批次历史对照（仅追溯）**：已退役批次的清单与摘要已删除，历史角色计数为 `pre` 813、`fracture` 576、`post` 127、`coverage` 93、`no_fracture` 9、`unclamped` 3；已退役批次已删除的核验记录曾标记 `candidates_needing_attention: 54` 的候选优先纳入并优先核验。
-- **确定性分层覆盖口径**：本阶段（候选清单草稿）的分层维度为「片段角色（`pre`／`fracture`／`post`／`coverage`／`no_fracture`／`unclamped`）× 五类标签 × 画幅三档（`w_le_200`／`w_200_400`／`w_gt_400`）」，画幅三档定义与 [评测子集专题](eval/eval-subset.md) §1、§5 一致，三档须各有样本；§5 的正式冻结随机抽样与「断裂现象（有／无）」留待**后续冻结阶段**；虚拟来源按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 6 条不纳入本轮主评价，本阶段暂不预设 `real/virtual` 分层口径。
 
 ### 下一步
 
@@ -193,25 +196,24 @@
 - [x] 按画幅三档统计候选分布，确认每档都有样本；来源数 < 3 的层（`no_fracture` 2 源、`unclamped` 1 源）已明示只报个案与计数。
 - [x] 按当前批次 `data/sub_video/audit.json`（63 条待关注候选）列出优先核验清单（见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §3）。
 - [x] 产出候选清单草稿（含生成方式、来源、清单 SHA-256 与 B2 180 条抽样名单），明确标注「非冻结集」。
-- [ ] 待 B2 人工审核完成后，结合真实片段标签分布与用户确认冻结时的选取比例、每层最小样本数与冻结时点。
+- [x] 按用户确认方案 A 冻结正式测评子集 `eval-dev-v1`（210/87 源）与 `eval-test-v1`（314/21 源）并在 `script/five_label_eval/` 落地 DEC-007 代码防漏网守卫（2026-11-25）。
 
 ### 完成标准
 
 - [x] 分层表覆盖全部片段角色、五类标签与三个画幅档，并写明每层选取理由（见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)）。
 - [x] 三个画幅档均有样本，档位归属按 [评测子集专题](eval/eval-subset.md) 的区间判据核对。
-- [x] 当前批次核验记录中的重点候选（63 条）已在清单中标出。
-- [x] 候选清单草稿可追溯（生成方式、来源、摘要），并明确标注「非冻结集」。
-- [ ] 用户审阅草稿并确认是否进入后续冻结阶段。
+- [x] 当前批次核验记录中的重点候选（63 条）已在清单中标出并全部人工确认。
+- [x] 正式冻结子集 `eval-dev-v1` / `eval-test-v1` 可确定性复现，登记文件 SHA-256 与用途边界，且与 `data/splits/dev-exclusions.json` 零交集。
+- [x] 用户已确认方案 A 并完成正式冻结。
 
 ### 等待确认
 
-- 选取比例、每层最小样本数及子集冻结时点。
-- 虚拟来源未来如纳入诊断评测时的分层口径（本轮主评价不纳入）。
+- 虚拟来源未来如纳入诊断评测时的分层口径（本轮主评价按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 6 条不纳入）。
 
 ### 限制与关联
 
-- 本任务不运行模型、不评分、不发布数据；候选清单草稿不等于测评真值，也不改变固定测试集的用途界限。
-- 关联 [评测子集专题](eval/eval-subset.md)、[子视频候选分层与 B2 抽样草稿](subvideo-eval-subset-draft.md)、[§2 EVAL-DESIGN](#2-eval-design--设计并确认评价体系)、[§6 SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段)。
+- 本任务不运行模型、不评分、不发布数据；冻结子集不改变固定测试集（`eval-test-v1`）严禁用于调参或选 Prompt 的用途界限。
+- 关联 [评测子集专题](eval/eval-subset.md) §6.1、[子视频候选分层与 B2 抽样草稿](subvideo-eval-subset-draft.md)、[DEC-007](decisions/0007-dev-test-dedup-exclusion.md)、[§2 EVAL-DESIGN](#2-eval-design--设计并确认评价体系)、[§6 SUBVIDEO-HUMAN-REVIEW](#6-subvideo-human-review--人工审核新批次候选片段)。
 
 ---
 

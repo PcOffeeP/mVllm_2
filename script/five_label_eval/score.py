@@ -227,7 +227,7 @@ def request_identity(row):
     return tuple(row.get(k) for k in ("candidate_id", "clip_sha256") + REQUEST_KEYS)
 
 
-def prepare(manifest, reviews, predictions, input_reviews=()):
+def prepare(manifest, reviews, predictions, input_reviews=(), *, exclusions=None, enforce_exclusions=True):
     if not isinstance(manifest, dict) or not isinstance(manifest.get("samples"), list):
         raise InputError("manifest must contain samples array")
     require_text(manifest, "manifest_version", "manifest")
@@ -248,6 +248,10 @@ def prepare(manifest, reviews, predictions, input_reviews=()):
             raise InputError(f"source_type conflict: {sid}")
         source_types[sid] = sample["source_type"]
         samples[cid] = sample
+    if enforce_exclusions:
+        from .exclusions import load_dev_exclusions
+        active_exclusions = exclusions if exclusions is not None else load_dev_exclusions()
+        active_exclusions.assert_no_excluded(list(samples.values()), context="score manifest")
     review_index = {}
     for review in reviews:
         validate_identity(review, "review")
@@ -447,8 +451,9 @@ def aggregate(rows, truth_key):
             "fields": {f: field_metrics(rows, f, truth_key) for f in FIELDS}}
 
 
-def score(manifest, reviews, predictions, input_reviews=()):
-    rows = prepare(manifest, reviews, predictions, input_reviews)
+def _score_impl(manifest, reviews, predictions, input_reviews=(), *, exclusions=None, enforce_exclusions=True):
+    rows = prepare(manifest, reviews, predictions, input_reviews,
+                   exclusions=exclusions, enforce_exclusions=enforce_exclusions)
     groups = {}
     for source_type in ("real", "virtual"):
         selected = [r for r in rows if r["sample"]["source_type"] == source_type]
@@ -469,6 +474,10 @@ def score(manifest, reviews, predictions, input_reviews=()):
             "groups": groups, "samples": rows,
             "limits": ["No media opened; human reviews are supplied inputs, not independently verified.",
                        "Full-clip and actual-input truth remain separate. No weighted overall score, thresholds, promotion or release."]}
+
+
+def score(manifest, reviews, predictions, input_reviews=()):
+    return _score_impl(manifest, reviews, predictions, input_reviews)
 
 
 def display_ratio(metric):
@@ -537,10 +546,16 @@ def main(argv=None):
     parser.add_argument("--predictions", required=True)
     parser.add_argument("--input-reviews")
     parser.add_argument("--output", required=True, help="New output directory; refuses existing directory")
+    parser.add_argument("--exclusions", help="DEC-007 dev-exclusions JSON; defaults to data/splits/dev-exclusions.json")
+    parser.add_argument("--allow-excluded", action="store_true", help="Disable DEC-007 exclusion guard (forensic use only)")
     args = parser.parse_args(argv)
     try:
-        paths = {k: Path(v) for k, v in vars(args).items() if k != "output" and v is not None}
-        result = score(read_json(args.manifest), read_jsonl(args.reviews), read_jsonl(args.predictions), read_jsonl(args.input_reviews))
+        from .exclusions import load_dev_exclusions
+        exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
+        paths = {k: Path(v) for k, v in vars(args).items()
+                 if k not in ("output", "exclusions", "allow_excluded") and v is not None}
+        result = _score_impl(read_json(args.manifest), read_jsonl(args.reviews), read_jsonl(args.predictions),
+                             read_jsonl(args.input_reviews), exclusions=exclusions, enforce_exclusions=not args.allow_excluded)
         result["input_files"] = {k: {"path": str(p), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for k, p in paths.items()}
         output = Path(args.output)
         output.mkdir(parents=True, exist_ok=False)

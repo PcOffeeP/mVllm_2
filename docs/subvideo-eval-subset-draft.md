@@ -1,5 +1,7 @@
-# 子视频候选分层统计与 B2 审核抽样草稿（非冻结集）
+# 子视频候选分层统计与 B2 审核抽样草稿（历史抽样留档，已被正式冻结集取代）
 
+> **状态更新（2026-11-25）：** 正式冻结评测子集已按方案 A 落盘于 [`data/eval-subsets/eval-dev-v1.json`](../data/eval-subsets/eval-dev-v1.json)（210 条 / 87 源，严格按 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 排除 `video_0006`/`video_0079`）与 [`data/eval-subsets/eval-test-v1.json`](../data/eval-subsets/eval-test-v1.json)（314 条 / 21 源，固定封存终测集），完整登记与 SHA-256 见 [评测子集专题](eval/eval-subset.md) §6.1。**本文不再作为测评子集依据，仅保留作第 2 批 1,633 条分层统计与 B2 180 条审核抽样过程留档**（§4.3 名单仍受 `script/subvideo_review/tests/test_batches.py` 对账守卫保护）。
+>
 > **定位与边界（非冻结集）：** 本文件属于**子视频候选分层与 B2 人工审核抽样**专题文档（与 `docs/subvideo-current-logic.md`、`docs/subvideo-review-workflow.md` 同属子视频侧），**不属于 `docs/eval/` 下的整体模型测评契约或正式模型测评范围**。本稿基于第 2 批子视频清单（1,633 条）统计全量分层覆盖，并记录用户于 2026-11-24 确认的 **B2 每折 val 抽样 60 条（共 180 条）** 固定审核名单；本稿**不是冻结测评集**，不作测评真值，不运行模型，也不改变固定测试集的用途边界。
 
 ## 1. 输入身份与口径
