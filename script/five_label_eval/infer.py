@@ -275,7 +275,9 @@ def run_inference(
                 f"{cid}: record input_id does not match verified ordered frame digests "
                 f"(expected {expected_input_id}, got {record.get('input_id')!r})"
             )
-        prepared.append((cid, record, frame_paths, frame_pts, frame_bytes))
+        # Do not retain raw PNG bytes across the entire batch (prevents OOM on large sets);
+        # each candidate's 8 PNGs are re-read and digest-verified right before its infer_one().
+        prepared.append((cid, record, frame_paths, frame_pts))
 
     # Reserve both exclusive output files BEFORE issuing any backend requests.
     stream = None
@@ -343,7 +345,8 @@ def run_inference(
     completed = False
     run_meta = _checkpoint_meta("running")
     try:
-        for cid, record, frame_paths, frame_pts, frame_bytes in prepared:
+        for cid, record, _preflight_paths, _preflight_pts in prepared:
+            frame_paths, frame_pts, frame_bytes = _resolve_record_frames(record, frames_dir)
             req = InferenceRequest(
                 candidate_id=cid,
                 record=record,

@@ -24,8 +24,10 @@ import math
 from pathlib import Path
 import random
 import re
+import shutil
 import signal
 import sys
+import tempfile
 import threading
 import time
 from typing import Any, Callable, Sequence
@@ -769,12 +771,69 @@ class TransformersBackend:
 
         self._trusted_files_sha256 = dict(trusted_files_sha256) if trusted_files_sha256 is not None else None
         self.verified_snapshot_sha256: dict[str, str] | None = None
+        self._staging_dir: tempfile.TemporaryDirectory[str] | None = None
         self._model = model
         self._processor = processor
         self._tokenizer = tokenizer
         self._model_loader = model_loader or _default_model_loader
         self._image_loader = image_loader or _default_image_loader
         self.cold_load_seconds: float | None = None
+
+    def _stage_verified_snapshot(self, source_path: Path, trusted_files_sha256: dict[str, str]) -> Path:
+        """Copy all local .py and config files into a private 0o700 staging dir and verify SHA-256 there.
+
+        Large weight/data files are symlinked from the resolved snapshot root so multi-GB
+        checkpoints are not duplicated, while every executable .py and JSON config file is
+        copied into the process-private directory before SHA-256 verification and model loading
+        (closing TOCTOU races on symlinks or writable snapshot directories).
+        """
+        source_root = source_path.resolve()
+        staging = tempfile.TemporaryDirectory(prefix="tensile_trusted_snap_")
+        staged_root = Path(staging.name)
+        try:
+            staged_root.chmod(0o700)
+            copy_rels: set[str] = set()
+            for entry in source_root.rglob("*"):
+                if not entry.is_file() and not entry.is_symlink():
+                    continue
+                rel = entry.relative_to(source_root)
+                rel_posix = rel.as_posix()
+                if (
+                    entry.suffix == ".py"
+                    or entry.name in TRUSTED_REQUIRED_CONFIG_FILES
+                    or entry.name == "adapter_config.json"
+                    or rel_posix in trusted_files_sha256
+                ):
+                    copy_rels.add(rel_posix)
+
+            for entry in sorted(source_root.rglob("*")):
+                rel = entry.relative_to(source_root)
+                dest = staged_root / rel
+                if entry.is_dir():
+                    dest.mkdir(parents=True, exist_ok=True)
+                    continue
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                rel_posix = rel.as_posix()
+                if rel_posix in copy_rels:
+                    resolved_src = entry.resolve()
+                    try:
+                        resolved_src.relative_to(source_root)
+                    except ValueError as exc:
+                        raise InputError(
+                            f"trusted snapshot file {rel_posix!r} escapes model directory {source_root}"
+                        ) from exc
+                    shutil.copyfile(resolved_src, dest)
+                else:
+                    dest.symlink_to(entry.resolve())
+
+            self.verified_snapshot_sha256 = verify_trusted_snapshot_sha256(
+                staged_root, trusted_files_sha256
+            )
+            self._staging_dir = staging
+            return staged_root
+        except Exception:
+            staging.cleanup()
+            raise
 
     def _ensure_loaded(self) -> None:
         if self._model is not None:
@@ -788,11 +847,9 @@ class TransformersBackend:
                 "transformers backend requires --trusted-sha256-file (trusted_files_sha256) "
                 "before loading local model files with trust_remote_code=True"
             )
-        self.verified_snapshot_sha256 = verify_trusted_snapshot_sha256(
-            self.model_path, self._trusted_files_sha256
-        )
+        staged_root = self._stage_verified_snapshot(self.model_path, self._trusted_files_sha256)
         started = time.monotonic()
-        loaded = self._model_loader(self.model_path, self.model_family, self.max_pixels)
+        loaded = self._model_loader(staged_root, self.model_family, self.max_pixels)
         if not isinstance(loaded, tuple) or len(loaded) != 3:
             raise InputError("model_loader must return a 3-tuple of (model, processor, tokenizer)")
         self._model, self._processor, self._tokenizer = loaded
@@ -1044,4 +1101,7 @@ class TransformersBackend:
         )
 
     def close(self) -> None:
+        if self._staging_dir is not None:
+            self._staging_dir.cleanup()
+            self._staging_dir = None
         return None

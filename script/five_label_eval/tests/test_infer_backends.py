@@ -897,26 +897,21 @@ def test_r2_regression_device_placement_minicpm_max_pixels_processor_config_and_
     with pytest.raises(InputError, match="external auto_map"):
         verify_trusted_snapshot_sha256(mdir, {"config.json": cfg_sha, "processor_config.json": proc_sha})
 
-    # 4. TOCTOU protection: mutating candidate 2's PNG during candidate 1's request does not alter sent bytes.
+    # 4. TOCTOU protection with O(1) frame-byte retention: mutating candidate 2's PNG during
+    #    candidate 1's request causes candidate 2 to fail closed on sha256 mismatch before sending.
     rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r2_toctou", cid="c00")
     _, entries2 = _write_eight_frames(frames_dir, cid="c01")
     rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
     rec2["input_id"] = compute_record_input_id(rec2)
     manifest = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
-    orig_c01_f0 = (frames_dir / "c01" / entries2[0]["image"]).read_bytes()
-    sent_b64_by_cid: dict[str, str] = {}
-    call_idx = 0
+    sent_count = 0
 
     def toctou_handler(request: httpx.Request) -> httpx.Response:
-        nonlocal call_idx
-        body = json.loads(request.content.decode("utf-8"))
-        first_url = body["messages"][0]["content"][0]["image_url"]["url"]
-        cid_key = "c00" if call_idx == 0 else "c01"
-        sent_b64_by_cid[cid_key] = first_url
-        if call_idx == 0:
+        nonlocal sent_count
+        sent_count += 1
+        if sent_count == 1:
             # Tamper with c01's PNG on disk while c00 is in flight.
             (frames_dir / "c01" / entries2[0]["image"]).write_bytes(PNG_HEADER + b"TAMPERED")
-        call_idx += 1
         return httpx.Response(200, json={"choices": [{"message": {"content": LEGAL_JSON}}]})
 
     http_backend = HttpBackend(
@@ -925,14 +920,15 @@ def test_r2_regression_device_placement_minicpm_max_pixels_processor_config_and_
         transport=httpx.MockTransport(toctou_handler),
     )
     try:
-        infer.run_inference(
-            [rec1, rec2], manifest, backend=http_backend, run_id="r-toctou",
-            prompt_id="prompt@sha256:" + "a" * 64, prompt_text="p",
-            model_id="Qwen3-VL-8B-Instruct@sha256:1", frames_dir=frames_dir,
-        )
+        with pytest.raises(InputError, match="sha256 mismatch"):
+            infer.run_inference(
+                [rec1, rec2], manifest, backend=http_backend, run_id="r-toctou",
+                prompt_id="prompt@sha256:" + "a" * 64, prompt_text="p",
+                model_id="Qwen3-VL-8B-Instruct@sha256:1", frames_dir=frames_dir,
+            )
     finally:
         http_backend.close()
-    assert sent_b64_by_cid["c01"] == f"data:image/png;base64,{base64.b64encode(orig_c01_f0).decode('ascii')}"
+    assert sent_count == 1
 
 
 def test_r3_regression_tokenizer_auto_map_internvl_default_loader_seed_and_meta_checkpoint(tmp_path, monkeypatch):
@@ -1679,3 +1675,54 @@ def test_r8_regression_malformed_url_redaction_deep_usage_and_pts_input_id(tmp_p
             model_id="openbmb/MiniCPM-V-4_5@sha256:1",
             frames_dir=frames_dir_pts,
         )
+
+
+def test_r9_regression_trusted_snapshot_private_staging_closes_toctou(tmp_path):
+    """Trusted snapshot .py/config files are copied into a private 0o700 staging dir before SHA-256 check and model load."""
+    snap_a = tmp_path / "snap_a"
+    snap_a.mkdir()
+    (snap_a / "config.json").write_bytes(b'{"version": "4.5"}')
+    (snap_a / "modeling_test.py").write_bytes(b"SAFE = True\n")
+    (snap_a / "weights.safetensors").write_bytes(b"WEIGHTS")
+    link = tmp_path / "model_link"
+    link.symlink_to(snap_a)
+
+    trusted = {
+        "config.json": hashlib.sha256((snap_a / "config.json").read_bytes()).hexdigest(),
+        "modeling_test.py": hashlib.sha256((snap_a / "modeling_test.py").read_bytes()).hexdigest(),
+    }
+    loaded_paths: list[Path] = []
+
+    class FakeModel:
+        def chat(self, **_kwargs):
+            return LEGAL_JSON
+
+    def spy_loader(staged_path: Path, _family: str, _max_pixels: int | None):
+        loaded_paths.append(staged_path)
+        # Staged dir must NOT be the original symlink or source dir; .py/config must be real copied files.
+        assert staged_path != link and staged_path != snap_a
+        assert (staged_path.stat().st_mode & 0o777) == 0o700
+        assert not (staged_path / "modeling_test.py").is_symlink()
+        assert not (staged_path / "config.json").is_symlink()
+        assert (staged_path / "weights.safetensors").is_symlink()
+        # Mutating source dir after staging cannot alter the verified staged .py file.
+        (snap_a / "modeling_test.py").write_bytes(b"PWNED = True\n")
+        assert (staged_path / "modeling_test.py").read_bytes() == b"SAFE = True\n"
+        return FakeModel(), None, object()
+
+    backend = TransformersBackend(
+        model_id="openbmb/MiniCPM-V-4_5@sha256:1",
+        model_path=link,
+        trusted_files_sha256=trusted,
+        model_loader=spy_loader,
+        image_loader=lambda p: p.name,
+    )
+    try:
+        res = backend.infer_one(_make_request(tmp_path / "r9_stage"))
+        assert res.status == "success"
+        assert len(loaded_paths) == 1
+        staged_dir = loaded_paths[0]
+        assert staged_dir.is_dir()
+    finally:
+        backend.close()
+    assert not staged_dir.exists()
