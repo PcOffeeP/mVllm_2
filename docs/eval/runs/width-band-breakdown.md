@@ -38,7 +38,7 @@
 ## Run A 对照（`MiniCPM-V-4.5` / `vLLM HTTP`）（`20261125-minicpm-v45-vllm-dev-v1`）
 
 - **归档产物**：[`report.md`](20261125-minicpm-v45-vllm-dev-v1/report.md) · [`results.json`](20261125-minicpm-v45-vllm-dev-v1/results.json) · [`predictions.jsonl.meta.json`](20261125-minicpm-v45-vllm-dev-v1/predictions.jsonl.meta.json)
-- **像素上限与预处理说明**：L3 `resize: null`；由 vLLM 服务侧 MiniCPM-V-4.5 processor 处理输入图像
+- **像素上限与预处理说明**：L3 `resize: null`；客户端元数据 `max_pixels: null` 仅表示 HTTP 客户端未传入该参数，vLLM 服务端实际生效的 MiniCPM-V-4.5 processor 像素上限未在运行元数据中记录（**未知**，待后续 vLLM 评测补录服务端启动参数）
 
 ### 分档总览（含来源数与请求状态三分列）
 
