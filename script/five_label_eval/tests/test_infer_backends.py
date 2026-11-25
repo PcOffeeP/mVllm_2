@@ -192,7 +192,7 @@ def test_http_backend_sends_ordered_8_frames_verbatim_prompt_and_no_leakage(tmp_
 
     req = _make_request(tmp_path, prompt_text="  请严格输出 JSON\n")
     backend = HttpBackend(
-        endpoint="http://user:pass@127.0.0.1:8000/v1?token=leak",
+        endpoint="http://127.0.0.1:8000/v1?token=leak",
         model_id="Qwen3-VL-8B-Instruct@sha256:deadbeef",
         api_model_name="Qwen/Qwen3-VL-8B-Instruct",
         api_key_env="TEST_VLM_API_KEY",
@@ -1809,9 +1809,14 @@ def test_r10_regression_chat_template_hf_blobs_plaintext_auth_missing_lineage_an
             model_id="Qwen3-VL-8B-Instruct@1",
             api_key_env="REMOTE_API_KEY",
         )
-    with pytest.raises(InputError, match="plaintext http://"):
+    with pytest.raises(InputError, match="URL userinfo"):
         HttpBackend(
             endpoint="http://user:pass@remote-gpu.example.com:8000/v1",
+            model_id="Qwen3-VL-8B-Instruct@1",
+        )
+    with pytest.raises(InputError, match="URL userinfo"):
+        HttpBackend(
+            endpoint="https://user:pass@remote-gpu.example.com:8000/v1",
             model_id="Qwen3-VL-8B-Instruct@1",
         )
     # https:// to non-loopback host with credentials is allowed.
@@ -2209,3 +2214,20 @@ def test_r15_regression_jsonl_line_separators_and_duplicate_manifest_candidate(t
         HttpBackend(endpoint="http://127.0.0.999:8000/v1", model_id="Qwen3-VL-8B-Instruct@1")
     assert "127.0.0.999" not in str(inv_exc.value)
     assert inv_exc.value.__cause__ is None
+
+    # 5. Duplicate frame image filename across sampled frames fails closed before backend.
+    rec_dup_img, m_dup_img, frames_dir_dup_img = _build_record_and_manifest(tmp_path / "r15_dup_img", cid="c00")
+    rec_dup_img["frames"][1]["image"] = rec_dup_img["frames"][0]["image"]
+    rec_dup_img["frames"][1]["sha256"] = rec_dup_img["frames"][0]["sha256"]
+    rec_dup_img["input_id"] = compute_record_input_id(rec_dup_img)
+    with pytest.raises(InputError, match="duplicate frame image"):
+        infer.run_inference(
+            [rec_dup_img],
+            m_dup_img,
+            backend=FailBackend(),
+            run_id="r15-dup-img",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir_dup_img,
+        )

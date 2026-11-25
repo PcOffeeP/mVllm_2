@@ -87,6 +87,10 @@ def _resolve_completions_url(endpoint: str) -> str:
         raise InputError("http endpoint is not a valid http:// or https:// URL") from None
     if scheme not in ("http", "https") or not host:
         raise InputError("http endpoint must be a valid http:// or https:// URL with hostname")
+    if parts.username is not None or parts.password is not None:
+        raise InputError(
+            "http endpoint must not embed credentials in URL userinfo; pass credentials via --api-key-env"
+        )
     path = parts.path.rstrip("/")
     if path.endswith("/chat/completions"):
         new_path = path

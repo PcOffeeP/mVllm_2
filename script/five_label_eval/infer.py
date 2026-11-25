@@ -187,6 +187,7 @@ def _resolve_record_frames(
     frame_paths: list[Path] = []
     frame_pts: list[float] = []
     frame_bytes: list[bytes] = []
+    seen_images: set[str] = set()
     for expected_order, entry in enumerate(ordered):
         if not isinstance(entry, dict):
             raise InputError(f"{cid}: frames[{expected_order}] must be object")
@@ -197,6 +198,9 @@ def _resolve_record_frames(
             )
         image_name = entry.get("image")
         _validate_safe_component(image_name, f"{cid}: frames[{expected_order}].image")
+        if image_name in seen_images:
+            raise InputError(f"{cid}: duplicate frame image filename across sampled frames: {image_name!r}")
+        seen_images.add(image_name)
         raw_img_path = clip_dir / image_name
         if raw_img_path.is_symlink():
             raise InputError(f"{cid}: L3 frame PNG must not be a symlink: {raw_img_path}")
@@ -417,6 +421,9 @@ def run_inference(
                 "status": result.status,
                 "input_review_id": None,
             }
+            if stream is not None:
+                stream.write(_dumps_jsonl_line(row) + "\n")
+                stream.flush()
             predictions.append(row)
             request_metas.append({
                 "candidate_id": cid,
@@ -428,9 +435,6 @@ def run_inference(
                 "reasoning_content": result.reasoning_content,
                 "extra_meta": result.extra_meta,
             })
-            if stream is not None:
-                stream.write(_dumps_jsonl_line(row) + "\n")
-                stream.flush()
             run_meta = _checkpoint_meta("running")
 
         completed = True
