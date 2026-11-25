@@ -292,7 +292,7 @@ def _parse_dev_exclusions_file(target: Path, *, require_nonempty: bool = False) 
             raise InputError(f"{target}: isolated_virtual_videos entry missing virtual_video_id")
         isolated_virtuals.add(vid)
 
-    if require_nonempty and (not excluded_sources or not excluded_candidates):
+    if require_nonempty and (not excluded_sources or not excluded_candidates or not isolated_virtuals):
         raise InputError(f"{target}: official DEC-007 exclusions file cannot be empty")
 
     try:

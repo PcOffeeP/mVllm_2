@@ -253,6 +253,7 @@ def plan_predictions(
     *,
     exclusions: DevExclusions | None = None,
     enforce_exclusions: bool = True,
+    eval_subset_id: str | None = None,
 ) -> list[dict]:
     """Deterministic fake prediction planner (kept pure & backward compatible)."""
     require_text({"run_id": run_id}, "run_id", "run")
@@ -262,7 +263,7 @@ def plan_predictions(
     for index, record in enumerate(records):
         cid = _validate_record_against_manifest(record, samples)
         category = CATEGORY_ORDER[index % len(CATEGORY_ORDER)]
-        predictions.append({
+        row = {
             "candidate_id": cid,
             "clip_sha256": record["clip_sha256"],
             "run_id": run_id,
@@ -274,7 +275,10 @@ def plan_predictions(
             "status": category if category in NON_ANSWERS else "success",
             "input_review_id": None,
             "fake_category": category,
-        })
+        }
+        if eval_subset_id is not None:
+            row["eval_subset_id"] = eval_subset_id
+        predictions.append(row)
     return predictions
 
 
@@ -304,6 +308,7 @@ def run_inference(
     verify_record_lineage: bool = True,
     exclusions: DevExclusions | None = None,
     enforce_exclusions: bool = True,
+    eval_subset_id: str | None = None,
 ) -> tuple[list[dict], dict[str, Any]]:
     """Validate all inputs up-front, reserve outputs exclusively, run backend, and stream predictions."""
     require_text({"run_id": run_id}, "run_id", "run")
@@ -441,6 +446,8 @@ def run_inference(
                 "status": result.status,
                 "input_review_id": None,
             }
+            if eval_subset_id is not None:
+                row["eval_subset_id"] = eval_subset_id
             if stream is not None:
                 stream.write(_dumps_jsonl_line(row) + "\n")
                 stream.flush()
@@ -572,6 +579,7 @@ def main(argv=None) -> int:
                 model_id=args.model_id,
                 exclusions=exclusions,
                 enforce_exclusions=not args.allow_excluded,
+                eval_subset_id=selection.subset_id if selection is not None else None,
             )
             with Path(args.output).open("x", encoding="utf-8") as stream:
                 for row in predictions:
@@ -645,6 +653,7 @@ def main(argv=None) -> int:
                 meta_output_path=meta_output,
                 exclusions=exclusions,
                 enforce_exclusions=not args.allow_excluded,
+                eval_subset_id=selection.subset_id if selection is not None else None,
             )
         finally:
             backend.close()

@@ -716,9 +716,15 @@ def test_infer_rejects_superset_manifest_for_frozen_subset_and_accepts_exact_sub
         ]
     )
     assert rc_good == 0
-    scored = score.score(dev_manifest, [], score.read_jsonl(good_preds))
+    good_pred_rows = score.read_jsonl(good_preds)
+    scored = score.score(dev_manifest, [], good_pred_rows)
     assert len(scored["samples"]) == 210
     assert scored["groups"]["real"]["full_clip"]["clips"] == 210
+
+    # 2b. Passing the 210 frozen eval-dev-v1 predictions with the 1,613-sample full manifest to score MUST fail closed!
+    full_manifest = json.loads(full_manifest_out.read_text(encoding="utf-8"))
+    with pytest.raises(InputError, match="do not match frozen subset"):
+        score.score(full_manifest, [], good_pred_rows)
 
     # 3. Mutating one sample's clip_sha256 (while keeping 210 IDs and manifest_sha256 intact) MUST be rejected by infer & build_manifest
     tampered_dev_manifest = json.loads(dev_manifest_out.read_text(encoding="utf-8"))

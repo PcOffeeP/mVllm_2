@@ -274,6 +274,7 @@ def prepare(manifest, reviews, predictions, input_reviews=(), *, exclusions=None
         review_index[key] = review
     pred_index = {}
     run_identity = None
+    subset_ids_seen = set()
     for pred in predictions:
         for key in ("candidate_id", "clip_sha256") + REQUEST_KEYS:
             require_text(pred, key, "prediction")
@@ -287,12 +288,28 @@ def prepare(manifest, reviews, predictions, input_reviews=(), *, exclusions=None
         if run_identity is not None and run_identity != current_run:
             raise InputError("one scoring batch must have one run_id/model_id/prompt_id")
         run_identity = current_run
+        if "eval_subset_id" in pred and pred["eval_subset_id"] is not None:
+            require_text(pred, "eval_subset_id", "prediction")
+            subset_ids_seen.add(pred["eval_subset_id"])
         cid = pred["candidate_id"]
         if cid not in samples or pred["clip_sha256"] != samples[cid]["clip_sha256"]:
             raise InputError(f"prediction candidate/digest mismatch: {cid}")
         if cid in pred_index:
             raise InputError(f"multiple predictions for {cid}; explicitly select one request per batch")
         pred_index[cid] = pred
+    if len(subset_ids_seen) > 1:
+        raise InputError(f"one scoring batch cannot mix eval_subset_id values: {sorted(subset_ids_seen)}")
+    if len(subset_ids_seen) == 1:
+        from .exclusions import V1_PINNED_MEMBERS, candidate_ids_sha256
+        bound_subset_id = next(iter(subset_ids_seen))
+        if bound_subset_id in V1_PINNED_MEMBERS:
+            pin = V1_PINNED_MEMBERS[bound_subset_id]
+            manifest_cids = sorted(samples)
+            if len(manifest_cids) != pin["candidate_count"] or candidate_ids_sha256(manifest_cids) != pin["candidate_ids_sha256"]:
+                raise InputError(
+                    f"score manifest samples do not match frozen subset {bound_subset_id!r} "
+                    f"(expected count={pin['candidate_count']}, got count={len(manifest_cids)})"
+                )
     input_index = {}
     for review in input_reviews:
         for key in ("candidate_id", "clip_sha256") + REQUEST_KEYS + ("input_review_id",):
