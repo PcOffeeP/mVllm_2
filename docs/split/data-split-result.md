@@ -112,4 +112,14 @@ manifest SHA-256 为 `1ad84afb9a9eb122d6d7cdc13b78a975567a51667eaeacfabd5748c105
 
 **ROI 重扫结论失效条件：** 本结论只对应 `data/roi/manifest.json` 的 `generated_at` `2026-11-20T02:31:08.422369+00:00`；标注表或 `data/splits/three-fold/` 任一文件变更后即失效，须重扫。
 
+## 2026-11-25 去重审计与选项 A 排除清单（DEC-007）
+
+2026-11-25 对全部 110 条源视频执行的去重审计（见 [source-video-dedup-audit.md](../research/source-video-dedup-audit.md)）确认 2 对同一物理实验的跨 `dev ↔ test` 近重复：`video_0006`（`fold_0_val`）↔ `video_0010`（`test`）与 `video_0079`（`fold_1_val`）↔ `video_0032`（`test`）。
+
+按 [DEC-007](../decisions/0007-dev-test-dedup-exclusion.md)（选项 A，最小扰动）：
+
+- **原三折文件逐字节不变**：`data/splits/three-fold/` 下 8 个文件保持 2026-11-19 原字节与 SHA-256 不变，以守住 `split_identity_sha256` 及 `data/subvideo-review/reviews.json` 全部 527 条已确认审核记录身份。
+- **独立机器可读排除清单**：新增 [`data/splits/dev-exclusions.json`](../../data/splits/dev-exclusions.json)（`tensile-dev-exclusions/1`），在全部训练、开发调参及评测子集构建中强制排除 `video_0006`（19 条子视频）与 `video_0079`（1 条子视频），并隔离 15 条虚拟视频（12 条直接关联 + 3 条经 `video_0006` 间接关联）。
+- **有效开发集计数**：有效开发源由 **89 降至 87**，三折有效规模均恰好为 **`58 train / 29 val`**；有效开发子视频由 **1,319 降至 1,299**；固定 `test.json`（21 源 / 314 子视频）不变。
+
 **失效条件：** 标注表、视频身份、来源关系、原测试成员、划分规则或结果文件改变后，须重新核对对应身份和受影响结果；新划分替代本版本时，本记录作为历史结果保留。

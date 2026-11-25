@@ -1,0 +1,180 @@
+{
+  "schema": "tensile-dev-exclusions/1",
+  "decision_id": "DEC-007",
+  "established_date": "2026-11-25",
+  "audit_report": "docs/research/source-video-dedup-audit.md",
+  "policy": "option_a_minimal_perturbation",
+  "policy_note": "Keep data/splits/three-fold/*.json byte-immutable to preserve split_identity_sha256 and all 527 confirmed human reviews in data/subvideo-review/reviews.json; enforce exclusion of excluded_dev_sources (and their derived subvideos) and isolated_virtual_videos in all training, dev-tuning, and eval-subset construction.",
+  "base_split": {
+    "manifest_path": "data/splits/three-fold/manifest.json",
+    "manifest_sha256": "1ad84afb9a9eb122d6d7cdc13b78a975567a51667eaeacfabd5748c1055f6ae2",
+    "test_path": "data/splits/three-fold/test.json",
+    "test_sha256": "26fc3070662b8ac2c8683a50bd8dea9c78a96162ad5e4c0e83a6afc454c7d8dc"
+  },
+  "effective_counts": {
+    "test_sources": 21,
+    "dev_sources_raw": 89,
+    "dev_sources_excluded": 2,
+    "dev_sources_effective": 87,
+    "effective_folds": {
+      "0": {
+        "train": 58,
+        "val": 29
+      },
+      "1": {
+        "train": 58,
+        "val": 29
+      },
+      "2": {
+        "train": 58,
+        "val": 29
+      }
+    },
+    "dev_subvideos_raw": 1319,
+    "dev_subvideos_excluded": 20,
+    "dev_subvideos_effective": 1299,
+    "virtual_video_v1_total": 65,
+    "virtual_video_v1_isolated": 15,
+    "virtual_video_v1_clean_dev": 50
+  },
+  "excluded_dev_sources": [
+    {
+      "source_id": "video_0006",
+      "reason": "near_duplicate_of_test_source",
+      "matched_test_source_id": "video_0010",
+      "original_folds": {
+        "0": "val",
+        "1": "train",
+        "2": "train"
+      },
+      "excluded_subvideo_ids": [
+        "video_0006_fracture_01",
+        "video_0006_fracture_02",
+        "video_0006_fracture_03",
+        "video_0006_fracture_04",
+        "video_0006_pre_01",
+        "video_0006_pre_02",
+        "video_0006_pre_03",
+        "video_0006_pre_04",
+        "video_0006_pre_05",
+        "video_0006_pre_06",
+        "video_0006_pre_07",
+        "video_0006_pre_08",
+        "video_0006_pre_09",
+        "video_0006_pre_10",
+        "video_0006_pre_11",
+        "video_0006_pre_12",
+        "video_0006_pre_13",
+        "video_0006_pre_14",
+        "video_0006_pre_15"
+      ],
+      "derived_virtual_video_count": 3
+    },
+    {
+      "source_id": "video_0079",
+      "reason": "near_duplicate_of_test_source",
+      "matched_test_source_id": "video_0032",
+      "original_folds": {
+        "0": "train",
+        "1": "val",
+        "2": "train"
+      },
+      "excluded_subvideo_ids": [
+        "video_0079_fracture_01"
+      ],
+      "derived_virtual_video_count": 0
+    }
+  ],
+  "isolated_virtual_videos": [
+    {
+      "virtual_video_id": "polymer_yellow_film_grip_root_baseline_v2",
+      "relative_path": "data/virtual/video-V1/videos/polymer_yellow_film_grip_root_baseline_v2.mp4",
+      "referenced_source_id": "video_0025",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_pale_green_brittle_flat_strip_baseline_v1",
+      "relative_path": "data/virtual/video-V1/videos/polymer_pale_green_brittle_flat_strip_baseline_v1.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_stage1_position055_v1",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_stage1_position055_v1.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_coupled_position055_time12_v1",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_coupled_position055_time12_v1.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_527d847f2741",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_527d847f2741.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_7c88eeeae51f",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_7c88eeeae51f.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_b0cd99f7ae30",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_b0cd99f7ae30.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_b9ab8a238e19",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_b9ab8a238e19.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_bcfe3a307376",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_bcfe3a307376.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_e2c15b3c1473",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_e2c15b3c1473.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_ea23f4e39317",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_ea23f4e39317.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "polymer_brittle_f89aa7bc8961",
+      "relative_path": "data/virtual/video-V1/videos/polymer_brittle_f89aa7bc8961.mp4",
+      "referenced_source_id": "video_0032",
+      "leakage_type": "direct_test"
+    },
+    {
+      "virtual_video_id": "metal_round_ductile_baseline_v1",
+      "relative_path": "data/virtual/video-V1/videos/metal_round_ductile_baseline_v1.mp4",
+      "referenced_source_id": "video_0006",
+      "leakage_type": "transitive_via_near_dup"
+    },
+    {
+      "virtual_video_id": "metal_round_ductile_stage1_a2_v1",
+      "relative_path": "data/virtual/video-V1/videos/metal_round_ductile_stage1_a2_v1.mp4",
+      "referenced_source_id": "video_0006",
+      "leakage_type": "transitive_via_near_dup"
+    },
+    {
+      "virtual_video_id": "metal_round_ductile_coupled_a2_time12_v1",
+      "relative_path": "data/virtual/video-V1/videos/metal_round_ductile_coupled_a2_time12_v1.mp4",
+      "referenced_source_id": "video_0006",
+      "leakage_type": "transitive_via_near_dup"
+    }
+  ]
+}

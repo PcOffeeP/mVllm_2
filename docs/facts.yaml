@@ -1181,6 +1181,29 @@ facts:
     supersedes: null
     affects: [eval, contract]
 
+  - id: DF-054
+    state: active
+    topic: 跨 dev↔test 近重复源视频选项 A 排除清单与 15 条虚拟视频隔离口径（DEC-007）
+    claim: >
+      2026-11-25 源视频去重审计（PR #23，docs/research/source-video-dedup-audit.md）确认 2 对同一物理实验的跨 dev↔test 近重复：video_0006（fold_0_val）↔ video_0010（test）与 video_0079（fold_1_val）↔ video_0032（test）。按用户确认的选项 A（DEC-007，最小扰动）：保持 data/splits/three-fold/*.json 全部 8 份文件原字节不变（以守住 split_identity_sha256 及 reviews.json 全部 527 条已确认人工审核记录身份），通过独立机器可读清单 data/splits/dev-exclusions.json（tensile-dev-exclusions/1）在所有训练、开发调参与评测子集构建中强制排除 video_0006（19 条子视频）与 video_0079（1 条子视频），有效开发源由 89 降至 87（三折均恰好为 58 train / 29 val），有效开发子视频由 1,319 降至 1,299。同时，虚拟视频（data/virtual/video-V1，65 条）隔离口径由 DF-031 原 12 条更新为 15 条（12 条 direct_test + 3 条经 video_0006 间接关联 test 的 transitive_via_near_dup），余 50 条为 clean_dev_only。本条补充 DF-020 与 DF-031，不改写历史划分文件或历史结论。
+    evidence:
+      - ref: data/splits/dev-exclusions.json:2
+        expect: '"schema": "tensile-dev-exclusions/1"'
+      - ref: data/splits/dev-exclusions.json:6
+        expect: '"policy": "option_a_minimal_perturbation"'
+      - ref: docs/decisions/0007-dev-test-dedup-exclusion.md:1
+        expect: '# DEC-007：跨 dev↔test 近重复源视频选项 A 排除与 15 条虚拟视频隔离口径'
+      - ref: docs/decisions/README.md:23
+        expect: '[DEC-007 跨 dev↔test 近重复排除](0007-dev-test-dedup-exclusion.md)'
+      - ref: docs/design-test.md:44
+        expect: '原“12 条”隔离口径更新为 **15 条**'
+      - ref: docs/research/virtual-video-provenance.md:7
+        expect: '原“12 条”隔离口径已更新为 15 条'
+    established: 2026-11-25
+    established_by: 2026-11-25 源视频去重审计（PR #23）与用户确认选项 A（DEC-007）；排除清单与同步文档逐条核对
+    supersedes: null
+    affects: [data, eval]
+
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
     correct: 旧候选链路中，子窗口按事件时刻重新裁剪，可以落在不同事件阶段，父子窗口状态不同并不自动构成矛盾。本轮人工标注仍需按各自片段的可见证据判断，不能仅凭父子关系自动验真。
