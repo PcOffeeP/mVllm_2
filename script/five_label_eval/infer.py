@@ -26,6 +26,7 @@ from .frames import (
     RECORD_SCHEMA,
     SAMPLING_RULE,
     SHORT_CLIP_POLICY,
+    compute_record_input_id,
     read_records,
     verify_lineage,
 )
@@ -267,6 +268,13 @@ def run_inference(
         if batch_sampling_policy is None:
             batch_sampling_policy = policy
         frame_paths, frame_pts, frame_bytes = _resolve_record_frames(record, frames_dir)
+        actual_frame_shas = [hashlib.sha256(raw).hexdigest() for raw in frame_bytes]
+        expected_input_id = compute_record_input_id(record, frame_sha256s=actual_frame_shas)
+        if record.get("input_id") != expected_input_id:
+            raise InputError(
+                f"{cid}: record input_id does not match verified ordered frame digests "
+                f"(expected {expected_input_id}, got {record.get('input_id')!r})"
+            )
         prepared.append((cid, record, frame_paths, frame_pts, frame_bytes))
 
     # Reserve both exclusive output files BEFORE issuing any backend requests.

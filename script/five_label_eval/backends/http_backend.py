@@ -12,6 +12,7 @@ import base64
 import json
 import os
 from pathlib import Path
+import threading
 import time
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -21,16 +22,27 @@ import httpx
 from ..score import InputError
 from . import InferenceRequest, InferenceResult, normalize_result, sanitize_base_url
 
+MAX_RESPONSE_BYTES = 16 * 1024 * 1024
+
 
 class _WallClockTimeout(Exception):
     """Internal sentinel raised when the end-to-end request deadline expires."""
 
 
+class _ResponseTooLargeError(Exception):
+    """Internal sentinel raised when an HTTP response exceeds MAX_RESPONSE_BYTES."""
+
+
 def _resolve_completions_url(endpoint: str) -> str:
     cleaned = endpoint.strip() if isinstance(endpoint, str) else ""
-    if not (cleaned.startswith("http://") or cleaned.startswith("https://")):
-        raise InputError(f"http endpoint must start with http:// or https://, got {endpoint!r}")
     parts = urlsplit(cleaned)
+    scheme = parts.scheme.lower()
+    if scheme not in ("http", "https") or not parts.hostname:
+        safe_hint = sanitize_base_url(cleaned) if cleaned else "<empty>"
+        raise InputError(
+            f"http endpoint must be a valid http:// or https:// URL with hostname "
+            f"(got scheme={scheme or '<none>'!r}, target={safe_hint!r})"
+        )
     path = parts.path.rstrip("/")
     if path.endswith("/chat/completions"):
         new_path = path
@@ -38,7 +50,7 @@ def _resolve_completions_url(endpoint: str) -> str:
         new_path = f"{path}/chat/completions"
     else:
         new_path = f"{path}/v1/chat/completions"
-    return urlunsplit((parts.scheme, parts.netloc, new_path, "", ""))
+    return urlunsplit((scheme, parts.netloc, new_path, "", ""))
 
 
 def _encode_png_bytes_data_url(raw: bytes) -> str:
@@ -193,9 +205,13 @@ class HttpBackend:
                     if time.monotonic() > deadline:
                         raise _WallClockTimeout("request exceeded wall-clock deadline after headers")
                     chunks: list[bytes] = []
+                    total_bytes = 0
                     for chunk in response.iter_bytes():
                         if time.monotonic() > deadline:
                             raise _WallClockTimeout("request exceeded wall-clock deadline while reading body")
+                        total_bytes += len(chunk)
+                        if total_bytes > MAX_RESPONSE_BYTES:
+                            raise _ResponseTooLargeError(f"response exceeded {MAX_RESPONSE_BYTES} bytes")
                         chunks.append(chunk)
                     return response.status_code, b"".join(chunks)
             finally:
@@ -212,14 +228,37 @@ class HttpBackend:
                     timeout=httpx.Timeout(timeout),
                 ) as response:
                     chunks: list[bytes] = []
+                    total_bytes = 0
                     async for chunk in response.aiter_bytes():
+                        total_bytes += len(chunk)
+                        if total_bytes > MAX_RESPONSE_BYTES:
+                            raise _ResponseTooLargeError(f"response exceeded {MAX_RESPONSE_BYTES} bytes")
                         chunks.append(chunk)
                     return response.status_code, b"".join(chunks)
 
-        try:
-            return asyncio.run(asyncio.wait_for(_async_post(), timeout=timeout))
-        except asyncio.TimeoutError as exc:
-            raise _WallClockTimeout(f"request exceeded wall-clock deadline of {timeout:.3f}s") from exc
+        # Run asyncio.run inside a daemon thread with a bounded join so even a
+        # blocking getaddrinfo() DNS call in Python's default executor cannot
+        # stall the caller past the wall-clock deadline.
+        result_box: list[tuple[int, bytes]] = []
+        error_box: list[BaseException] = []
+
+        def _worker() -> None:
+            try:
+                result_box.append(asyncio.run(asyncio.wait_for(_async_post(), timeout=timeout)))
+            except BaseException as exc:  # noqa: BLE001
+                error_box.append(exc)
+
+        worker = threading.Thread(target=_worker, daemon=True)
+        worker.start()
+        worker.join(timeout=timeout + 0.05)
+        if worker.is_alive():
+            raise _WallClockTimeout(f"request exceeded wall-clock deadline of {timeout:.3f}s")
+        if error_box:
+            exc = error_box[0]
+            if isinstance(exc, asyncio.TimeoutError):
+                raise _WallClockTimeout(f"request exceeded wall-clock deadline of {timeout:.3f}s") from exc
+            raise exc
+        return result_box[0]
 
     def infer_one(self, request: InferenceRequest) -> InferenceResult:
         started = time.monotonic()
@@ -252,7 +291,7 @@ class HttpBackend:
                 latency_seconds=time.monotonic() - started,
                 error_detail=f"timeout after {time.monotonic() - started:.3f}s: {exc}",
             )
-        except (httpx.HTTPError, OSError) as exc:
+        except (_ResponseTooLargeError, httpx.HTTPError, OSError) as exc:
             # Record only the safe exception class name to prevent header/credential echo in metadata.
             return InferenceResult(
                 status="request_failed",
@@ -274,12 +313,12 @@ class HttpBackend:
 
         try:
             data = json.loads(body_bytes.decode("utf-8"))
-        except (UnicodeDecodeError, ValueError) as exc:
+        except (UnicodeDecodeError, ValueError, RecursionError) as exc:
             return InferenceResult(
                 status="request_failed",
                 raw_output=None,
                 latency_seconds=elapsed,
-                error_detail=f"invalid JSON response: {exc}",
+                error_detail=f"invalid JSON response: {type(exc).__name__}",
             )
 
         if not isinstance(data, dict):

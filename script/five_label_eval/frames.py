@@ -753,30 +753,74 @@ def extract_record(candidate, profiles, out_dir, clips_per_record=DEFAULT_CLIPS_
     verification = candidate_lineage["verification"]
     sampling = {"sampling_rule": SAMPLING_RULE, "target_frame_count": clips_per_record,
                 "short_clip_policy": SHORT_CLIP_POLICY, "resize": DEFAULT_RESIZE}
-    identity = {"record_schema": RECORD_SCHEMA, "clip_sha256": digest, "media_sha256": digest, "size_bucket": bucket,
-                "selection_rule": SAMPLING_RULE, "clips_per_record": clips_per_record,
-                "short_clip_policy": SHORT_CLIP_POLICY, "resize": DEFAULT_RESIZE,
-                "clip_frame_indices": indices,
-                "roi_frame_indices": [frame["roi_frame_index"] for frame in frames],
-                "original_source_frame_indices": [frame["original_source_frame_index"] for frame in frames],
-                "lineage_verification": {key: verification[key] for key in ("method", "verdict_id", "evidence_sha256")},
-                # 证据级别本身也是输入身份：L1→L0 由 anchors 换成来源级 replay 必须换 input_id。
-                "roi_to_original_kind": candidate_lineage["roi_to_original"]["kind"],
-                # L0/L1 实测摘要也是模型输入身份：上游字节变了必须换 input_id（checked_at 等易变值不入哈希）。
-                "lineage_sha256": {layer: lineage_media[layer]["sha256"] for layer in LAYERS},
-                **{key: media[key] for key in ("width", "total_frames", "fps")}}
-    input_id = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
     record = {"record_schema": RECORD_SCHEMA, "candidate_id": cid, "clip_sha256": digest,
-              "manifest_sha256": manifest_sha256, "input_id": f"input@sha256:{input_id}",
+              "manifest_sha256": manifest_sha256, "input_id": "",
               "frame_count_convention": "decoded", "sampling": sampling,
               "verification": verification, "lineage_check": "pass",
               "media": {"role": "clip", "path": str(clip), "sha256": digest, "height": media["height"],
                         "size_bucket": bucket, "size_bucket_source": SIZE_BUCKET_SOURCE,
                         **{key: media[key] for key in ("fps", "total_frames", "width")}},
               "lineage_media": lineage_media, "frames": frames}
+    record["input_id"] = compute_record_input_id(record)
     if failures := verify_lineage(record):
         raise InputError(f"{cid}: lineage check failed: {' | '.join(failures)}")
     return record
+
+
+def compute_record_input_id(
+    record: dict,
+    *,
+    frame_sha256s: list[str] | tuple[str, ...] | None = None,
+) -> str:
+    """Compute canonical versioned ``input@sha256:...`` binding clip lineage and ordered L3 frame digests."""
+    raw_frames = [f for f in (record.get("frames") or []) if isinstance(f, dict)]
+    ordered_frames = sorted(
+        raw_frames,
+        key=lambda f: f.get("display_order") if isinstance(f.get("display_order"), int) else 0,
+    )
+    resolved_frame_shas = (
+        list(frame_sha256s)
+        if frame_sha256s is not None
+        else [f.get("sha256") for f in ordered_frames]
+    )
+    media = record.get("media") if isinstance(record.get("media"), dict) else {}
+    sampling = record.get("sampling") if isinstance(record.get("sampling"), dict) else {}
+    verification = record.get("verification") if isinstance(record.get("verification"), dict) else {}
+    lineage_media = record.get("lineage_media") if isinstance(record.get("lineage_media"), dict) else {}
+    first_mapping = (
+        ordered_frames[0].get("frame_index_mapping")
+        if ordered_frames and isinstance(ordered_frames[0].get("frame_index_mapping"), dict)
+        else {}
+    )
+    roi_to_orig = first_mapping.get("roi_to_original") if isinstance(first_mapping.get("roi_to_original"), dict) else {}
+    identity = {
+        "record_schema": record.get("record_schema"),
+        "clip_sha256": record.get("clip_sha256"),
+        "media_sha256": media.get("sha256", record.get("clip_sha256")),
+        "size_bucket": media.get("size_bucket"),
+        "selection_rule": sampling.get("sampling_rule", SAMPLING_RULE),
+        "clips_per_record": sampling.get("target_frame_count", len(ordered_frames)),
+        "short_clip_policy": sampling.get("short_clip_policy", SHORT_CLIP_POLICY),
+        "resize": sampling.get("resize", DEFAULT_RESIZE),
+        "clip_frame_indices": [f.get("clip_frame_index") for f in ordered_frames],
+        "roi_frame_indices": [f.get("roi_frame_index") for f in ordered_frames],
+        "original_source_frame_indices": [f.get("original_source_frame_index") for f in ordered_frames],
+        "frame_sha256s": resolved_frame_shas,
+        "lineage_verification": {
+            key: verification.get(key) for key in ("method", "verdict_id", "evidence_sha256")
+        },
+        "roi_to_original_kind": roi_to_orig.get("kind"),
+        "lineage_sha256": {
+            layer: (lineage_media.get(layer) or {}).get("sha256")
+            for layer in LAYERS
+            if isinstance(lineage_media.get(layer), dict)
+        },
+        "width": media.get("width"),
+        "total_frames": media.get("total_frames"),
+        "fps": media.get("fps"),
+    }
+    digest = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+    return f"input@sha256:{digest}"
 
 
 def _export_single_frame(media_path, index: int, target: Path) -> str | None:

@@ -31,7 +31,7 @@ from script.five_label_eval.backends.transformers_backend import (
     internvl_dynamic_preprocess,
     verify_trusted_snapshot_sha256,
 )
-from script.five_label_eval.frames import RECORD_SCHEMA
+from script.five_label_eval.frames import RECORD_SCHEMA, compute_record_input_id
 from script.five_label_eval.score import InputError, extract
 
 LEGAL_JSON = json.dumps(
@@ -112,7 +112,7 @@ def _build_record_and_manifest(tmp_path: Path, cid: str = "c00") -> tuple[dict, 
         "candidate_id": cid,
         "clip_sha256": clip_sha,
         "manifest_sha256": manifest_sha,
-        "input_id": "input@sha256:" + "1" * 64,
+        "input_id": "",
         "frame_count_convention": "decoded",
         "sampling": {
             "sampling_rule": "evenly_spaced_inclusive",
@@ -123,6 +123,7 @@ def _build_record_and_manifest(tmp_path: Path, cid: str = "c00") -> tuple[dict, 
         "media": {"width": 320, "height": 240, "fps": 30.0, "total_frames": 240, "sha256": clip_sha},
         "frames": frame_entries,
     }
+    record["input_id"] = compute_record_input_id(record)
     manifest = {
         "manifest_version": "test/1",
         "samples": [{
@@ -900,6 +901,7 @@ def test_r2_regression_device_placement_minicpm_max_pixels_processor_config_and_
     rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r2_toctou", cid="c00")
     _, entries2 = _write_eight_frames(frames_dir, cid="c01")
     rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    rec2["input_id"] = compute_record_input_id(rec2)
     manifest = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
     orig_c01_f0 = (frames_dir / "c01" / entries2[0]["image"]).read_bytes()
     sent_b64_by_cid: dict[str, str] = {}
@@ -1043,6 +1045,7 @@ def test_r3_regression_tokenizer_auto_map_internvl_default_loader_seed_and_meta_
     rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r3_interrupt", cid="c00")
     _, entries2 = _write_eight_frames(frames_dir, cid="c01")
     rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    rec2["input_id"] = compute_record_input_id(rec2)
     manifest = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
 
     class InterruptOnSecondBackend:
@@ -1124,6 +1127,7 @@ def test_r4_regression_peft_rejection_error_secret_redaction_and_atomic_meta(tmp
     rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r4_atomic", cid="c00")
     _, entries2 = _write_eight_frames(frames_dir, cid="c01")
     rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    rec2["input_id"] = compute_record_input_id(rec2)
     manifest = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
     preds_path = tmp_path / "atomic_preds.jsonl"
     meta_path = tmp_path / "atomic_meta.json"
@@ -1419,6 +1423,7 @@ def test_r6_regression_video_preprocessor_hf_internvl_mkstemp_and_surrogate_meta
     rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r6_batch", cid="c00")
     _, entries2 = _write_eight_frames(frames_dir, cid="c01")
     rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    rec2["input_id"] = compute_record_input_id(rec2)
     manifest = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
 
     preds_path = tmp_path / "r6_preds.jsonl"
@@ -1471,3 +1476,119 @@ def test_r6_regression_video_preprocessor_hf_internvl_mkstemp_and_surrogate_meta
     saved_meta = json.loads(meta_path.read_text(encoding="utf-8"))
     assert saved_meta["total_requests"] == 2
     assert saved_meta["requests"][0]["extra_meta"]["finish_reason"] == "stop?bad"
+
+
+def test_r7_regression_swapped_frames_input_id_slow_dns_recursion_and_url_redaction(tmp_path, monkeypatch):
+    """Regression tests for R7 Codex blocking findings: frame-order input_id binding, slow DNS timeout, deep JSON RecursionError, and endpoint redaction."""
+    import socket
+
+    # 1. Swapping two frames' (image, sha256) pairs while keeping old input_id must fail closed before inference.
+    rec_swap, manifest, frames_dir = _build_record_and_manifest(tmp_path / "r7_swap", cid="c00")
+    rec_swap["frames"][0]["image"], rec_swap["frames"][1]["image"] = (
+        rec_swap["frames"][1]["image"],
+        rec_swap["frames"][0]["image"],
+    )
+    rec_swap["frames"][0]["sha256"], rec_swap["frames"][1]["sha256"] = (
+        rec_swap["frames"][1]["sha256"],
+        rec_swap["frames"][0]["sha256"],
+    )
+
+    class FailIfCalledBackend:
+        backend_name = "http"
+
+        def run_identity(self):
+            return {"backend": "http"}
+
+        def infer_one(self, request):
+            raise AssertionError("backend must not run when swapped frames violate input_id")
+
+        def close(self):
+            return None
+
+    with pytest.raises(InputError, match="input_id"):
+        infer.run_inference(
+            [rec_swap],
+            manifest,
+            backend=FailIfCalledBackend(),
+            run_id="r7-swap",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir,
+        )
+
+    # 2. Blocking getaddrinfo() DNS lookup returns timeout within wall-clock budget.
+    def slow_getaddrinfo(*_args, **_kwargs):
+        time.sleep(2.0)
+        raise socket.gaierror("slow dns")
+
+    monkeypatch.setattr(socket, "getaddrinfo", slow_getaddrinfo)
+    dns_backend = HttpBackend(
+        endpoint="http://slow-dns.example.invalid:8000/v1",
+        model_id="Qwen3-VL-8B-Instruct@1",
+        timeout_seconds=0.2,
+    )
+    try:
+        started = time.monotonic()
+        dns_res = dns_backend.infer_one(_make_request(tmp_path / "r7_dns", timeout=0.2))
+        elapsed = time.monotonic() - started
+    finally:
+        dns_backend.close()
+    assert dns_res.status == "timeout"
+    assert dns_res.raw_output is None
+    assert elapsed < 0.7, f"slow DNS timeout exceeded wall-clock budget: {elapsed:.3f}s"
+
+    # 3. Deeply nested JSON triggering RecursionError maps to request_failed without aborting candidate 2.
+    rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r7_rec", cid="c00")
+    _, entries2 = _write_eight_frames(frames_dir, cid="c01")
+    rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    rec2["input_id"] = compute_record_input_id(rec2)
+    manifest2 = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
+    deep_payload = ("[" * 2000 + "]" * 2000).encode("ascii")
+    idx = 0
+
+    def deep_json_handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal idx
+        idx += 1
+        if idx == 1:
+            return httpx.Response(200, content=deep_payload, headers={"Content-Type": "application/json"})
+        return httpx.Response(200, json={"choices": [{"message": {"content": LEGAL_JSON}}]})
+
+    deep_backend = HttpBackend(
+        endpoint="http://127.0.0.1:8000",
+        model_id="Qwen3-VL-8B-Instruct@1",
+        transport=httpx.MockTransport(deep_json_handler),
+    )
+    try:
+        preds, _ = infer.run_inference(
+            [rec1, rec2],
+            manifest2,
+            backend=deep_backend,
+            run_id="r7-rec",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir,
+        )
+    finally:
+        deep_backend.close()
+    assert [p["status"] for p in preds] == ["request_failed", "success"]
+    assert preds[0]["raw_output"] is None
+    assert preds[1]["raw_output"] == LEGAL_JSON
+
+    # 4. Uppercase HTTPS:// scheme is accepted; invalid scheme with credentials/query never leaks secrets.
+    upper_backend = HttpBackend(
+        endpoint="HTTPS://127.0.0.1:8000/v1",
+        model_id="Qwen3-VL-8B-Instruct@1",
+    )
+    assert upper_backend.completions_url == "https://127.0.0.1:8000/v1/chat/completions"
+    upper_backend.close()
+
+    with pytest.raises(InputError) as exc_info:
+        HttpBackend(
+            endpoint="FTP://admin:topsecret@127.0.0.1:8000/v1?api_key=leakme",
+            model_id="Qwen3-VL-8B-Instruct@1",
+        )
+    err_msg = str(exc_info.value)
+    assert "topsecret" not in err_msg
+    assert "leakme" not in err_msg
