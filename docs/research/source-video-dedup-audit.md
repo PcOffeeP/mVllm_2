@@ -1,26 +1,106 @@
-# 110 条真实源视频去重审计与虚拟视频溯源复核
+# 虚拟视频测试集泄漏审查与 110 条真实源视频去重审计
 
-> **状态**：只读审计报告（2026-11-25）；**基线提交**：`d8e0b35`（`github/feat/tensileagent-finetune`）。  
-> **审计范围**：本仓 110 条真实源视频（`data/videos/` 与 `data/roi/videos/`）、三折与测试划分（`data/splits/three-fold/`）、人工标注表（`data/annotation-table-full.csv`）、ROI 清单（`data/roi/manifest.json`），以及虚拟数据集交付包（`data/virtual/video-V1/` 与上游 `BlenderTensileVideo` 只读核对）。本次未修改任何划分、标注表或媒体文件，也未连接训练机或运行模型推理。
-
-## 1. 核心结论
-
-1. **字节级精确去重通过（0 重复）**：110 条源视频的 SHA-256 哈希与文件字节数全部唯一，且与 [ROI 清单](../../data/roi/manifest.json) 记录的 `source.sha256` 100% 一致（0 失配）。
-2. **发现 2 对经画面与断裂时刻核实的跨 `dev ↔ test` 近重复源视频（同一物理实验的裁剪/截断版本）**：
-   - **`video_0032`（`test`）↔ `video_0079`（`dev: fold_1_val`）**：同一淡绿高分子平条拉伸实验。`video_0079` 相对 `video_0032` 存在约 **1.49 s 片头截断**（总时长 `4.53 s` vs `3.04 s`，断裂时刻 `3.40 s` vs `1.91 s`，断后余长同为 `1.13 s` vs `1.12 s`）与轻微重裁剪，且 `video_0032` 前段带有 4 个白色指示箭头叠加层。
-   - **`video_0006`（`dev: fold_0_val`）↔ `video_0010`（`test`）**：同一金属圆棒韧性颈缩拉伸实验。`video_0010`（`792×722`，`27.07 s`）为 `video_0006`（`1120×880`，`23.30 s`）的更紧空间裁剪与稍长起止截取版本，背景斜向黑线、墙面竖缝、颈缩轮廓与断口瞬态运动模糊一致。
-   - **泄漏结论**：这两对直接打破了“110 个源视频各自独立且 `dev`/`test` 零同源交叉”的假设（[划分清单](../../data/splits/three-fold/manifest.json) 已明示 `explicit_source_table_is_user_evidence_not_media_deduplication`）。在未处理这两对之前，任何在 `fold_0_train` / `fold_1_train` / `fold_2_train` 上训练并在 `test` 上评测的模型均存在明确的源级泄漏风险。
-3. **发现 32 条复材源视频存在跨划分“同机位/同实验台背景强耦合”**：23 条 `1280×720 @ 30 fps`（含 5 条 `test`）与 9 条 `1280×720 @ 25 fps`（`video_0102`–`video_0110`）全部为复材，分别拍摄于 2 台固定机位试验机。目视与断裂元数据核查确认它们为**不同物理试样**（非重复视频），但全画幅感知相似度高达 `0.90–0.99`（ROI 裁剪后仍达 `0.88–0.95`），在整帧输入下存在显著的**机位背景捷径风险**。
-4. **虚拟视频溯源更新（受 `video_0006 ↔ video_0010` 影响）**：
-   - 本仓 `data/virtual/` 下**没有**超过 `video-V1`（65 条）的新增已交付虚拟数据集，`script.checks.virtual_dataset --all` 全部通过，65 条 MP4 SHA-256 与上游 `BlenderTensileVideo/datasets/video-V1/manifest.json` 零失配。
-   - 上游 `BlenderTensileVideo/review/` 与 `_work/` 中存在 2026-11-14 至 2026-11-21 的多批**待审候选**，但均未收录进 `datasets/`，也未导入本仓 `data/virtual/`。
-   - **隔离口径升级**：因 `video_0006` 确认为 `test` 成员 `video_0010` 的近重复源，[已有虚拟视频溯源报告](virtual-video-provenance.md) 中归为开发参考的 **`video_0006` 组（3 条金属韧断虚拟视频）须同步划入测试关联隔离范围**，`video-V1` 中与固定 `test` 关联的虚拟视频由 **12 条增至 15 条**（涉及 `video_0025` 1 条、`video_0032`/`video_0079` 11 条、`video_0006`/`video_0010` 3 条），禁用于训练或开发调参。
+> **状态**：只读审查报告（2026-11-25）；**基线提交**：`d8e0b35`（`github/feat/tensileagent-finetune`）。  
+> **核心问题**：本仓虚拟视频（`data/virtual/video-V1`，65 条）中哪些参考了固定测试集（`data/splits/three-fold/test.json`，21 条）或其近重复真实源、是否存在训练/评测数据泄漏，以及是否存在超过 65 条的新增虚拟视频。本次未修改任何划分、标注表或媒体文件，也未连接训练机或运行模型推理。
 
 ---
 
-## 2. 审计方法与输入基线
+## 1. 审查结论总表（虚拟视频 → 测试集数据泄漏判定）
 
-### 2.1 输入文件指纹
+**总体判定：存在明确的虚拟视频 → 测试集关联风险；65 条 `video-V1` 中共 15 条须严格禁用于训练与开发调参（12 条直接参考 `test` 源 + 3 条通过真实源近重复间接关联 `test` 源），其余 50 条仅关联开发源（须按所在折隔离，不得跨折泄漏）。**
+
+| 泄漏分类（`leakage_type`） | 虚拟视频数 | 涉及参考真实源 | 占比 | 处置结论 |
+| --- | ---: | --- | ---: | --- |
+| `direct_test`（直接参考固定 `test` 真实源） | **12** | `video_0025`（1 条）、`video_0032`（11 条） | 18.5% | **强制隔离**：禁用于训练与开发调参 |
+| `transitive_via_near_dup`（参考与 `test` 同实验近重复的 `dev` 真实源） | **3** | `video_0006`（`fold_0_val`，经核实为 `test` 源 `video_0010` 的同实验近重复） | 4.6% | **强制隔离（本次新增）**：原[虚拟视频溯源报告](virtual-video-provenance.md)仅隔离 12 条，本次审计后须同步纳入隔离，**合计 15 条** |
+| `clean_dev_only`（仅参考未与 `test` 重合的开发源） | **50** | 其余 8 个开发源（`video_0003`、`0014`、`0020`、`0040`、`0050`、`0058`、`0097`、`0100`） | 76.9% | 可用于开发/非冻结诊断，但**严禁将参考某折 `val` 源的虚拟视频投入该折训练** |
+| **合计（本仓 `data/virtual/video-V1`）** | **65** | **11 个 `source_id`** | **100%** | 本仓 `data/virtual/` 无超过 65 条的新增已交付数据包 |
+
+> **关键补充核对**：经逐条核对 `BlenderTensileVideo/datasets/video-V1/manifest.json`（与本仓 `data/virtual/video-V1/manifest.json` 65/65 ID 及 SHA-256 零失配）：
+> - `video_0010`（`test`，与 `video_0006` 近重复）在 `video-V1` 中直接派生虚拟视频数为 **0**（3 条金属韧断虚拟视频均登记参考 `video_0006`）；
+> - `video_0079`（`fold_1_val`，与 `video_0032` 近重复）在 `video-V1` 中直接派生虚拟视频数为 **0**（11 条淡绿高分子脆断虚拟视频均登记参考 `video_0032`）。
+
+### 1.1 须隔离的 15 条虚拟视频逐条清单（12 条直接关联 + 3 条间接关联）
+
+| # | `virtual_video_id` | 本仓相对路径（`data/virtual/video-V1/` 下） | `referenced_source_id` | `source_split` | `leakage_type` | `recommended_action` |
+| ---: | --- | --- | --- | --- | --- | --- |
+| 1 | `polymer_yellow_film_grip_root_baseline_v2` | `videos/polymer_yellow_film_grip_root_baseline_v2.mp4` | `video_0025` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 2 | `polymer_pale_green_brittle_flat_strip_baseline_v1` | `videos/polymer_pale_green_brittle_flat_strip_baseline_v1.mp4` | `video_0032` | `test`（且近重复 `fold_1_val` 的 `video_0079`） | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 3 | `polymer_brittle_stage1_position055_v1` | `videos/polymer_brittle_stage1_position055_v1.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 4 | `polymer_brittle_coupled_position055_time12_v1` | `videos/polymer_brittle_coupled_position055_time12_v1.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 5 | `polymer_brittle_527d847f2741` | `videos/polymer_brittle_527d847f2741.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 6 | `polymer_brittle_7c88eeeae51f` | `videos/polymer_brittle_7c88eeeae51f.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 7 | `polymer_brittle_b0cd99f7ae30` | `videos/polymer_brittle_b0cd99f7ae30.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 8 | `polymer_brittle_b9ab8a238e19` | `videos/polymer_brittle_b9ab8a238e19.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 9 | `polymer_brittle_bcfe3a307376` | `videos/polymer_brittle_bcfe3a307376.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 10 | `polymer_brittle_e2c15b3c1473` | `videos/polymer_brittle_e2c15b3c1473.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 11 | `polymer_brittle_ea23f4e39317` | `videos/polymer_brittle_ea23f4e39317.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 12 | `polymer_brittle_f89aa7bc8961` | `videos/polymer_brittle_f89aa7bc8961.mp4` | `video_0032` | `test` | `direct_test` | 禁用于训练与开发调参（隔离） |
+| 13 | `metal_round_ductile_baseline_v1` | `videos/metal_round_ductile_baseline_v1.mp4` | `video_0006` | `fold_0_val`（近重复 `test` 的 `video_0010`） | `transitive_via_near_dup` | 禁用于训练与开发调参（本次新增隔离） |
+| 14 | `metal_round_ductile_stage1_a2_v1` | `videos/metal_round_ductile_stage1_a2_v1.mp4` | `video_0006` | `fold_0_val`（近重复 `test` 的 `video_0010`） | `transitive_via_near_dup` | 禁用于训练与开发调参（本次新增隔离） |
+| 15 | `metal_round_ductile_coupled_a2_time12_v1` | `videos/metal_round_ductile_coupled_a2_time12_v1.mp4` | `video_0006` | `fold_0_val`（近重复 `test` 的 `video_0010`） | `transitive_via_near_dup` | 禁用于训练与开发调参（本次新增隔离） |
+
+### 1.2 其余 50 条仅关联开发源的虚拟视频汇总（按当前三折划分）
+
+下表按 2026-11-19 重生成后的当前三折划分（`data/splits/three-fold/`）列出全部 50 条未与 `test` 关联的虚拟视频归组；这 8 个参考源均不属于第 2.2 节的 32 条 `1280×720` 复材固定机位簇：
+
+| `referenced_source_id` | 当前真实源所在折 | 虚拟视频数 | `leakage_type` | 使用约束（三折防泄漏） |
+| --- | --- | ---: | --- | --- |
+| `video_0014` | `fold_0_val` | 13 | `clean_dev_only` | 不得进入 `fold_0` 训练（仅可在 `fold_1/2` 侧或开发诊断使用） |
+| `video_0020` | `fold_0_val` | 10 | `clean_dev_only` | 同上，不得进入 `fold_0` 训练 |
+| `video_0003` | `fold_1_val` | 11 | `clean_dev_only` | 不得进入 `fold_1` 训练 |
+| `video_0050` | `fold_1_val` | 4 | `clean_dev_only` | 不得进入 `fold_1` 训练 |
+| `video_0040` | `fold_2_val` | 1 | `clean_dev_only` | 不得进入 `fold_2` 训练 |
+| `video_0058` | `fold_2_val` | 1 | `clean_dev_only` | 不得进入 `fold_2` 训练 |
+| `video_0097` | `fold_2_val` | 3 | `clean_dev_only` | 不得进入 `fold_2` 训练 |
+| `video_0100` | `fold_2_val` | 7 | `clean_dev_only` | 不得进入 `fold_2` 训练 |
+| **小计** | — | **50** | `clean_dev_only` | `15 + 50 = 65`（全量核对闭环） |
+
+### 1.3 新增虚拟视频与历史暴露核查
+
+- **本仓 `data/virtual/` 校验**：运行 `.venv/bin/python -m script.checks.virtual_dataset --all`，仅检出 `data/virtual/video-V1/`（65 条，`28,732,471` bytes），`manifest` / `upstream` / `labels` / `videos` 四项全通过；其于 `2026-11-19T07:47:17+00:00` 从 `BlenderTensileVideo` 干净提交 `8a37a1a2bf39304dc7002ccf89028b491f577273`（`datasets/video-V1`）导入，65 条 MP4 SHA-256 与上游清单 0 失配。
+- **上游 `BlenderTensileVideo` 是否有超过 65 条的新增视频**：上游 `datasets/` 目录仍只有 `video-V1`（尚无 `video-V2`）。上游 `review/` 与 `_work/` 存在未收录、未导入本仓的待审候选（本地实存 `review/visual-space-20261121/` 12 条独立外观候选 + 1 条总览，其 JSON 均标明 `source_id=None` / `source_video_inputs: []`，属独立合成设定；另有提交 `8a37a1a` 的 `20261114` 批次与 `_work/coverage-20261120/`）。上述候选均未获正式收录，也不在本仓 `data/virtual/` 内。
+- **本仓历史暴露检查**：检索本仓 `config/` 与 `script/`，未发现 `video-V1` 或 `data/virtual/` 被接入任何模型训练、调参或评测脚本（仅存在只读校验 `script/checks/virtual_dataset.py` 与输出路径守卫 `script/subvideo_generation/virtual.py`）。因缺少训练机完整历史日志，仍不能仅凭本仓静态检索排除仓外历史暴露。
+
+---
+
+## 2. 真实源视频去重审计（110 条，5,995 对）
+
+上述第 1 节之所以将 `video_0006` 组 3 条虚拟视频升级为间接测试泄漏，源于本次对全部 110 条真实源视频（`test` 21、`fold_0_val` 30、`fold_1_val` 30、`fold_2_val` 29）执行的去重审计：
+
+- **精确去重通过**：110 条源视频的 SHA-256 与文件字节数全部唯一（0 重复），与 [ROI 清单](../../data/roi/manifest.json) `source.sha256` 100% 一致（0 失配），抽帧 seek 0 失败。
+
+### 2.1 确认为同一物理实验的 2 对跨 `dev ↔ test` 近重复（高危泄漏）
+
+| 源视频 A（划分） | 源视频 B（划分） | 划分关系 | 材料 / 模式 / 位置 | 分辨率与时长（A / B） | 断裂时刻（A / B） | ROI 相似度（`score / d / p / s`） | 核验结论与泄漏影响 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `video_0006` (`fold_0_val`) | `video_0010` (`test`) | **`dev ↔ test`**（`fold_1/2_train` 含 A） | 金属 / 韧性 / 标距内 | `1120×880`, `23.30 s` / `792×722`, `27.07 s` | `21.63 s` / `24.37 s` | `0.8389` (`0.819 / 0.847 / 0.851`) | **确认同一实验**：断裂对齐 ROI NCC 在 `t_f + 0.3 s` 达 `0.6566`，目视确认背景斜线、墙缝、颈缩与断口形貌、断帧拖影一致；B 为更紧裁剪与稍长起止截取。**双重影响**：既导致真实 `dev ↔ test` 泄漏，又使 `video-V1` 中参考 `video_0006` 的 3 条虚拟视频间接关联 `test`。 |
+| `video_0032` (`test`) | `video_0079` (`fold_1_val`) | **`dev ↔ test`**（`fold_0/2_train` 含 B） | 高分子 / 半脆半韧 / 标距内 | `402×726`, `4.53 s` / `440×708`, `3.04 s` | `3.40 s` / `1.91 s` | `0.7859` (`0.805 / 0.762 / 0.790`) | **确认同一实验**：断裂对齐 `t_f + {-0.5, 0.0, +0.3} s` 的 RAW NCC 为 `0.764–0.769`（ROI NCC `0.601–0.609`），精确 `~1.49 s` 片头截断（断后余长同为 `1.13 s` vs `1.12 s`）、裂纹位置与夹具手柄角度完全一致；A 前段多 4 个白色叠加箭头。**影响**：`video_0079` 在 `dev` 侧直接泄漏 `test` 源 `video_0032`（`video_0032` 另已有 11 条虚拟视频隔离）。 |
+
+- **排位显著性**：排除 `1280×720` 复材批次内部配对（两端均在 32 条内）后，上述 2 对位列全量及同材料 ROI 相似度 **第 1 与第 2 位**（`0.8389` / `0.7859`），显著高于第 3 位 `video_0040 ↔ video_0095`（`0.7308`，分辨率与时长悬殊，非重复）；若进一步排除任一端属于该 32 条批次的配对，最高同材料 ROI 分为 `0.6899`（`video_0057 ↔ video_0061`）。
+- **处置方案（须经用户拍板，本报告不自动改写划分）**：
+  - **方案 A（推荐，最小扰动）**：保持现有固定 21 条 `test.json` 不变，在所有训练与开发调参阶段**强制排除 `video_0006` 与 `video_0079`**（及其派生子视频），有效开发源由 89 降至 87，同时按第 1.1 节隔离 15 条虚拟视频。
+  - **方案 B（合并来源组重划）**：若需合并这两对为同一来源组，**不能**在保留现行 `test.json` 的前提下仅重跑三折（`script/data_split/generate.py` 会拒绝跨 `test` 与 `dev` 的来源组），必须经用户确认后重新划分测试集与开发集。
+
+### 2.2 32 条 `1280×720` 复材视频说明（同实验台背景，非重复）
+
+- 元数据聚类显示 32 条复材源视频来自 2 组固定机位拍摄批次：`1280×720 @ 30 fps`（23 条，含 5 条 `test`：`video_0037, 0063, 0087, 0094, 0095`）与 `1280×720 @ 25 fps`（9 条，`video_0102`–`video_0110`，全在 `dev`）。另有 `544×960 @ 30 fps` 金属 2 条（`video_0018` [`test`] 与 `video_0028` [`fold_1_val`]），目视确认机位与试样均不同。
+- 抽样目视核查 7 对高分 `1280×720` 代表性配对（含 `video_0104↔0105`、`0009↔0027`、`0034↔0052`、`0044↔0063`、`0064↔0087`、`0037↔0044`、`0037↔0076` 及唯一 0.1 s 同长对 `0103↔0110`）均确认为**同实验台/同机位下的不同物理试样**（非重复视频；未逐对目视的其余簇内配对不以分辨率/帧率单独排除近重复）。这 32 条均未被 `video-V1` 虚拟视频参考，仅需在模型评测时注意同机位背景耦合即可，不构成源重复泄漏。
+
+---
+
+## 3. 审计方法、输入指纹与失效条件
+
+### 3.1 四层只读审计口径
+
+1. **字节与清单一致性**：逐条计算 `data/videos/video_0001.mp4`–`video_0110.mp4` 的 SHA-256 与字节数，与 `data/roi/manifest.json` 交叉比对。
+2. **元数据聚类**：用 `ffprobe` 提取编解码、分辨率、帧率与时长，分别按 `(width, height, fps_round2, codec)` 及附加 `dur_round0.1s` 聚类。
+3. **双通道感知相似度（全量 5,995 对）**：
+   - 全画幅通道（`data/videos/`）：每片等距抽 9 帧（`5%`–`95%`），计算 64-bit `dHash`、`pHash`、8×8×8 HSV 颜色直方图与 16×16 空间余弦，按时间偏移不变的对称最优帧匹配打分（`composite >= 0.90` 的 63 对全部落在 32 条 `1280×720` 复材批次内）。
+   - ROI 通道（`data/roi/videos/`）：每片等距抽 5 帧（`10%`–`90%`），计算 `roi_score = (d_best + p_best + max(0, s_best)) / 3`，并排除 `1280×720` 复材批次内部配对后检索全量与同材料 Top 12。
+4. **目视与断裂时刻对齐核验**：对 11 对高分/跨划分候选生成多时刻对比图目视复核，并对 2 对高危跨划分候选按断裂时刻 `t_f + {-0.5, 0.0, +0.3} s` 对齐计算 RAW/ROI NCC。**核验边界**：本报告的“确认 2 对”基于双通道高分阈值与上述复核截点得出，不声称已对全部 5,995 对逐一完成人工全帧排错。
+
+### 3.2 输入文件指纹
 
 | 文件 | SHA-256 |
 | --- | --- |
@@ -32,98 +112,10 @@
 | `data/virtual/video-V1/labels.csv` | `a236073d548fb8d1ce7a73c6118b0cf7eb64887a17e10bcd89bedb4a93c43a5d` |
 | `BlenderTensileVideo/datasets/video-V1/manifest.json` | `662693ddb70cf9bb94c79d57087cd33cffca97072fc45a4896aa964ae3b56444` |
 
-### 2.2 四层只读检查流程
+### 3.3 失效条件
 
-1. **字节与清单一致性**：计算 `data/videos/video_0001.mp4`–`video_0110.mp4` 的 SHA-256 与精确字节数，检查重号并与 `data/roi/manifest.json` 的 `source.sha256` 逐条比对。
-2. **媒体元数据聚类**：用 `ffprobe` 提取全部 110 条视频的编码器、分辨率、平均帧率、时长与帧数，分别按 `(width, height, fps_round2, codec)` 与 `(width, height, fps_round2, codec, dur_round0.1s)` 聚类。
-3. **全画幅与 ROI 双通道感知相似度（全量 5,995 对）**：
-   - **全画幅通道（`data/videos/`）**：每条视频在相对进度 `5%, 15%, 25%, 35%, 50%, 65%, 75%, 85%, 95%` 等距抽取 9 帧（110 条全部零 seek 失败），提取 64-bit `dHash`、64-bit `pHash`（32×32 DCT 低频 8×8 对 AC 中位数二值化）、8×8×8 归一化 HSV 颜色直方图、64-bin 灰度直方图及 16×16 零均值单位向量空间描述子；对全部 5,995 对计算时间偏移不变的对称最优帧匹配相似度（`d_best`, `p_best`, `c_best`, `s_best`）与综合分 `composite = 0.30*d_best + 0.30*p_best + 0.20*c_best + 0.20*max(0, s_best)`。
-   - **ROI 通道（`data/roi/videos/`）**：为消除固定机位静态背景对排名的淹没效应，对全部 110 条 ROI 裁剪视频在 `10%, 30%, 50%, 70%, 90%` 抽取 5 帧计算 `dHash`/`pHash`/16×16 空间相似度（`roi_score = (d_best + p_best + max(0, s_best)) / 3`），并单独检索排除 `1280×720` 复材批次后的全量与同材料 Top 候选对。
-4. **目视与断裂时刻对齐核验**：对全画幅 Top 15、全画幅 `dev ↔ test` Top 10、唯一 0.1 s 同长对、元数据同组 `544×960` 对、ROI 通道 Top 15 以及排除 `1280×720` 复材簇内部配对后的全量与同材料 Top 12 进行候选筛查；对其中 11 对代表性高分/跨划分候选（含 7 对 `1280×720` 复材高分对、2 对非 `1280×720` 高分对、`video_0037 ↔ video_0076` 及 `video_0018 ↔ video_0028`）生成多时刻对比图目视核查，并对 2 对高危跨划分近重复候选按人工标注断裂时刻 `t_f + {-0.5 s, 0.0 s, +0.3 s}` 对齐抽帧计算 RAW/ROI NCC 并人工复核。**核验边界**：本审计的“确认 2 对”基于上述双通道高分阈值与人工核查截点得出，不声称已对全部 5,995 对逐一完成人工全帧排错（极端旋转/镜像/极短片段截取若低于上述阈值可能漏检）。
-
----
-
-## 3. 定量审计汇总
-
-| 审计维度 | 实测结果 |
-| --- | --- |
-| 真实源视频总数 / 无序对总数 | `110` 条 / `5,995` 对（`test` 21、`fold_0_val` 30、`fold_1_val` 30、`fold_2_val` 29） |
-| 精确 SHA-256 重复 / 精确字节数重复 | `0` / `0` |
-| `data/roi/manifest.json` 源 SHA-256 失配 / 抽帧 seek 失败 | `0` / `0` |
-| 元数据 `(分辨率, fps, 编码)` 同组 >1 条的簇数 | `3` 簇（`1280×720@30fps h264` 23 条、`1280×720@25fps h264` 9 条、`544×960@30fps h264` 2 条） |
-| 元数据 `(分辨率, fps, 编码, 时长精确到 0.1 s)` 同组 >1 条 | `1` 对（`video_0103` & `video_0110`，均为 `fold_2_val`，实为不同试样） |
-| 全画幅高相似对数（`composite >= 0.90` / `>= 0.88`） | `63` 对 / `66` 对（全部来自上述 32 条 `1280×720` 复材固定机位簇） |
-| 经画面与断裂对齐确认的**同实验近重复对** | **`2` 对**（均为 **`dev ↔ test`** 跨划分对；见第 2.2 节核验边界） |
-| 排除 2 对同实验重复与 `1280×720` 复材簇**内部配对**后的最高同材料 ROI 分 | `0.7308`（`video_0040` vs `video_0095`，分辨率与时长均悬殊，非重复）；若排除任一端属该簇的配对，最高为 `0.6899`（`video_0057` vs `video_0061`） |
-
----
-
-## 4. 关键候选对与跨划分泄漏判定
-
-### 4.1 确认为同一物理实验的跨划分近重复对（高危：直接 `dev ↔ test` 泄漏）
-
-| 源视频 A（划分） | 源视频 B（划分） | 划分关系 | 材料 / 模式 / 位置 | 分辨率与时长（A / B） | 断裂时刻（A / B） | ROI 相似度（`score / d / p / s`） | 核验结论 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `video_0006` (`fold_0_val`) | `video_0010` (`test`) | **`dev ↔ test`**（`fold_1/2_train` 含 A） | 金属 / 韧性 / 标距内（双方一致） | `1120×880`, `23.30 s` / `792×722`, `27.07 s` | `21.63 s` / `24.37 s` | `0.8389` (`0.819 / 0.847 / 0.851`) | **确认同一实验**：断裂对齐 ROI NCC 在 `t_f + 0.3 s` 达 `0.6566`（背景/裁剪比例差异拉低全帧 NCC），目视确认背景斜线、墙缝、颈缩与断口形貌、断帧拖影完全一致；B 为更紧空间裁剪 + 不同起止截取 |
-| `video_0032` (`test`) | `video_0079` (`fold_1_val`) | **`dev ↔ test`**（`fold_0/2_train` 含 B） | 高分子 / 半脆半韧 / 标距内（双方一致） | `402×726`, `4.53 s` / `440×708`, `3.04 s` | `3.40 s` / `1.91 s` | `0.7859` (`0.805 / 0.762 / 0.790`) | **确认同一实验**：断裂对齐 `t_f + {-0.5, 0.0, +0.3} s` 的 RAW NCC 稳定在 `0.764–0.769`（ROI NCC `0.601–0.609`），精确 `~1.49 s` 片头截断（断后余长同为 `1.13 s` vs `1.12 s`）、裂纹位置与夹具手柄角度完全一致；A 前段多 4 个白色叠加箭头 |
-
-> **说明**：全画幅通道最初未将这两对排入 Top 30，原因是 32 条 `1280×720` 复材固定机位视频产生了 63 对 `composite >= 0.90` 的背景相似对，且这两对存在空间裁剪幅度差异。引入 ROI 通道并排除 `1280×720` 复材簇内部配对（两端均在 32 条内）后，这两对立即位列全量及同材料排名的 **第 1 与第 2 位**（`0.8389` 与 `0.7859`），显著高于第 3 位（`0.7308`，两端均非 `1280×720` 时第 3 位为 `0.6899`）。
-
-### 4.2 高视觉相似度但确认为不同试样的固定机位簇（中危：机位背景捷径风险）
-
-下表列出全画幅与 ROI 通道最具代表性的高分候选对（含 `dev ↔ test`、`dev ↔ dev` 跨折与 `test ↔ test`）：
-
-| 源视频 A（划分） | 源视频 B（划分） | 划分关系 | 全画幅 `composite` (`d_best / p_best / s_best`) | ROI `score` | 时长（A / B） | 模式与位置差异 | 核验结论 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `video_0104` (`fold_1_val`) | `video_0105` (`fold_2_val`) | `dev-cross-fold` | `0.9910` (`1.000 / 0.988 / 0.998`) | `0.86+` | `144.28 s` / `153.00 s` | 均半脆半韧/标距内，断裂时刻 `139.04 s` vs `147.56 s` | **同机位不同试样**（`1280×720@25fps` 复材批次） |
-| `video_0009` (`fold_0_val`) | `video_0027` (`fold_1_val`) | `dev-cross-fold` | `0.9751` (`0.982 / 0.953 / 0.990`) | `0.9066` | `192.23 s` / `191.49 s` | 标距内 vs 夹持根部 | **同机位不同试样**（`1280×720@30fps` 复材批次） |
-| `video_0034` (`fold_0_val`) | `video_0052` (`fold_2_val`) | `dev-cross-fold` | `0.9745` (`0.975 / 0.965 / 0.984`) | `0.8963` | `65.84 s` / `10.03 s` | 无法判断（人工取样入画） vs 未断裂 | **同机位不同试样**（第二台复材试验机） |
-| `video_0044` (`fold_1_val`) | `video_0063` (`test`) | `dev-test` | `0.9593` (`0.962 / 0.936 / 0.971`) | `< 0.80` | `182.72 s` / `154.40 s` | 标距内 vs 标距外非根部 | **同机位不同试样**（`1280×720@30fps` 复材批次） |
-| `video_0064` (`fold_2_val`) | `video_0087` (`test`) | `dev-test` | `0.9441` (`0.963 / 0.908 / 0.946`) | `< 0.80` | `74.95 s` / `58.03 s` | 均无法判断，后段操作动作不同 | **同机位不同试样**（第二台复材试验机） |
-| `video_0037` (`test`) | `video_0044` (`fold_1_val`) | `dev-test` | `0.9408` (`0.938 / 0.974 / 0.983`) | `< 0.80` | `158.21 s` / `182.72 s` | 脆性断裂 vs 半脆半韧断裂 | **同机位不同试样**（`1280×720@30fps` 复材批次） |
-| `video_0037` (`test`) | `video_0076` (`fold_2_val`) | `dev-test` | `0.9218` (`0.949 / 0.955 / 0.995`) | `0.9003` | `158.21 s` / `184.31 s` | 脆性/标距内 vs 半脆半韧/夹持根部 | **同机位不同试样**（`1280×720@30fps` 复材批次） |
-| `video_0037` (`test`) | `video_0063` (`test`) | `test-test` | `0.9276` (`0.925 / 0.943 / 0.985`) | `< 0.80` | `158.21 s` / `154.40 s` | 脆性/标距内 vs 半脆半韧/标距外非根部 | **同机位不同试样**（均在 `test`） |
-| `video_0103` (`fold_2_val`) | `video_0110` (`fold_2_val`) | `dev-same-fold` | `0.97+`（唯一 0.1 s 同长对） | `< 0.88` | `181.44 s` / `181.40 s` | 脆性/标距内 vs 半脆半韧/标距外非根部 | **同机位不同试样**（均在 `fold_2_val`） |
-
-> 另核查元数据同组 `544×960@30fps` 的金属对 `video_0018`（`test`, `147.13 s`, 标距内）↔ `video_0028`（`fold_1_val`, `183.13 s`, 标距外非根部）：拍摄角度、背景与试样均不同，确认为不同实验。
-
-### 4.3 跨划分风险结论与处理建议
-
-1. **必须处理 2 对同实验 `dev ↔ test` 泄漏**（须经用户确认后再变更划分或训练排除清单，本报告不擅自改写划分）：
-   - **最小扰动方案（保持固定 21 条 `test` 不动）**：在所有训练与开发调参阶段**强制排除 `video_0006` 与 `video_0079`**（及其全部派生子视频），同时在三折交叉验证报告中注明有效开发源由 89 降至 87；或由用户决定是否将两对分别合并为单一来源组并重生成三折划分。
-2. **机位背景耦合风险披露**：32 条 `1280×720` 复材视频分布在 `test`（5 条：`video_0037, 0063, 0087, 0094, 0095`，占 `test` 全部 6 条复材中的 5 条）及全部 3 个开发折（27 条）。模型训练与评测应优先使用 ROI 裁剪输入，并在评测报告中区分“跨机位泛化”与“同机位复材批次”表现，防止高估模型对未知实验环境的泛化能力。
-
----
-
-## 5. 虚拟视频溯源与历史暴露状态
-
-### 5.1 本仓已交付虚拟数据集校验
-
-- 对本仓 `data/virtual/` 执行 `.venv/bin/python -m script.checks.virtual_dataset --all`：仅发现 1 个交付包 `data/virtual/video-V1/`，全部 4 项契约检查（`manifest` / `upstream` / `labels` / `videos`）通过，共 **65 条视频**、总计 `28,732,471` 字节。
-- `data/virtual/video-V1/manifest.json` 记录其于 `2026-11-19T07:47:17+00:00` 从上游 `BlenderTensileVideo` 干净工作树提交 `8a37a1a2bf39304dc7002ccf89028b491f577273`（`datasets/video-V1`）导入；本次只读核对确认 `upstream.manifest_sha256` 与上游当前 `datasets/video-V1/manifest.json` 一致，65 个视频 ID 集合与逐条 MP4 SHA-256 **0 失配**，与 [65 条虚拟视频溯源报告](virtual-video-provenance.md) 登记的 65 条完全一致。
-
-### 5.2 是否存在超过 65 条的新增虚拟视频
-
-- **本仓 `data/virtual/`**：**无新增**（仍仅 `video-V1` 65 条）。
-- **上游 `BlenderTensileVideo` 仓库**：
-  - `datasets/` 目录下仍只有 `video-V1`（65 条），尚无 `video-V2` 或其他已收录数据包。
-  - 上游自 2026-11-14 起在 `review/` 与 `_work/` 产生了多批**未收录、未导入本仓的待审候选**（`BlenderTensileVideo/README.md` 本地工作树记录了 5 个待审批次，当前本地磁盘 `review/visual-space-20261121/` 实存 12 条独立外观与装夹候选及 1 条 53 s 总览视频；`review/*-20261114/` 在提交 `8a37a1a` 入库后于当前工作树呈删除状态；`_work/coverage-20261120/` 存有参数覆盖工作产物）。这些候选均处于上游画面与标签待确认阶段，不计入本仓可用虚拟数据集。
-
-### 5.3 历史暴露与来源隔离口径更新
-
-- **本仓使用/暴露检索**：检索本仓 `config/` 与 `script/`，未发现 `video-V1` 或 `data/virtual/` 被接入任何模型训练、调参或评测配置；当前仅被只读校验脚本（`script/checks/virtual_dataset.py`）及虚拟子视频输出路径守卫（`script/subvideo_generation/virtual.py`）及其单元测试引用。与既有基线一致，因缺乏训练机完整历史日志，仍不能仅凭本仓静态检索排除仓外历史暴露。
-- **因本次真实源去重触发的隔离口径更新**：
-  - 既有 [虚拟视频溯源报告](virtual-video-provenance.md) 统计的 11 个 `source_id` 中，此前仅将 `video_0025`（1 条）与 `video_0032`（11 条）共 **12 条**划为固定 `test` 关联隔离。
-  - 结合第 4.1 节发现：**`video_0006`（`fold_0_val`）与 `video_0010`（`test`）为同一物理实验**，因此参考 `video_0006` 生成的 **3 条虚拟视频**（`metal_round_ductile_baseline_v1`、`metal_round_ductile_stage1_a2_v1`、`metal_round_ductile_coupled_a2_time12_v1`）**同样间接关联固定 `test` 源**，须与 `video_0025` / `video_0032` 组同等对待——**禁用于任何训练或开发调参**。
-  - 更新后的 `video-V1` 65 条来源隔离分布：**15 条关联固定 `test`**（`video_0025` 1 条、`video_0032`/`video_0079` 11 条、`video_0006`/`video_0010` 3 条），**50 条仅关联开发源**（分布于其余 8 个真实开发 `source_id`）。
-
----
-
-## 6. 失效条件
-
-当以下任一条件发生变化时，本报告的对应结论失效，需重新审计：
-
-1. `data/videos/`、`data/roi/videos/` 或 `data/roi/manifest.json` 新增、替换或重编码任何真实源视频；
-2. `data/splits/three-fold/` 划分成员（尤其是 `video_0006`、`video_0010`、`video_0032`、`video_0079` 或 32 条 `1280×720` 复材成员）或 `data/annotation-table-full.csv` 发生变更；
-3. `data/virtual/` 导入新版本虚拟数据包（如 `video-V2`）或上游 `BlenderTensileVideo` 候选批次经用户确认并正式交付；
-4. 后续新增模型训练或评测日志披露了 `video-V1` 或上述源视频的仓外暴露记录。
+以下任一条件变化时，本报告对应结论失效，须重新审计：
+1. `data/videos/`、`data/roi/videos/`、`data/roi/manifest.json`、`data/splits/three-fold/` 或 `data/annotation-table-full.csv` 发生新增、替换或成员变更；
+2. `data/virtual/` 导入新版本虚拟数据包（如 `video-V2`）或上游 `BlenderTensileVideo` 候选批次经用户确认并正式交付；
+3. 后续训练或评测日志披露了 `video-V1` 或上述真实源视频的仓外历史暴露记录；
+4. 若用户确认按本报告更新 15 条隔离口径，后续需同步在 `docs/design-test.md` 与 [虚拟视频溯源报告](virtual-video-provenance.md) 标注旧“12 条”口径已被本报告更新。
