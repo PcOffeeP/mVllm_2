@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -269,17 +270,17 @@ def run_inference(
 
     # Reserve both exclusive output files BEFORE issuing any backend requests.
     stream = None
-    meta_stream = None
+    meta_target = Path(meta_output_path) if meta_output_path is not None else None
     try:
         if output_path is not None:
             stream = Path(output_path).open("x", encoding="utf-8")
-        if meta_output_path is not None:
-            meta_stream = Path(meta_output_path).open("x", encoding="utf-8")
+        if meta_target is not None:
+            with meta_target.open("x", encoding="utf-8") as init_meta:
+                init_meta.write("{}\n")
+                init_meta.flush()
     except Exception:
         if stream is not None:
             stream.close()
-        if meta_stream is not None:
-            meta_stream.close()
         raise
 
     predictions: list[dict] = []
@@ -303,11 +304,21 @@ def run_inference(
 
     def _checkpoint_meta(run_status: str) -> dict[str, Any]:
         payload = _build_run_meta(run_status)
-        if meta_stream is not None:
-            meta_stream.seek(0)
-            meta_stream.truncate(0)
-            meta_stream.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-            meta_stream.flush()
+        if meta_target is not None:
+            tmp_path = meta_target.with_name(f".{meta_target.name}.tmp.{os.getpid()}")
+            serialized = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+            try:
+                with tmp_path.open("w", encoding="utf-8") as tmp_stream:
+                    tmp_stream.write(serialized)
+                    tmp_stream.flush()
+                    os.fsync(tmp_stream.fileno())
+                os.replace(tmp_path, meta_target)
+            except Exception:
+                try:
+                    tmp_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise
         return payload
 
     completed = False
@@ -363,8 +374,6 @@ def run_inference(
                 pass
         if stream is not None:
             stream.close()
-        if meta_stream is not None:
-            meta_stream.close()
 
     return predictions, run_meta
 

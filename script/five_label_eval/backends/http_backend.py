@@ -7,11 +7,11 @@ deadline covering connection, trickling headers, and trickling response bodies.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import os
 from pathlib import Path
-import threading
 import time
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -165,71 +165,57 @@ class HttpBackend:
     ) -> tuple[int, bytes]:
         """Execute streaming POST under a true cancellable wall-clock deadline.
 
-        Even if a server trickles response header bytes or chunked body bytes faster than
-        per-read timeouts, the wall-clock deadline fires on time, closes the active
-        client/connection to abort the in-flight socket, and raises ``_WallClockTimeout``.
+        For real network requests (no injected sync ``MockTransport``/``Client``), runs an
+        async ``httpx.AsyncClient`` request wrapped in ``asyncio.wait_for(..., timeout)`` so
+        DNS resolution, connection, upload, trickling headers, and trickling body are all
+        cancelled cleanly on deadline expiry and the socket is closed immediately.
         """
-        deadline = time.monotonic() + timeout
-        cancel_event = threading.Event()
-        outcome: dict[str, Any] = {}
-        active_client = (
-            self._external_client
-            if self._external_client is not None
-            else httpx.Client(transport=self._transport, trust_env=False)
-        )
-        owns_client = self._external_client is None
-        active_response: list[httpx.Response] = []
-
-        def _worker() -> None:
+        if self._external_client is not None or self._transport is not None:
+            deadline = time.monotonic() + timeout
+            client = (
+                self._external_client
+                if self._external_client is not None
+                else httpx.Client(transport=self._transport, trust_env=False)
+            )
+            owns = self._external_client is None
             try:
-                with active_client.stream(
+                with client.stream(
                     "POST",
                     request_url,
                     json=payload,
                     headers=headers,
                     timeout=httpx.Timeout(timeout),
                 ) as response:
-                    active_response.append(response)
-                    if cancel_event.is_set() or time.monotonic() > deadline:
+                    if time.monotonic() > deadline:
                         raise _WallClockTimeout("request exceeded wall-clock deadline after headers")
                     chunks: list[bytes] = []
                     for chunk in response.iter_bytes():
-                        if cancel_event.is_set() or time.monotonic() > deadline:
+                        if time.monotonic() > deadline:
                             raise _WallClockTimeout("request exceeded wall-clock deadline while reading body")
                         chunks.append(chunk)
-                    outcome["result"] = (response.status_code, b"".join(chunks))
-            except BaseException as exc:  # noqa: BLE001
-                outcome["error"] = exc
+                    return response.status_code, b"".join(chunks)
             finally:
-                if owns_client:
-                    try:
-                        active_client.close()
-                    except Exception:  # noqa: BLE001
-                        pass
+                if owns:
+                    client.close()
 
-        worker = threading.Thread(target=_worker, daemon=True)
-        worker.start()
-        worker.join(timeout=timeout)
-        if worker.is_alive():
-            cancel_event.set()
-            # Actively abort the in-flight stream/connection so the peer sees cancellation.
-            if active_response:
-                try:
-                    active_response[0].close()
-                except Exception:  # noqa: BLE001
-                    pass
-            if owns_client:
-                try:
-                    active_client.close()
-                except Exception:  # noqa: BLE001
-                    pass
-            raise _WallClockTimeout(f"request exceeded wall-clock deadline of {timeout:.3f}s")
+        async def _async_post() -> tuple[int, bytes]:
+            async with httpx.AsyncClient(trust_env=False) as client:
+                async with client.stream(
+                    "POST",
+                    request_url,
+                    json=payload,
+                    headers=headers,
+                    timeout=httpx.Timeout(timeout),
+                ) as response:
+                    chunks: list[bytes] = []
+                    async for chunk in response.aiter_bytes():
+                        chunks.append(chunk)
+                    return response.status_code, b"".join(chunks)
 
-        if "error" in outcome:
-            raise outcome["error"]
-        if "result" not in outcome:
-            raise _WallClockTimeout(f"request terminated without result within {timeout:.3f}s")
-        return outcome["result"]
+        try:
+            return asyncio.run(asyncio.wait_for(_async_post(), timeout=timeout))
+        except asyncio.TimeoutError as exc:
+            raise _WallClockTimeout(f"request exceeded wall-clock deadline of {timeout:.3f}s") from exc
 
     def infer_one(self, request: InferenceRequest) -> InferenceResult:
         started = time.monotonic()
@@ -272,12 +258,12 @@ class HttpBackend:
 
         elapsed = time.monotonic() - started
         if not 200 <= status_code < 300:
-            preview = body_bytes.decode("utf-8", errors="replace")[:300]
+            # Never persist raw HTTP error bodies in metadata to prevent credential echo leakage.
             return InferenceResult(
                 status="request_failed",
                 raw_output=None,
                 latency_seconds=elapsed,
-                error_detail=f"HTTP {status_code}: {preview}",
+                error_detail=f"HTTP {status_code} ({len(body_bytes)} bytes; body omitted)",
                 extra_meta={"http_status": status_code},
             )
 

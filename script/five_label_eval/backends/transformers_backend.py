@@ -130,6 +130,11 @@ def verify_trusted_snapshot_sha256(
     if not isinstance(trusted_files_sha256, dict) or not trusted_files_sha256:
         raise InputError("trusted_files_sha256 must be a non-empty {relative_path: sha256} mapping")
     root = model_path.resolve()
+    if (root / "adapter_config.json").exists():
+        raise InputError(
+            "PEFT adapter_config.json is refused under fail-closed local trust_remote_code verification "
+            "(auto-redirecting to an unverified base_model_name_or_path is not permitted)"
+        )
     normalized_map: dict[str, str] = {}
     for rel_path, expected in trusted_files_sha256.items():
         if not isinstance(rel_path, str) or not rel_path.strip():

@@ -361,6 +361,9 @@ def test_http_backend_loopback_slow_headers_and_slow_body_hit_wall_clock_timeout
             assert result.status == "timeout"
             assert result.raw_output is None
             assert elapsed < 0.8, f"wall-clock timeout took too long ({elapsed:.3f}s) for {path}"
+        # Allow server handler threads a brief moment to observe BrokenPipeError / ConnectionResetError.
+        time.sleep(0.15)
+        assert len(aborted_paths) == 2, f"expected peer disconnect on both timeouts, got {aborted_paths}"
     finally:
         server.shutdown()
         server.server_close()
@@ -1070,3 +1073,88 @@ def test_r3_regression_tokenizer_auto_map_internvl_default_loader_seed_and_meta_
     assert meta["total_requests"] == 1
     assert meta["backend_identity"]["backend"] == "http"
     assert len(meta["requests"]) == 1
+
+
+def test_r4_regression_peft_rejection_error_secret_redaction_and_atomic_meta(tmp_path, monkeypatch):
+    """Regression tests for PEFT adapter rejection, HTTP error secret redaction, and atomic metadata replace."""
+    # 1. PEFT adapter_config.json rejected fail-closed.
+    peft_dir = tmp_path / "peft_snap"
+    peft_dir.mkdir()
+    (peft_dir / "config.json").write_bytes(b'{}')
+    (peft_dir / "adapter_config.json").write_bytes(b'{"base_model_name_or_path": "/other/model"}')
+    cfg_sha = hashlib.sha256(b"{}").hexdigest()
+    with pytest.raises(InputError, match="adapter_config.json"):
+        verify_trusted_snapshot_sha256(peft_dir, {"config.json": cfg_sha})
+
+    # 2. HTTP 401 echoing Authorization header must never leak secret into error_detail.
+    monkeypatch.setenv("TEST_SECRET_KEY", "super-secret-bearer-token")
+    backend = HttpBackend(
+        endpoint="http://127.0.0.1:8000",
+        model_id="Qwen3-VL-8B-Instruct@1",
+        api_key_env="TEST_SECRET_KEY",
+        transport=httpx.MockTransport(
+            lambda _req: httpx.Response(401, text="Unauthorized: Bearer super-secret-bearer-token")
+        ),
+    )
+    try:
+        res = backend.infer_one(_make_request(tmp_path / "r4_secret"))
+    finally:
+        backend.close()
+    assert res.status == "request_failed"
+    assert res.raw_output is None
+    assert "super-secret-bearer-token" not in (res.error_detail or "")
+    assert "HTTP 401" in (res.error_detail or "")
+
+    # 3. Atomic metadata checkpoint preserves last valid checkpoint if a subsequent replace fails.
+    rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r4_atomic", cid="c00")
+    _, entries2 = _write_eight_frames(frames_dir, cid="c01")
+    rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    manifest = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
+    preds_path = tmp_path / "atomic_preds.jsonl"
+    meta_path = tmp_path / "atomic_meta.json"
+
+    import os as _os
+
+    real_replace = _os.replace
+    replace_calls = 0
+
+    def flaky_replace(src, dst):
+        nonlocal replace_calls
+        replace_calls += 1
+        # Succeed for initial "running" and after req #1; fail on req #2 checkpoint.
+        if replace_calls >= 3:
+            raise OSError("simulated disk full during atomic replace")
+        return real_replace(src, dst)
+
+    class TwoSuccessBackend:
+        backend_name = "http"
+
+        def run_identity(self):
+            return {"backend": "http"}
+
+        def infer_one(self, request):
+            from script.five_label_eval.backends import InferenceResult
+
+            return InferenceResult(status="success", raw_output=LEGAL_JSON, latency_seconds=0.05)
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(infer.os, "replace", flaky_replace)
+    with pytest.raises(OSError, match="disk full"):
+        infer.run_inference(
+            [rec1, rec2],
+            manifest,
+            backend=TwoSuccessBackend(),
+            run_id="r-atomic",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir,
+            output_path=preds_path,
+            meta_output_path=meta_path,
+        )
+    # Previous valid checkpoint (after req #1) survived intact!
+    surviving = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert surviving["total_requests"] == 1
+    assert surviving["backend_identity"]["backend"] == "http"
