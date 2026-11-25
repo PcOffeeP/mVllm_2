@@ -2071,3 +2071,50 @@ def test_r13_regression_finite_temperature_timeout_and_decode_deadline(tmp_path)
     res = backend.infer_one(_make_request(tmp_path / "r13_slow_decode", timeout=0.05))
     assert res.status == "timeout"
     assert res.raw_output is None
+
+
+def test_r14_regression_qwen3_vl_min_transformers_version_and_dangling_config_symlink(tmp_path, monkeypatch):
+    """Regression tests for Qwen3-VL transformers>=4.57.0 version gate and dangling config symlink rejection."""
+    import types
+    from script.five_label_eval.backends.transformers_backend import _default_model_loader
+
+    # 1. Qwen3-VL local loader rejects transformers==4.56.1 (< 4.57.0) fail-closed.
+    class FakeCuda:
+        @staticmethod
+        def is_available():
+            return False
+
+        @staticmethod
+        def is_bf16_supported():
+            return False
+
+    fake_torch = types.SimpleNamespace(bfloat16="bf16", cuda=FakeCuda())
+    fake_old_tf = types.SimpleNamespace(
+        __version__="4.56.1",
+        AutoModel=object,
+        AutoModelForCausalLM=object,
+        AutoProcessor=object,
+        AutoTokenizer=object,
+        AutoModelForImageTextToText=object,
+    )
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setitem(sys.modules, "transformers", fake_old_tf)
+    with pytest.raises(InputError, match="4.57.0"):
+        _default_model_loader(tmp_path, "qwen3-vl", 262144)
+
+    # 2. Dangling config symlink in snapshot directory is rejected fail-closed during staging & verification.
+    snap = tmp_path / "dangling_snap"
+    snap.mkdir()
+    (snap / "config.json").write_bytes(b"{}")
+    (snap / "processor_config.json").symlink_to(tmp_path / "does_not_exist.json")
+    cfg_sha = hashlib.sha256(b"{}").hexdigest()
+    with pytest.raises(InputError, match="symlink"):
+        verify_trusted_snapshot_sha256(snap, {"config.json": cfg_sha})
+    backend = TransformersBackend(
+        model_id="openbmb/MiniCPM-V-4_5@sha256:1",
+        model_path=snap,
+        trusted_files_sha256={"config.json": cfg_sha},
+        model_loader=lambda *_a: (object(), None, None),
+    )
+    with pytest.raises(InputError, match="dangling symlink"):
+        backend.infer_one(_make_request(tmp_path / "r14_dangling"))

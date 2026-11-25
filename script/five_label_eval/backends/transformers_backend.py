@@ -45,6 +45,25 @@ INTERNVL_DEFAULT_MIN_NUM = 1
 INTERNVL_DEFAULT_MAX_NUM = 12
 SHA256_RE = re.compile(r"[a-f0-9]{64}")
 LOCAL_AUTO_MAP_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
+QWEN3_VL_MIN_TRANSFORMERS_VERSION = (4, 57, 0)
+TRUSTED_STAGED_COPY_SUFFIXES = (".py", ".json", ".jinja")
+TRUSTED_WEIGHT_SYMLINK_SUFFIXES = (
+    ".safetensors",
+    ".bin",
+    ".pt",
+    ".pth",
+    ".model",
+    ".tiktoken",
+    ".spm",
+    ".txt",
+)
+
+
+def _parse_version_tuple(version_str: str) -> tuple[int, ...] | None:
+    match = re.match(r"^\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?", version_str)
+    if not match:
+        return None
+    return tuple(int(part) for part in match.groups() if part is not None)
 TRUSTED_REQUIRED_CONFIG_FILES = (
     "config.json",
     "processor_config.json",
@@ -163,11 +182,17 @@ def verify_trusted_snapshot_sha256(
         normalized_map[rel_norm] = expected
 
     # Every Python module, JSON config/tokenizer file, and Jinja template in the local snapshot must be pinned.
+    # Reject any symlink (including dangling symlinks) for executable/config files inside the verified root.
     required_files: set[str] = set()
     for pattern in ("*.py", "*.json", "*.jinja"):
         for req_file in sorted(root.rglob(pattern)):
+            rel_posix = req_file.relative_to(root).as_posix()
+            if req_file.is_symlink():
+                raise InputError(
+                    f"trusted snapshot file {rel_posix!r} must be a regular file (not a symlink) during verification"
+                )
             if req_file.is_file():
-                required_files.add(req_file.relative_to(root).as_posix())
+                required_files.add(rel_posix)
 
     uncovered = sorted(required_files - set(normalized_map))
     if uncovered:
@@ -659,6 +684,17 @@ def _default_model_loader(
         return model, processor, tokenizer
 
     if model_family == "qwen3-vl":
+        import transformers as _transformers_mod
+
+        tf_ver = getattr(_transformers_mod, "__version__", None)
+        if isinstance(tf_ver, str):
+            parsed = _parse_version_tuple(tf_ver)
+            if parsed is not None and parsed < QWEN3_VL_MIN_TRANSFORMERS_VERSION:
+                min_ver_str = ".".join(str(x) for x in QWEN3_VL_MIN_TRANSFORMERS_VERSION)
+                raise InputError(
+                    f"qwen3-vl local transformers backend requires transformers>={min_ver_str} "
+                    f"(found {tf_ver!r}); upgrade transformers on the GPU host or use --backend http"
+                )
         from transformers import AutoModelForImageTextToText
 
         model = AutoModelForImageTextToText.from_pretrained(str(model_path), **common_kwargs).eval()
@@ -820,34 +856,30 @@ class TransformersBackend:
         staged_root = Path(staging.name)
         try:
             staged_root.chmod(0o700)
-            copy_rels: set[str] = set()
-            for entry in source_root.rglob("*"):
-                if not entry.is_file() and not entry.is_symlink():
-                    continue
-                rel = entry.relative_to(source_root)
-                rel_posix = rel.as_posix()
-                if (
-                    entry.suffix in (".py", ".json", ".jinja")
-                    or rel_posix in trusted_files_sha256
-                ):
-                    copy_rels.add(rel_posix)
-
             hf_blobs_root: Path | None = None
             if source_root.parent.name == "snapshots":
                 candidate_blobs = (source_root.parent.parent / "blobs").resolve()
                 if candidate_blobs.is_dir():
                     hf_blobs_root = candidate_blobs
 
+            # Single-pass classification: every executable/config/pinned file is copied into
+            # the private staging directory (never symlinked), and only explicit non-executable
+            # weight/vocab artifacts may be symlinked.
             for entry in sorted(source_root.rglob("*")):
                 rel = entry.relative_to(source_root)
                 dest = staged_root / rel
-                if entry.is_dir():
+                if entry.is_dir() and not entry.is_symlink():
                     dest.mkdir(parents=True, exist_ok=True)
                     continue
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 rel_posix = rel.as_posix()
-                if rel_posix in copy_rels:
+                suffix = entry.suffix.lower()
+                if suffix in TRUSTED_STAGED_COPY_SUFFIXES or rel_posix in trusted_files_sha256:
                     resolved_src = entry.resolve()
+                    if not resolved_src.is_file():
+                        raise InputError(
+                            f"trusted snapshot file {rel_posix!r} is missing or a dangling symlink"
+                        )
                     allowed = False
                     for allowed_root in (source_root, hf_blobs_root):
                         if allowed_root is None:
@@ -863,7 +895,7 @@ class TransformersBackend:
                             f"trusted snapshot file {rel_posix!r} escapes model directory {source_root}"
                         )
                     shutil.copyfile(resolved_src, dest)
-                else:
+                elif suffix in TRUSTED_WEIGHT_SYMLINK_SUFFIXES:
                     dest.symlink_to(entry.resolve())
 
             self.verified_snapshot_sha256 = verify_trusted_snapshot_sha256(
