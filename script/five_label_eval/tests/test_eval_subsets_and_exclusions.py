@@ -435,3 +435,82 @@ def test_empty_custom_exclusions_file_cannot_bypass_official_dec007(tmp_path: Pa
     assert "DEC-007" in err.getvalue()
     assert not out_file.exists()
 
+
+def test_freeze_rejects_isolated_confirmations_when_label_rules_change(tmp_path: Path) -> None:
+    """Round-2 Finding 1 regression: changing docs/label.md must invalidate review_subject_sha256."""
+    import shutil
+
+    clone = tmp_path / "repo"
+    (clone / "docs").mkdir(parents=True)
+    (clone / "data/sub_video").mkdir(parents=True)
+    (clone / "data/subvideo-review").mkdir(parents=True)
+    (clone / "data/splits/three-fold").mkdir(parents=True)
+
+    # Copy required inputs verbatim, then mutate docs/label.md so ReviewApp isolates all old reviews.
+    shutil.copy2(REPO_ROOT / "data/sub_video/manifest.json", clone / "data/sub_video/manifest.json")
+    shutil.copy2(REPO_ROOT / "data/subvideo-review/reviews.json", clone / "data/subvideo-review/reviews.json")
+    shutil.copy2(REPO_ROOT / "data/subvideo-review/batches.json", clone / "data/subvideo-review/batches.json")
+    shutil.copy2(REPO_ROOT / "data/splits/dev-exclusions.json", clone / "data/splits/dev-exclusions.json")
+    for p in (REPO_ROOT / "data/splits/three-fold").glob("*.json"):
+        shutil.copy2(p, clone / "data/splits/three-fold" / p.name)
+    label_text = (REPO_ROOT / "docs/label.md").read_text(encoding="utf-8")
+    (clone / "docs/label.md").write_text(label_text + "\n<!-- rule-change -->\n", encoding="utf-8")
+
+    # Even with enforce_v1_pins=False, ReviewApp.matches isolates all old revisions -> empty -> fail-closed!
+    with pytest.raises(InputError, match="empty eval subset"):
+        build_frozen_subsets(repo_root=clone, enforce_v1_pins=False)
+
+
+def test_freeze_and_verify_reject_tampered_manifest_and_empty_v1(tmp_path: Path) -> None:
+    """Round-2 Finding 2 regression: manifest digest drift or empty v1 files fail closed."""
+    tampered_manifest = tmp_path / "manifest.json"
+    tampered_manifest.write_bytes((REPO_ROOT / "data/sub_video/manifest.json").read_bytes() + b"\n")
+
+    with pytest.raises(InputError, match="empty eval subset"):
+        build_frozen_subsets(manifest_path=tampered_manifest)
+
+    # Forged empty v1 files must fail verify_frozen_subsets independently of disk content.
+    forged_dir = tmp_path / "forged"
+    forged_dir.mkdir()
+    for name, sid in (("eval-dev-v1.json", "eval-dev-v1"), ("eval-test-v1.json", "eval-test-v1")):
+        (forged_dir / name).write_text(
+            json.dumps(
+                {
+                    "schema": EVAL_SUBSET_SCHEMA,
+                    "subset_id": sid,
+                    "inputs": {"manifest_sha256": "0" * 64},
+                    "source_ids": [],
+                    "candidate_ids": [],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    with pytest.raises(InputError, match="pinned v1 input"):
+        verify_frozen_subsets(forged_dir)
+
+
+def test_manifest_convert_forbids_limit_with_frozen_eval_subset(tmp_path: Path) -> None:
+    """Round-2 Advisory regression: --limit must not silently truncate a frozen eval subset."""
+    out = tmp_path / "truncated.json"
+    err = io.StringIO()
+    with redirect_stderr(err):
+        rc = manifest_convert.main(
+            [
+                "--input",
+                str(REPO_ROOT / "data/sub_video/manifest.json"),
+                "--candidate-ids",
+                str(REPO_ROOT / "data/eval-subsets/eval-test-v1.json"),
+                "--limit",
+                "1",
+                "--manifest-version",
+                "truncated-test/1",
+                "--output",
+                str(out),
+            ]
+        )
+    assert rc == 2
+    assert "--limit" in err.getvalue()
+    assert not out.exists()
+
+

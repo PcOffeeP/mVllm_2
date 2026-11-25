@@ -73,8 +73,8 @@
 
 | 子集 ID | 文件路径 | 规模（片段／来源） | 画幅三档（片段／来源） | 文件 SHA-256 | 用途边界 |
 | --- | --- | --- | --- | --- | --- |
-| `eval-dev-v1` | [`data/eval-subsets/eval-dev-v1.json`](../../data/eval-subsets/eval-dev-v1.json) | **210 / 87 源**（`dev_all_clean`：B0 32 + 试审 1 + 干净 B2 177；三折 val 分别为 69/29、73/29、68/29） | `w_le_200` 112/48；`w_200_400` 42/20；`w_gt_400` 56/19 | `9de4f9c5f852254a14049b940f679fc0069ffdfa1b0e5d50ca6219d2c1736890` | 开发侧基座对照、Prompt 迭代与误差分析；严格排除 `video_0006`、`video_0079`（含 B2 已审的 `video_0006_pre_06`、`video_0006_pre_13`、`video_0079_fracture_01`） |
-| `eval-test-v1` | [`data/eval-subsets/eval-test-v1.json`](../../data/eval-subsets/eval-test-v1.json) | **314 / 21 源**（`test_B1` 全量已审） | `w_le_200` 90/7；`w_200_400` 140/8；`w_gt_400` 84/6 | `8e20b903544284c6f3ae90088e0f823d70e1ee21ee8b5a8640395d0001f23f19` | **固定封存终测集**，严禁用于调参、选 Prompt 或迭代开发 |
+| `eval-dev-v1` | [`data/eval-subsets/eval-dev-v1.json`](../../data/eval-subsets/eval-dev-v1.json) | **210 / 87 源**（`dev_all_clean`：B0 32 + 试审 1 + 干净 B2 177；三折 val 分别为 69/29、73/29、68/29） | `w_le_200` 112/48；`w_200_400` 42/20；`w_gt_400` 56/19 | `96ea3a4826dc9307389fee9579dfd0c01842516dad152707c884e4b2dd34fac7` | 开发侧基座对照、Prompt 迭代与误差分析；严格排除 `video_0006`、`video_0079`（含 B2 已审的 `video_0006_pre_06`、`video_0006_pre_13`、`video_0079_fracture_01`） |
+| `eval-test-v1` | [`data/eval-subsets/eval-test-v1.json`](../../data/eval-subsets/eval-test-v1.json) | **314 / 21 源**（`test_B1` 全量已审） | `w_le_200` 90/7；`w_200_400` 140/8；`w_gt_400` 84/6 | `df45cdf3fa771f8532f96d248622eeb91cebcf9472a1403e7237fae63a58bbd7` | **固定封存终测集**，严禁用于调参、选 Prompt 或迭代开发 |
 
 两份冻结子集均绑定上游输入摘要：`manifest_sha256` = `c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f`、`reviews_sha256` = `dfe682763c8308c66387642ddb0d0ce67d2c25a2a21c4ac404ac1f7478592f27`、`dev_exclusions_sha256` = `52d9b04af7924cab58c95451dd48eb1e597a61582e5bd47fc7f603c7844b0758`。`manifest_convert`、`build_manifest`、`frames`、`infer` 的 `--candidate-ids` 均支持直接传入上述 `tensile-eval-subset/1` JSON 文件。
 

@@ -1,17 +1,24 @@
 """Build and verify frozen §5 evaluation subset files (eval-dev-v1 and eval-test-v1).
 
 Reads ``data/sub_video/manifest.json``, ``data/subvideo-review/reviews.json``,
-``data/subvideo-review/batches.json``, ``data/splits/three-fold/*.json``, and
-``data/splits/dev-exclusions.json`` (DEC-007) to deterministically produce:
+``data/subvideo-review/batches.json``, ``data/splits/three-fold/*.json``,
+``docs/label.md``, and ``data/splits/dev-exclusions.json`` (DEC-007) to
+deterministically produce and verify:
 
 - ``data/eval-subsets/eval-dev-v1.json``: all clean confirmed dev clips (210 clips / 87 sources)
 - ``data/eval-subsets/eval-test-v1.json``: all confirmed fixed test clips (314 clips / 21 sources)
 
+Human-review validity reuses ``ReviewApp.matches`` from
+``script/subvideo_review/server.py`` (checking ``review_subject_sha256``,
+``label_rules_sha256``, ``split_identity_sha256``, ``clip_sha256``, ``source_id``,
+and ``source_type``) so isolated historical revisions are never treated as active
+confirmations.
+
 Because ``reviews.json`` is append-only (B3 and later batches will append newer
 revisions), v1 pins ``reviews_cutoff_created_at`` and ``reviews_cutoff_sha256``
-(the canonical digest of revisions with ``created_at <= reviews_cutoff_created_at``
-for the pinned ``manifest_sha256``) so ``--verify`` remains stable even after
-future review batches are appended.
+plus independent immutable v1 input/member fingerprints so ``--verify`` remains
+stable across later B3 appends while failing closed on any drift in v1 inputs,
+label rules, splits, or membership.
 """
 from __future__ import annotations
 
@@ -22,6 +29,9 @@ import json
 from pathlib import Path
 import sys
 from typing import Any
+
+from script.subvideo_review.errors import ReviewError
+from script.subvideo_review.server import ReviewApp
 
 from .exclusions import (
     DEFAULT_EXCLUSIONS_PATH,
@@ -37,9 +47,37 @@ FROZEN_DATE = "2026-11-25"
 V1_REVIEWS_CUTOFF_CREATED_AT = "2026-11-25T08:46:05.068136+00:00"
 WIDTH_BUCKETS = ("w_le_200", "w_200_400", "w_gt_400")
 
+# Independent immutable v1 contract pins (never derived from the file under verification).
+V1_PINNED_INPUTS = {
+    "manifest_sha256": "c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f",
+    "reviews_sha256": "dfe682763c8308c66387642ddb0d0ce67d2c25a2a21c4ac404ac1f7478592f27",
+    "reviews_cutoff_created_at": V1_REVIEWS_CUTOFF_CREATED_AT,
+    "dev_exclusions_sha256": "52d9b04af7924cab58c95451dd48eb1e597a61582e5bd47fc7f603c7844b0758",
+    "splits_manifest_sha256": "1ad84afb9a9eb122d6d7cdc13b78a975567a51667eaeacfabd5748c1055f6ae2",
+    "split_identity_sha256": "efad59978a54e1d570b8191c62985467bbef8d7fc6fbcce0cd1ce90ed41e9d22",
+    "label_rules_sha256": "c7bbb2e505ffebec02131082ab6b5219a9324b7a5044689e2d6a485b7f8355d8",
+    "batches_sha256": "6d5024f4992d9be34a1bad65c6113a6332a10d0114d9291aa2bec0a04a6f87f9",
+}
+V1_PINNED_MEMBERS = {
+    "eval-dev-v1": {
+        "candidate_count": 210,
+        "source_count": 87,
+        "candidate_ids_sha256": "f3116f8a91bdf9d6eea2728eb2b2a5686fe7fd0dbb239d1e775c6beec5edcf44",
+    },
+    "eval-test-v1": {
+        "candidate_count": 314,
+        "source_count": 21,
+        "candidate_ids_sha256": "92f24798fdeaa185f6ff194ddabe212c40602bdd55fc8934e93d0f4564649f5c",
+    },
+}
+
 
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _candidate_ids_sha256(cids: list[str]) -> str:
+    return hashlib.sha256(json.dumps(cids, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
 def _rel_path(path: Path, repo_root: Path) -> str:
@@ -53,9 +91,16 @@ def _latest_confirmed_for_manifest(
     reviews_obj: dict[str, Any],
     manifest_sha256: str,
     *,
+    review_candidates: dict[str, dict[str, Any]],
     cutoff_created_at: str | None = None,
 ) -> tuple[dict[str, dict[str, Any]], str, str]:
-    """Return ``(confirmed_by_cid, effective_cutoff_created_at, cutoff_slice_sha256)``."""
+    """Return ``(confirmed_by_cid, effective_cutoff_created_at, cutoff_slice_sha256)``.
+
+    Only revisions matching ``ReviewApp.matches(row, review_candidates[cid])``
+    (which checks ``review_subject_sha256``, ``clip_sha256``, ``source_id``,
+    ``source_type``) and ``manifest_sha256`` at or before ``cutoff_created_at``
+    are accepted as current confirmations.
+    """
     revisions = reviews_obj.get("revisions")
     if not isinstance(revisions, list):
         raise InputError("reviews.json must contain revisions array")
@@ -67,6 +112,12 @@ def _latest_confirmed_for_manifest(
             continue
         if row.get("manifest_sha256") != manifest_sha256:
             continue
+        cid = row.get("candidate_id")
+        if not isinstance(cid, str) or not cid:
+            continue
+        candidate = review_candidates.get(cid)
+        if candidate is None or not ReviewApp.matches(row, candidate):
+            continue
         created_at = row.get("created_at")
         if not isinstance(created_at, str) or not created_at.strip():
             raise InputError(f"review revision missing created_at: {row.get('review_id')!r}")
@@ -75,9 +126,7 @@ def _latest_confirmed_for_manifest(
         eligible_rows.append(row)
         if created_at > max_created_at:
             max_created_at = created_at
-        cid = row.get("candidate_id")
-        if isinstance(cid, str) and cid:
-            latest[cid] = row
+        latest[cid] = row
     effective_cutoff = cutoff_created_at if cutoff_created_at is not None else max_created_at
     slice_bytes = json.dumps(eligible_rows, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     slice_sha = hashlib.sha256(slice_bytes).hexdigest()
@@ -138,6 +187,34 @@ def _summarize_subset(
     return summary
 
 
+def _assert_v1_pins(eval_dev: dict[str, Any], eval_test: dict[str, Any]) -> None:
+    """Enforce immutable v1 input fingerprints and membership pins fail-closed."""
+    for subset in (eval_dev, eval_test):
+        sid = subset["subset_id"]
+        inputs = subset["inputs"]
+        for key, expected_val in V1_PINNED_INPUTS.items():
+            actual_val = inputs.get(key)
+            if actual_val != expected_val:
+                raise InputError(
+                    f"{sid}: pinned v1 input {key} mismatch (expected {expected_val!r}, got {actual_val!r}); "
+                    "v1 is immutable — upstream data or rule changes require a new subset version"
+                )
+        member_pin = V1_PINNED_MEMBERS[sid]
+        cids = subset["candidate_ids"]
+        sources = subset["source_ids"]
+        if len(cids) != member_pin["candidate_count"] or len(sources) != member_pin["source_count"]:
+            raise InputError(
+                f"{sid}: pinned v1 counts mismatch (expected {member_pin['candidate_count']}/{member_pin['source_count']}, "
+                f"got {len(cids)}/{len(sources)})"
+            )
+        actual_member_sha = _candidate_ids_sha256(cids)
+        if actual_member_sha != member_pin["candidate_ids_sha256"]:
+            raise InputError(
+                f"{sid}: pinned v1 member fingerprint mismatch "
+                f"(expected {member_pin['candidate_ids_sha256']}, got {actual_member_sha})"
+            )
+
+
 def build_frozen_subsets(
     *,
     repo_root: Path = REPO_ROOT,
@@ -150,8 +227,9 @@ def build_frozen_subsets(
     reviews_cutoff_created_at: str | None = V1_REVIEWS_CUTOFF_CREATED_AT,
     pinned_reviews_file_sha256: str | None = None,
     pinned_reviews_path: str | None = None,
+    enforce_v1_pins: bool = True,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Build ``(eval_dev_v1, eval_test_v1)`` deterministically with DEC-007 enforced."""
+    """Build ``(eval_dev_v1, eval_test_v1)`` deterministically with DEC-007 and ReviewApp identity enforced."""
     m_path = manifest_path or repo_root / "data/sub_video/manifest.json"
     r_path = reviews_path or repo_root / "data/subvideo-review/reviews.json"
     b_path = batches_path or repo_root / "data/subvideo-review/batches.json"
@@ -163,6 +241,11 @@ def build_frozen_subsets(
     batches_sha = _sha256_file(b_path)
     splits_manifest_path = s_dir / "manifest.json"
     splits_manifest_sha = _sha256_file(splits_manifest_path)
+
+    try:
+        review_app = ReviewApp(repo_root, manifest=m_path, records=r_path)
+    except (ReviewError, OSError, ValueError) as exc:
+        raise InputError(f"failed to initialize ReviewApp identity context: {exc}") from exc
 
     manifest_obj = decode_file(m_path.read_text(encoding="utf-8"), str(m_path))
     reviews_obj = decode_file(r_path.read_text(encoding="utf-8"), str(r_path))
@@ -183,6 +266,7 @@ def build_frozen_subsets(
     confirmed, effective_cutoff, cutoff_sha = _latest_confirmed_for_manifest(
         reviews_obj,
         manifest_sha,
+        review_candidates=review_app.candidates,
         cutoff_created_at=reviews_cutoff_created_at,
     )
     unknown = sorted(cid for cid in confirmed if cid not in by_id)
@@ -202,6 +286,12 @@ def build_frozen_subsets(
     )
     dev_clean_ids = sorted(row["candidate_id"] for row in dev_clean_rows)
     dev_excluded_ids = sorted(row["candidate_id"] for row in dev_excluded_rows)
+
+    if not dev_clean_ids or not test_confirmed:
+        raise InputError(
+            f"cannot freeze empty eval subset (eval-dev-v1={len(dev_clean_ids)}, eval-test-v1={len(test_confirmed)}); "
+            "check manifest, label rules, splits, and review_subject_sha256 identity"
+        )
 
     exclusions.assert_no_excluded([by_id[cid] for cid in dev_clean_ids], context="eval-dev-v1")
     exclusions.assert_no_excluded([by_id[cid] for cid in test_confirmed], context="eval-test-v1")
@@ -227,6 +317,8 @@ def build_frozen_subsets(
         "dev_exclusions_sha256": exclusions.sha256,
         "splits_manifest_path": _rel_path(splits_manifest_path, repo_root),
         "splits_manifest_sha256": splits_manifest_sha,
+        "split_identity_sha256": review_app.split_identity_sha256,
+        "label_rules_sha256": review_app.label_rules_sha256,
         "batches_path": _rel_path(b_path, repo_root),
         "batches_sha256": batches_sha,
     }
@@ -308,6 +400,8 @@ def build_frozen_subsets(
         "source_ids": sorted({by_id[cid]["source_video_id"] for cid in test_confirmed}),
         "candidate_ids": test_confirmed,
     }
+    if enforce_v1_pins:
+        _assert_v1_pins(eval_dev_v1, eval_test_v1)
     return eval_dev_v1, eval_test_v1
 
 
@@ -321,7 +415,7 @@ def verify_frozen_subsets(
     splits_dir: Path | None = None,
     exclusions_path: Path | None = None,
 ) -> list[tuple[Path, str, int]]:
-    """Verify frozen v1 files against cutoff-bounded rebuild (immune to later B3 appends)."""
+    """Verify frozen v1 files against independent v1 pins and cutoff-bounded rebuild."""
     dev_path = output_dir / "eval-dev-v1.json"
     test_path = output_dir / "eval-test-v1.json"
     for path in (dev_path, test_path):
@@ -330,16 +424,17 @@ def verify_frozen_subsets(
 
     existing_dev = decode_file(dev_path.read_text(encoding="utf-8"), str(dev_path))
     existing_test = decode_file(test_path.read_text(encoding="utf-8"), str(test_path))
-    dev_inputs = existing_dev.get("inputs") if isinstance(existing_dev, dict) else None
-    test_inputs = existing_test.get("inputs") if isinstance(existing_test, dict) else None
+    if not isinstance(existing_dev, dict) or not isinstance(existing_test, dict):
+        raise InputError("frozen subset must be a JSON object")
+    if existing_dev.get("subset_id") != "eval-dev-v1" or existing_test.get("subset_id") != "eval-test-v1":
+        raise InputError("unexpected subset_id in frozen v1 files")
+    dev_inputs = existing_dev.get("inputs")
+    test_inputs = existing_test.get("inputs")
     if not isinstance(dev_inputs, dict) or not isinstance(test_inputs, dict):
         raise InputError("frozen subset missing inputs object")
-    cutoff = dev_inputs.get("reviews_cutoff_created_at")
-    if not isinstance(cutoff, str) or not cutoff.strip() or cutoff != test_inputs.get("reviews_cutoff_created_at"):
-        raise InputError("frozen subsets missing matching reviews_cutoff_created_at")
-    pinned_reviews_sha = dev_inputs.get("reviews_sha256")
-    if not isinstance(pinned_reviews_sha, str) or pinned_reviews_sha != test_inputs.get("reviews_sha256"):
-        raise InputError("frozen subsets missing matching reviews_sha256")
+
+    # Verify the on-disk files themselves match independent v1 pins before rebuilding.
+    _assert_v1_pins(existing_dev, existing_test)
 
     expected_dev, expected_test = build_frozen_subsets(
         repo_root=repo_root,
@@ -348,10 +443,11 @@ def verify_frozen_subsets(
         batches_path=batches_path,
         splits_dir=splits_dir,
         exclusions_path=exclusions_path,
-        frozen_date=existing_dev.get("frozen_date", FROZEN_DATE),
-        reviews_cutoff_created_at=cutoff,
-        pinned_reviews_file_sha256=pinned_reviews_sha,
+        frozen_date=FROZEN_DATE,
+        reviews_cutoff_created_at=V1_REVIEWS_CUTOFF_CREATED_AT,
+        pinned_reviews_file_sha256=V1_PINNED_INPUTS["reviews_sha256"],
         pinned_reviews_path=dev_inputs.get("reviews_path"),
+        enforce_v1_pins=True,
     )
     results: list[tuple[Path, str, int]] = []
     for path, expected in ((dev_path, expected_dev), (test_path, expected_test)):
@@ -377,7 +473,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--verify",
         action="store_true",
-        help="Verify existing frozen files match cutoff-bounded deterministic rebuild byte-for-byte",
+        help="Verify existing frozen files match pinned v1 contract and cutoff-bounded rebuild byte-for-byte",
     )
     parser.add_argument(
         "--overwrite",

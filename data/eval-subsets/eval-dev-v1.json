@@ -29,6 +29,8 @@
     "dev_exclusions_sha256": "52d9b04af7924cab58c95451dd48eb1e597a61582e5bd47fc7f603c7844b0758",
     "splits_manifest_path": "data/splits/three-fold/manifest.json",
     "splits_manifest_sha256": "1ad84afb9a9eb122d6d7cdc13b78a975567a51667eaeacfabd5748c1055f6ae2",
+    "split_identity_sha256": "efad59978a54e1d570b8191c62985467bbef8d7fc6fbcce0cd1ce90ed41e9d22",
+    "label_rules_sha256": "c7bbb2e505ffebec02131082ab6b5219a9324b7a5044689e2d6a485b7f8355d8",
     "batches_path": "data/subvideo-review/batches.json",
     "batches_sha256": "6d5024f4992d9be34a1bad65c6113a6332a10d0114d9291aa2bec0a04a6f87f9"
   },

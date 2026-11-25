@@ -1209,8 +1209,8 @@ facts:
     topic: 正式冻结评测子集（eval-dev-v1 / eval-test-v1）与 DEC-007 代码防漏网守卫
     claim: >
       2026-11-25 用户确认采用方案 A 冻结两份正式评测子集（tensile-eval-subset/1），由 script/five_label_eval/freeze_subsets.py 确定性生成并支持 --verify 逐字节复核：
-      (1) data/eval-subsets/eval-dev-v1.json（SHA-256 9de4f9c5f852254a14049b940f679fc0069ffdfa1b0e5d50ca6219d2c1736890）：dev_all_clean 全部 210 条 / 87 源（B0 32 + 试审 1 + 干净 B2 177；三画幅档 w_le_200 112/48、w_200_400 42/20、w_gt_400 56/19；三折 val 69/29、73/29、68/29），严格排除 DEC-007 的 video_0006/video_0079（含 B2 已审 3 条）；
-      (2) data/eval-subsets/eval-test-v1.json（SHA-256 8e20b903544284c6f3ae90088e0f823d70e1ee21ee8b5a8640395d0001f23f19）：test_B1 全部 314 条 / 21 源（三画幅档 90/7、140/8、84/6），固定封存终测集、严禁用于调参或选 Prompt。
+      (1) data/eval-subsets/eval-dev-v1.json（SHA-256 96ea3a4826dc9307389fee9579dfd0c01842516dad152707c884e4b2dd34fac7）：dev_all_clean 全部 210 条 / 87 源（B0 32 + 试审 1 + 干净 B2 177；三画幅档 w_le_200 112/48、w_200_400 42/20、w_gt_400 56/19；三折 val 69/29、73/29、68/29），严格排除 DEC-007 的 video_0006/video_0079（含 B2 已审 3 条）；
+      (2) data/eval-subsets/eval-test-v1.json（SHA-256 df45cdf3fa771f8532f96d248622eeb91cebcf9472a1403e7237fae63a58bbd7）：test_B1 全部 314 条 / 21 源（三画幅档 90/7、140/8、84/6），固定封存终测集、严禁用于调参或选 Prompt。
       同时在 script/five_label_eval/exclusions.py 落地 DEC-007 代码防漏网守卫并接入 manifest_convert、build_manifest、frames、infer、score 全入口，显式选中排除源/片段或隔离虚拟视频时 fail-closed 报错，全量转换/抽帧时自动过滤。
     evidence:
       - ref: data/eval-subsets/eval-dev-v1.json:3

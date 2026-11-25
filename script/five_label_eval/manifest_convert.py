@@ -125,6 +125,11 @@ def main(argv=None) -> int:
         selection = load_candidate_selection(ids) if ids else None
         if selection is not None:
             selection.assert_manifest_sha256(raw_sha256, context="manifest_convert")
+            if selection.expected_manifest_sha256 is not None and args.limit is not None:
+                raise InputError(
+                    "manifest_convert: cannot combine --limit with a frozen eval subset "
+                    f"({selection.subset_id or 'tensile-eval-subset/1'}); pass an explicit candidate-ids JSON array instead"
+                )
         candidate_ids = selection.candidate_ids if selection is not None else None
         exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
         draft = convert(decode_file(raw.decode("utf-8"), args.input), raw, candidate_ids=candidate_ids,
