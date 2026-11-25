@@ -1,0 +1,31 @@
+{
+  "run_id": "20261126-internvl3-8b-vllm-dev-v1",
+  "model_id": "InternVL3-8B",
+  "model_path": "/data/models/InternVL3-8B",
+  "eval_subset_id": "eval-dev-v1",
+  "backend": "http",
+  "serving_engine": "vllm 0.34.0 (torch 2.14.0+cu130, python 3.12.16)",
+  "vllm_serve_args": [
+    "--served-model-name", "InternVL3-8B",
+    "--host", "127.0.0.1",
+    "--port", "18080",
+    "--dtype", "bfloat16",
+    "--trust-remote-code",
+    "--gpu-memory-utilization", "0.88",
+    "--max-model-len", "12288",
+    "--max-num-seqs", "1",
+    "--limit-mm-per-prompt", "{\"image\": 8}",
+    "--hf-overrides", "{\"max_dynamic_patch\": 4}"
+  ],
+  "hf_overrides": {"max_dynamic_patch": 4},
+  "mm_processor_kwargs": null,
+  "trust_remote_code": true,
+  "note": "Default max_dynamic_patch=12 caused 8-frame requests to budget 27299 tokens (>16384 -> HTTP 400); overriding max_dynamic_patch=4 via --hf-overrides preserves native resolution on eval-dev-v1 (max frame 804x1072 -> 10915 prompt_tokens) within --max-model-len 12288.",
+  "prompt_file": "script/five_label_eval/prompts/five_label_v2.txt",
+  "decode_config": {
+    "temperature": 0.0,
+    "max_tokens": 512,
+    "seed": null
+  },
+  "gpu": "NVIDIA GeForce RTX 4090 (24564 MiB)"
+}
