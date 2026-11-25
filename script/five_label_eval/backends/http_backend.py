@@ -85,11 +85,7 @@ def _resolve_completions_url(endpoint: str) -> str:
     except ValueError:
         raise InputError("http endpoint is not a valid http:// or https:// URL") from None
     if scheme not in ("http", "https") or not host:
-        safe_hint = sanitize_base_url(cleaned) if cleaned else "<empty>"
-        raise InputError(
-            f"http endpoint must be a valid http:// or https:// URL with hostname "
-            f"(got scheme={scheme or '<none>'!r}, target={safe_hint!r})"
-        )
+        raise InputError("http endpoint must be a valid http:// or https:// URL with hostname")
     path = parts.path.rstrip("/")
     if path.endswith("/chat/completions"):
         new_path = path

@@ -1997,3 +1997,31 @@ def test_r12_regression_payload_timeout_tokenizer_json_pin_and_sampling_indices(
             model_id="Qwen3-VL-8B-Instruct@1",
             frames_dir=frames_dir_bad,
         )
+
+    # 4. Malformed URL missing '//' (https:user:pass@host/v1) must never echo password in error.
+    with pytest.raises(InputError) as no_slash_exc:
+        HttpBackend(endpoint="https:alice:my_secret_pw@127.0.0.1/v1", model_id="Qwen3-VL-8B-Instruct@1")
+    assert "my_secret_pw" not in str(no_slash_exc.value)
+    assert "alice" not in str(no_slash_exc.value)
+
+    # 5. Short 7-frame L2 clip with padded/repeated 8 frames must fail closed before backend.
+    rec_short, m_short, frames_dir_short = _build_record_and_manifest(tmp_path / "r12_short7", cid="c00")
+    rec_short["media"]["total_frames"] = 7
+    rec_short["lineage_media"]["l2"]["total_frames"] = 7
+    for idx_i, f in enumerate(rec_short["frames"]):
+        ci = min(idx_i, 6)
+        f["clip_frame_index"] = ci
+        f["roi_frame_index"] = 973 + ci
+        f["original_source_frame_index"] = 973 + ci
+    rec_short["input_id"] = compute_record_input_id(rec_short)
+    with pytest.raises(InputError, match="total_frames"):
+        infer.run_inference(
+            [rec_short],
+            m_short,
+            backend=FailBackend(),
+            run_id="r12-short7",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir_short,
+        )

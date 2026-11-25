@@ -139,16 +139,22 @@ def _resolve_record_frames(
         raw_frames,
         key=lambda item: item.get("display_order", -1) if isinstance(item, dict) else -1,
     )
+    lineage_media = record.get("lineage_media") if isinstance(record.get("lineage_media"), dict) else {}
+    l2_layer = lineage_media.get("l2") if isinstance(lineage_media.get("l2"), dict) else {}
     media = record.get("media") if isinstance(record.get("media"), dict) else {}
-    l2_total = media.get("total_frames")
-    if isinstance(l2_total, int) and not isinstance(l2_total, bool) and l2_total >= len(ordered):
-        expected_indices = sample_frame_indices(l2_total, len(ordered))
-        actual_indices = [item.get("clip_frame_index") if isinstance(item, dict) else None for item in ordered]
-        if actual_indices != expected_indices:
-            raise InputError(
-                f"{cid}: clip_frame_index sequence {actual_indices} does not match "
-                f"{SAMPLING_RULE} for total_frames={l2_total} (expected {expected_indices})"
-            )
+    l2_total = l2_layer.get("total_frames") if "total_frames" in l2_layer else media.get("total_frames")
+    if not isinstance(l2_total, int) or isinstance(l2_total, bool) or l2_total < len(ordered):
+        raise InputError(
+            f"{cid}: L2 total_frames must be an integer >= {len(ordered)} for {SAMPLING_RULE} "
+            f"(got {l2_total!r}; short clips are fail-closed)"
+        )
+    expected_indices = sample_frame_indices(l2_total, len(ordered))
+    actual_indices = [item.get("clip_frame_index") if isinstance(item, dict) else None for item in ordered]
+    if actual_indices != expected_indices:
+        raise InputError(
+            f"{cid}: clip_frame_index sequence {actual_indices} does not match "
+            f"{SAMPLING_RULE} for total_frames={l2_total} (expected {expected_indices})"
+        )
     root_dir = frames_dir.resolve()
     raw_clip_dir = frames_dir / cid
     if raw_clip_dir.is_symlink():
