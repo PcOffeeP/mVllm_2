@@ -44,6 +44,7 @@ INTERNVL_IMAGENET_STD = (0.229, 0.224, 0.225)
 INTERNVL_DEFAULT_MIN_NUM = 1
 INTERNVL_DEFAULT_MAX_NUM = 12
 SHA256_RE = re.compile(r"[a-f0-9]{64}")
+LOCAL_AUTO_MAP_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
 TRUSTED_REQUIRED_CONFIG_FILES = (
     "config.json",
     "processor_config.json",
@@ -202,6 +203,18 @@ def verify_trusted_snapshot_sha256(
                 raise InputError(
                     f"external auto_map reference {node!r} in {cfg_name} ({loc}) "
                     "is refused under fail-closed local trust_remote_code verification"
+                )
+            if not LOCAL_AUTO_MAP_REF_RE.fullmatch(node):
+                raise InputError(
+                    f"invalid non-local auto_map reference {node!r} in {cfg_name} ({loc}); "
+                    "only verified local '<module>.<Class>' references inside the snapshot are permitted"
+                )
+            mod_name = node.split(".", 1)[0]
+            mod_rel = f"{mod_name}.py"
+            if mod_rel not in verified or not (root / mod_rel).is_file():
+                raise InputError(
+                    f"auto_map reference {node!r} in {cfg_name} ({loc}) targets unverified or missing "
+                    f"local module {mod_rel!r}"
                 )
         elif isinstance(node, dict):
             for k, v in node.items():
@@ -1019,6 +1032,9 @@ class TransformersBackend:
                 num_patches_list=list(num_patches_list),
             )
             return raw_text, meta
+
+        if self.model_family in ("internvl3", "internvl3.5") and self.max_pixels is not None:
+            images = [_resize_image_to_max_pixels(img, self.max_pixels) for img in images]
 
         messages = [
             {

@@ -1856,3 +1856,67 @@ def test_r10_regression_chat_template_hf_blobs_plaintext_auth_missing_lineage_an
     elapsed = time.monotonic() - started
     assert proc.returncode == 0, proc.stderr
     assert elapsed < 1.5, f"subprocess hung on DNS thread exit ({elapsed:.2f}s)"
+
+
+def test_r11_regression_auto_map_local_module_allowlist_and_hf_internvl_max_pixels(tmp_path):
+    """Regression tests for R11 Codex blocking findings: strict local auto_map allowlist and HF InternVL max_pixels."""
+    from PIL import Image
+
+    # 1. Reject absolute-path or missing-module auto_map references even without '--'.
+    abs_dir = tmp_path / "abs_automap"
+    abs_dir.mkdir()
+    (abs_dir / "config.json").write_bytes(b'{"auto_map": {"AutoConfig": "/tmp/evil.Config"}}')
+    with pytest.raises(InputError, match="non-local auto_map"):
+        verify_trusted_snapshot_sha256(
+            abs_dir, {"config.json": hashlib.sha256((abs_dir / "config.json").read_bytes()).hexdigest()}
+        )
+
+    miss_dir = tmp_path / "miss_automap"
+    miss_dir.mkdir()
+    (miss_dir / "config.json").write_bytes(b'{"auto_map": {"AutoConfig": "missing_mod.Config"}}')
+    with pytest.raises(InputError, match="unverified or missing local module"):
+        verify_trusted_snapshot_sha256(
+            miss_dir, {"config.json": hashlib.sha256((miss_dir / "config.json").read_bytes()).hexdigest()}
+        )
+
+    ok_dir = tmp_path / "ok_automap"
+    ok_dir.mkdir()
+    (ok_dir / "config.json").write_bytes(b'{"auto_map": {"AutoConfig": "configuration_local.LocalConfig"}}')
+    (ok_dir / "configuration_local.py").write_bytes(b"class LocalConfig: pass\n")
+    assert verify_trusted_snapshot_sha256(
+        ok_dir,
+        {
+            "config.json": hashlib.sha256((ok_dir / "config.json").read_bytes()).hexdigest(),
+            "configuration_local.py": hashlib.sha256((ok_dir / "configuration_local.py").read_bytes()).hexdigest(),
+        },
+    )
+
+    # 2. HF-format InternVL (generate()-based, no .chat()) downscales images to <= max_pixels before processor.
+    seen_sizes: list[tuple[int, int]] = []
+
+    class FakeHFInternVLProc:
+        def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+            return "P"
+
+        def __call__(self, **kwargs):
+            for im in kwargs["images"]:
+                seen_sizes.append(im.size)
+            return {"input_ids": [[1, 2]]}
+
+        def batch_decode(self, sequences, skip_special_tokens=True):
+            return [LEGAL_JSON]
+
+    class FakeHFInternVLModel:
+        def generate(self, **kwargs):
+            return [[1, 2, 99]]
+
+    hf_backend = TransformersBackend(
+        model_id="OpenGVLab/InternVL3.5-8B-HF@sha256:1",
+        max_pixels=10000,
+        model=FakeHFInternVLModel(),
+        processor=FakeHFInternVLProc(),
+        image_loader=lambda _p: Image.new("RGB", (400, 200)),
+    )
+    assert hf_backend.infer_one(_make_request(tmp_path / "r11_hf_px")).status == "success"
+    assert len(seen_sizes) == 8
+    assert all(w * h <= 10000 for w, h in seen_sizes)

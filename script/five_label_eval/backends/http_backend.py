@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import asyncio
 import base64
+from concurrent.futures import Future, ThreadPoolExecutor
 import ipaddress
 import json
 import os
 from pathlib import Path
-import socket
 import threading
 import time
 from typing import Any
@@ -33,6 +33,34 @@ class _WallClockTimeout(Exception):
 
 class _ResponseTooLargeError(Exception):
     """Internal sentinel raised when an HTTP response exceeds MAX_RESPONSE_BYTES."""
+
+
+class _DaemonExecutor(ThreadPoolExecutor):
+    """ThreadPoolExecutor subclass spawning daemon threads so blocked DNS calls never hang process exit."""
+
+    def __init__(self) -> None:
+        # Intentionally bypass ThreadPoolExecutor.__init__ so no non-daemon worker
+        # pool is registered with concurrent.futures.thread._threads_queues.
+        pass
+
+    def submit(self, fn: Any, /, *args: Any, **kwargs: Any) -> Future:
+        fut: Future = Future()
+
+        def _run() -> None:
+            if not fut.set_running_or_notify_cancel():
+                return
+            try:
+                res = fn(*args, **kwargs)
+            except BaseException as exc:  # noqa: BLE001
+                fut.set_exception(exc)
+            else:
+                fut.set_result(res)
+
+        threading.Thread(target=_run, daemon=True).start()
+        return fut
+
+    def shutdown(self, wait: bool = True, *, cancel_futures: bool = False) -> None:
+        return None
 
 
 def _is_loopback_host(host: str | None) -> bool:
@@ -244,48 +272,18 @@ class HttpBackend:
                 if owns:
                     client.close()
 
-        # Pre-resolve non-IP hostnames inside a plain daemon thread (outside asyncio's
-        # default ThreadPoolExecutor) so a stalled getaddrinfo() never blocks Python
-        # process exit at atexit after the wall-clock deadline expires.
-        started_mono = time.monotonic()
-        url_parts = urlsplit(request_url)
-        host = url_parts.hostname
-        if host and not _is_loopback_host(host):
-            try:
-                ipaddress.ip_address(host)
-                needs_dns = False
-            except ValueError:
-                needs_dns = True
-            if needs_dns:
-                port = url_parts.port or (443 if url_parts.scheme == "https" else 80)
-                dns_err: list[BaseException] = []
-
-                def _resolve_dns() -> None:
-                    try:
-                        socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
-                    except BaseException as exc:  # noqa: BLE001
-                        dns_err.append(exc)
-
-                dns_thread = threading.Thread(target=_resolve_dns, daemon=True)
-                dns_thread.start()
-                dns_thread.join(timeout=timeout)
-                if dns_thread.is_alive():
-                    raise _WallClockTimeout(f"request exceeded wall-clock deadline of {timeout:.3f}s")
-                if dns_err:
-                    raise dns_err[0]
-
-        remaining = timeout - (time.monotonic() - started_mono)
-        if remaining <= 0:
-            raise _WallClockTimeout(f"request exceeded wall-clock deadline of {timeout:.3f}s")
-
         async def _async_post() -> tuple[int, bytes]:
+            # Replace asyncio's default ThreadPoolExecutor with a daemon-thread executor
+            # so any blocked getaddrinfo() DNS lookup (1st, 2nd, or Nth) never blocks
+            # interpreter exit at atexit after the wall-clock deadline expires.
+            asyncio.get_running_loop().set_default_executor(_DaemonExecutor())
             async with httpx.AsyncClient(trust_env=False) as client:
                 async with client.stream(
                     "POST",
                     request_url,
                     json=payload,
                     headers=headers,
-                    timeout=httpx.Timeout(remaining),
+                    timeout=httpx.Timeout(timeout),
                 ) as response:
                     chunks: list[bytes] = []
                     total_bytes = 0
@@ -301,13 +299,13 @@ class HttpBackend:
 
         def _worker() -> None:
             try:
-                result_box.append(asyncio.run(asyncio.wait_for(_async_post(), timeout=remaining)))
+                result_box.append(asyncio.run(asyncio.wait_for(_async_post(), timeout=timeout)))
             except BaseException as exc:  # noqa: BLE001
                 error_box.append(exc)
 
         worker = threading.Thread(target=_worker, daemon=True)
         worker.start()
-        worker.join(timeout=remaining + 0.05)
+        worker.join(timeout=timeout + 0.05)
         if worker.is_alive():
             raise _WallClockTimeout(f"request exceeded wall-clock deadline of {timeout:.3f}s")
         if error_box:
