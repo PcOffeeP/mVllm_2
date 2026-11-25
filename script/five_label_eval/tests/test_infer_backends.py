@@ -1294,3 +1294,180 @@ def test_r5_regression_internvl_native_full_frame_preservation_and_max_pixels(tm
         verify_trusted_snapshot_sha256(
             cfg_dir, {"config.json": hashlib.sha256((cfg_dir / "config.json").read_bytes()).hexdigest()}
         )
+
+
+def test_r6_regression_video_preprocessor_hf_internvl_mkstemp_and_surrogate_meta(tmp_path, monkeypatch):
+    """Regression tests for R6 Codex blocking findings (video_preprocessor_config, HF InternVL, mkstemp, extra_meta surrogates)."""
+    import os as _os
+    import types
+    from script.five_label_eval.backends.transformers_backend import _default_model_loader
+
+    # 1. video_preprocessor_config.json must be pinned AND nested auto_map in processor_config.json rejected.
+    qwen_dir = tmp_path / "qwen_video_snap"
+    qwen_dir.mkdir()
+    (qwen_dir / "config.json").write_bytes(b'{"model_type": "qwen3_vl"}')
+    (qwen_dir / "video_preprocessor_config.json").write_bytes(
+        b'{"auto_map": {"AutoVideoProcessor": "evil/repo--vid.Proc"}}'
+    )
+    cfg_sha = hashlib.sha256((qwen_dir / "config.json").read_bytes()).hexdigest()
+    vid_sha = hashlib.sha256((qwen_dir / "video_preprocessor_config.json").read_bytes()).hexdigest()
+    with pytest.raises(InputError, match="video_preprocessor_config.json"):
+        verify_trusted_snapshot_sha256(qwen_dir, {"config.json": cfg_sha})
+    with pytest.raises(InputError, match="external auto_map"):
+        verify_trusted_snapshot_sha256(
+            qwen_dir, {"config.json": cfg_sha, "video_preprocessor_config.json": vid_sha}
+        )
+
+    nested_dir = tmp_path / "qwen_nested_proc"
+    nested_dir.mkdir()
+    (nested_dir / "config.json").write_bytes(b'{"model_type": "qwen3_vl"}')
+    (nested_dir / "processor_config.json").write_bytes(
+        b'{"video_processor": {"auto_map": {"AutoVideoProcessor": "evil/repo--vid.Proc"}}}'
+    )
+    with pytest.raises(InputError, match="external auto_map"):
+        verify_trusted_snapshot_sha256(
+            nested_dir,
+            {
+                "config.json": hashlib.sha256((nested_dir / "config.json").read_bytes()).hexdigest(),
+                "processor_config.json": hashlib.sha256((nested_dir / "processor_config.json").read_bytes()).hexdigest(),
+            },
+        )
+
+    # 2. HF-format InternVL checkpoint (model_type == "internvl") loads AutoModelForImageTextToText with generate(),
+    #    never getting stuck on base InternVLModel without generate/chat.
+    hf_calls: list[str] = []
+
+    class FakeCuda:
+        @staticmethod
+        def is_available():
+            return False
+
+        @staticmethod
+        def is_bf16_supported():
+            return False
+
+    class BaseInternVLNoGenerate:
+        def eval(self):
+            return self
+
+    class HFInternVLForCondGen:
+        def eval(self):
+            return self
+
+        def generate(self, **kwargs):
+            return [[1, 2, 99]]
+
+    class FakeAutoModel:
+        @staticmethod
+        def from_pretrained(*_a, **_kw):
+            hf_calls.append("AutoModel")
+            return BaseInternVLNoGenerate()
+
+    class FakeAutoModelForImageTextToText:
+        @staticmethod
+        def from_pretrained(*_a, **_kw):
+            hf_calls.append("AutoModelForImageTextToText")
+            return HFInternVLForCondGen()
+
+    class FakeHFProcessor:
+        tokenizer = "HF_TOK"
+
+        def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+            return "P"
+
+        def __call__(self, **kwargs):
+            return {"input_ids": [[1, 2]]}
+
+        def batch_decode(self, sequences, skip_special_tokens=True):
+            return [LEGAL_JSON]
+
+    class FakeAutoProcessor:
+        @staticmethod
+        def from_pretrained(*_a, **_kw):
+            hf_calls.append("AutoProcessor")
+            return FakeHFProcessor()
+
+    class FakeAutoTokenizer:
+        @staticmethod
+        def from_pretrained(*_a, **_kw):
+            return "TOK"
+
+    fake_torch = types.SimpleNamespace(bfloat16="bf16", cuda=FakeCuda())
+    fake_transformers = types.SimpleNamespace(
+        AutoModel=FakeAutoModel,
+        AutoModelForCausalLM=FakeAutoModel,
+        AutoModelForImageTextToText=FakeAutoModelForImageTextToText,
+        AutoProcessor=FakeAutoProcessor,
+        AutoTokenizer=FakeAutoTokenizer,
+    )
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
+
+    hf_dir = tmp_path / "internvl35_hf"
+    hf_dir.mkdir()
+    (hf_dir / "config.json").write_text(
+        json.dumps({"model_type": "internvl", "architectures": ["InternVLForConditionalGeneration"]}),
+        encoding="utf-8",
+    )
+    model, proc, tok = _default_model_loader(hf_dir, "internvl3.5", 262144)
+    assert hasattr(model, "generate")
+    assert hf_calls == ["AutoModelForImageTextToText", "AutoProcessor"]
+    assert tok == "HF_TOK"
+
+    # 3. Checkpoint temp file uses unpredictable mkstemp (never clobbers a pre-existing predictable symlink/file),
+    #    AND unpaired surrogate in HTTP finish_reason does not abort the batch before candidate 2 runs.
+    rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r6_batch", cid="c00")
+    _, entries2 = _write_eight_frames(frames_dir, cid="c01")
+    rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    manifest = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
+
+    preds_path = tmp_path / "r6_preds.jsonl"
+    meta_path = tmp_path / "r6_meta.json"
+    victim = tmp_path / "victim.txt"
+    victim.write_text("DO NOT CLOBBER", encoding="utf-8")
+    predictable_tmp = meta_path.with_name(f".{meta_path.name}.tmp.{_os.getpid()}")
+    predictable_tmp.symlink_to(victim)
+
+    call_n = 0
+
+    def surrogate_finish_handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal call_n
+        call_n += 1
+        if call_n == 1:
+            # Valid content + JSON-escaped lone surrogate in finish_reason.
+            raw_body = (
+                '{"choices":[{"message":{"content":'
+                + json.dumps(LEGAL_JSON)
+                + '},"finish_reason":"stop\\ud800bad"}]}'
+            ).encode("utf-8")
+            return httpx.Response(200, content=raw_body, headers={"Content-Type": "application/json"})
+        return httpx.Response(200, json={"choices": [{"message": {"content": LEGAL_JSON}, "finish_reason": "stop"}]})
+
+    http_backend = HttpBackend(
+        endpoint="http://127.0.0.1:8000",
+        model_id="Qwen3-VL-8B-Instruct@1",
+        transport=httpx.MockTransport(surrogate_finish_handler),
+    )
+    try:
+        preds, run_meta = infer.run_inference(
+            [rec1, rec2],
+            manifest,
+            backend=http_backend,
+            run_id="r6-surrogate",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir,
+            output_path=preds_path,
+            meta_output_path=meta_path,
+        )
+    finally:
+        http_backend.close()
+
+    assert len(preds) == 2
+    assert [p["status"] for p in preds] == ["success", "success"]
+    assert run_meta["run_status"] == "completed"
+    assert victim.read_text(encoding="utf-8") == "DO NOT CLOBBER"
+    saved_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert saved_meta["total_requests"] == 2
+    assert saved_meta["requests"][0]["extra_meta"]["finish_reason"] == "stop?bad"

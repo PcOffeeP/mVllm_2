@@ -60,35 +60,64 @@ def sanitize_base_url(url: str) -> str:
     return urlunsplit((parts.scheme, netloc, parts.path.rstrip("/"), "", ""))
 
 
+def _sanitize_utf8_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    try:
+        value.encode("utf-8")
+        return value
+    except UnicodeEncodeError:
+        return value.encode("utf-8", errors="replace").decode("utf-8")
+
+
+def _sanitize_utf8_obj(value: Any) -> Any:
+    if isinstance(value, str):
+        return _sanitize_utf8_text(value)
+    if isinstance(value, dict):
+        return {
+            (_sanitize_utf8_text(k) if isinstance(k, str) else k): _sanitize_utf8_obj(v)
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_sanitize_utf8_obj(v) for v in value]
+    if isinstance(value, tuple):
+        return [_sanitize_utf8_obj(v) for v in value]
+    return value
+
+
 def normalize_result(result: InferenceResult) -> InferenceResult:
     """Enforce the strict single-JSON output contract: no unwrapping, null on non-success."""
     status = result.status
+    safe_error = _sanitize_utf8_text(result.error_detail)
+    safe_reasoning = _sanitize_utf8_text(result.reasoning_content)
+    safe_extra = _sanitize_utf8_obj(dict(result.extra_meta))
+
     if status not in VALID_BACKEND_STATUSES:
         return InferenceResult(
             status="request_failed",
             raw_output=None,
             latency_seconds=result.latency_seconds,
-            error_detail=f"backend returned invalid status {status!r}",
-            reasoning_content=result.reasoning_content,
-            extra_meta=dict(result.extra_meta),
+            error_detail=_sanitize_utf8_text(f"backend returned invalid status {status!r}"),
+            reasoning_content=safe_reasoning,
+            extra_meta=safe_extra,
         )
     if status != "success":
         return InferenceResult(
             status=status,
             raw_output=None,
             latency_seconds=result.latency_seconds,
-            error_detail=result.error_detail,
-            reasoning_content=result.reasoning_content,
-            extra_meta=dict(result.extra_meta),
+            error_detail=safe_error,
+            reasoning_content=safe_reasoning,
+            extra_meta=safe_extra,
         )
     if not isinstance(result.raw_output, str) or result.raw_output == "":
         return InferenceResult(
             status="request_failed",
             raw_output=None,
             latency_seconds=result.latency_seconds,
-            error_detail=result.error_detail or "model returned empty or non-string content",
-            reasoning_content=result.reasoning_content,
-            extra_meta=dict(result.extra_meta),
+            error_detail=safe_error or "model returned empty or non-string content",
+            reasoning_content=safe_reasoning,
+            extra_meta=safe_extra,
         )
     try:
         result.raw_output.encode("utf-8")
@@ -99,20 +128,13 @@ def normalize_result(result: InferenceResult) -> InferenceResult:
             latency_seconds=result.latency_seconds,
             error_detail="model returned invalid UTF-8 string (unpaired surrogate)",
             reasoning_content=None,
-            extra_meta=dict(result.extra_meta),
+            extra_meta=safe_extra,
         )
-    reasoning = result.reasoning_content
-    if isinstance(reasoning, str):
-        try:
-            reasoning.encode("utf-8")
-        except UnicodeEncodeError:
-            reasoning = reasoning.encode("utf-8", errors="replace").decode("utf-8")
-            return InferenceResult(
-                status=result.status,
-                raw_output=result.raw_output,
-                latency_seconds=result.latency_seconds,
-                error_detail=result.error_detail,
-                reasoning_content=reasoning,
-                extra_meta=dict(result.extra_meta),
-            )
-    return result
+    return InferenceResult(
+        status=result.status,
+        raw_output=result.raw_output,
+        latency_seconds=result.latency_seconds,
+        error_detail=safe_error,
+        reasoning_content=safe_reasoning,
+        extra_meta=safe_extra,
+    )

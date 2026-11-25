@@ -46,6 +46,9 @@ TRUSTED_REQUIRED_CONFIG_FILES = (
     "config.json",
     "processor_config.json",
     "preprocessor_config.json",
+    "video_preprocessor_config.json",
+    "image_processor_config.json",
+    "feature_extractor_config.json",
     "tokenizer_config.json",
     "generation_config.json",
     "chat_template.json",
@@ -186,10 +189,42 @@ def verify_trusted_snapshot_sha256(
             )
         verified[rel_norm] = actual
 
-    # Reject external repo references in auto_map (e.g. "org/repo--module.Class") across
-    # model, processor, and tokenizer configs (both dict and legacy list forms) so
-    # trust_remote_code=True can only execute verified local .py files inside model_path.
-    for cfg_name in ("config.json", "processor_config.json", "preprocessor_config.json", "tokenizer_config.json"):
+    # Reject external repo references in auto_map (e.g. "org/repo--module.Class") and
+    # configuration_files redirections recursively across all trusted JSON configs
+    # (including nested video/image processor configs) so trust_remote_code=True can
+    # only execute verified local .py files inside model_path.
+    def _reject_external_auto_map_refs(node: Any, cfg_name: str, loc: str) -> None:
+        if isinstance(node, str):
+            if "--" in node:
+                raise InputError(
+                    f"external auto_map reference {node!r} in {cfg_name} ({loc}) "
+                    "is refused under fail-closed local trust_remote_code verification"
+                )
+        elif isinstance(node, dict):
+            for k, v in node.items():
+                _reject_external_auto_map_refs(v, cfg_name, f"{loc}[{k!r}]")
+        elif isinstance(node, list):
+            for idx, item in enumerate(node):
+                _reject_external_auto_map_refs(item, cfg_name, f"{loc}[{idx}]")
+
+    def _scan_trusted_config_node(node: Any, cfg_name: str, loc: str) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                child_loc = f"{loc}.{key}" if loc else str(key)
+                if key == "configuration_files" and value:
+                    raise InputError(
+                        f"{cfg_name} ({child_loc}) declares 'configuration_files' redirection, "
+                        "which is refused under fail-closed local trust_remote_code verification"
+                    )
+                if key == "auto_map":
+                    _reject_external_auto_map_refs(value, cfg_name, child_loc)
+                else:
+                    _scan_trusted_config_node(value, cfg_name, child_loc)
+        elif isinstance(node, list):
+            for idx, item in enumerate(node):
+                _scan_trusted_config_node(item, cfg_name, f"{loc}[{idx}]")
+
+    for cfg_name in TRUSTED_REQUIRED_CONFIG_FILES:
         cfg_file = root / cfg_name
         if not cfg_file.is_file():
             continue
@@ -197,28 +232,7 @@ def verify_trusted_snapshot_sha256(
             cfg_obj = json.loads(cfg_file.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise InputError(f"failed to parse trusted config {cfg_name}: {exc}") from exc
-        auto_map = cfg_obj.get("auto_map") if isinstance(cfg_obj, dict) else None
-        if isinstance(cfg_obj, dict) and cfg_obj.get("configuration_files"):
-            raise InputError(
-                f"{cfg_name} declares 'configuration_files' redirection, which is refused under "
-                "fail-closed local trust_remote_code verification"
-            )
-        if isinstance(auto_map, dict):
-            for key, value in auto_map.items():
-                refs = value if isinstance(value, list) else [value]
-                for ref in refs:
-                    if isinstance(ref, str) and "--" in ref:
-                        raise InputError(
-                            f"external auto_map reference {ref!r} in {cfg_name}[{key!r}] "
-                            "is refused under fail-closed local trust_remote_code verification"
-                        )
-        elif isinstance(auto_map, list):
-            for idx, ref in enumerate(auto_map):
-                if isinstance(ref, str) and "--" in ref:
-                    raise InputError(
-                        f"external auto_map reference {ref!r} in {cfg_name}[{idx}] "
-                        "is refused under fail-closed local trust_remote_code verification"
-                    )
+        _scan_trusted_config_node(cfg_obj, cfg_name, "")
     return verified
 
 
@@ -634,19 +648,59 @@ def _default_model_loader(
         tokenizer = getattr(processor, "tokenizer", None)
         return model, processor, tokenizer
 
-    # InternVL3 / InternVL3.5
-    try:
-        model = AutoModel.from_pretrained(str(model_path), **common_kwargs).eval()
-    except Exception:
-        model = AutoModelForCausalLM.from_pretrained(str(model_path), **common_kwargs).eval()
-    tokenizer = AutoTokenizer.from_pretrained(str(model_path), local_files_only=True, trust_remote_code=True)
-    if hasattr(model, "chat"):
-        # Native OpenGVLab InternVL checkpoints ship a CLIP preprocessor_config.json
-        # that center-crops non-square frames and ignores max_pixels. Use the official
-        # full-frame dynamic tiling preprocessor instead.
-        processor = InternVLNativeImageProcessor.from_model_path(model_path, model=model)
-    else:
+    # InternVL3 / InternVL3.5: distinguish HF-format checkpoints (model_type == "internvl"
+    # or InternVLForConditionalGeneration, which require AutoModelForImageTextToText for
+    # generate()) from native OpenGVLab checkpoints (custom AutoModel exposing .chat()).
+    is_hf_internvl = False
+    cfg_file = model_path / "config.json"
+    if cfg_file.is_file():
+        try:
+            cfg_data = json.loads(cfg_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            cfg_data = {}
+        if isinstance(cfg_data, dict):
+            auto_map = cfg_data.get("auto_map")
+            has_custom_auto_model = isinstance(auto_map, dict) and "AutoModel" in auto_map
+            archs = cfg_data.get("architectures") if isinstance(cfg_data.get("architectures"), list) else []
+            if not has_custom_auto_model and (
+                cfg_data.get("model_type") == "internvl"
+                or any(isinstance(a, str) and "InternVLForConditionalGeneration" in a for a in archs)
+            ):
+                is_hf_internvl = True
+
+    if is_hf_internvl:
+        from transformers import AutoModelForImageTextToText
+
+        model = AutoModelForImageTextToText.from_pretrained(str(model_path), **common_kwargs).eval()
         processor = AutoProcessor.from_pretrained(str(model_path), **processor_kwargs)
+        tokenizer = getattr(processor, "tokenizer", None) or AutoTokenizer.from_pretrained(
+            str(model_path), local_files_only=True, trust_remote_code=True
+        )
+    else:
+        try:
+            model = AutoModel.from_pretrained(str(model_path), **common_kwargs).eval()
+        except Exception:
+            model = None
+        if model is None or (not hasattr(model, "chat") and not hasattr(model, "generate")):
+            try:
+                from transformers import AutoModelForImageTextToText
+
+                model = AutoModelForImageTextToText.from_pretrained(str(model_path), **common_kwargs).eval()
+            except Exception:
+                model = AutoModelForCausalLM.from_pretrained(str(model_path), **common_kwargs).eval()
+        tokenizer = AutoTokenizer.from_pretrained(str(model_path), local_files_only=True, trust_remote_code=True)
+        if hasattr(model, "chat"):
+            # Native OpenGVLab InternVL checkpoints ship a CLIP preprocessor_config.json
+            # that center-crops non-square frames and ignores max_pixels. Use the official
+            # full-frame dynamic tiling preprocessor instead.
+            processor = InternVLNativeImageProcessor.from_model_path(model_path, model=model)
+        else:
+            processor = AutoProcessor.from_pretrained(str(model_path), **processor_kwargs)
+
+    if not hasattr(model, "chat") and not hasattr(model, "generate"):
+        raise InputError(
+            f"loaded {model_family} model from {model_path} exposes neither chat() nor generate()"
+        )
     return model, processor, tokenizer
 
 
@@ -767,15 +821,25 @@ class TransformersBackend:
         }
 
     def _run_minicpm(self, images: list[Any], request: InferenceRequest) -> tuple[str, dict[str, Any]]:
+        raw_frames = [f for f in (request.record.get("frames") or []) if isinstance(f, dict)]
+        sorted_frames = sorted(
+            raw_frames,
+            key=lambda f: f.get("display_order") if isinstance(f.get("display_order"), int) else 0,
+        )
         frame_indices = [
             f.get("clip_frame_index")
-            for f in (request.record.get("frames") or [])
-            if isinstance(f, dict) and isinstance(f.get("clip_frame_index"), int)
+            for f in sorted_frames
+            if isinstance(f.get("clip_frame_index"), int)
         ]
         fps = (request.record.get("media") or {}).get("fps") if isinstance(request.record.get("media"), dict) else None
+        pts_for_temporal = (
+            request.frame_pts_seconds
+            if request.frame_pts_seconds and len(request.frame_pts_seconds) == len(images)
+            else None
+        )
         temporal_ids = compute_minicpm_temporal_ids(
-            request.frame_pts_seconds,
-            frame_indices=frame_indices or None,
+            pts_for_temporal,
+            frame_indices=frame_indices if len(frame_indices) == len(images) else None,
             fps=fps,
             grid_seconds=self.temporal_grid_seconds or MINICPM_TEMPORAL_GRID_SECONDS,
         )

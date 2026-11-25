@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import tempfile
 from typing import Any
 
 from . import paths
@@ -305,10 +306,20 @@ def run_inference(
     def _checkpoint_meta(run_status: str) -> dict[str, Any]:
         payload = _build_run_meta(run_status)
         if meta_target is not None:
-            tmp_path = meta_target.with_name(f".{meta_target.name}.tmp.{os.getpid()}")
-            serialized = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+            serialized = (
+                json.dumps(payload, ensure_ascii=False, indent=2)
+                .encode("utf-8", errors="replace")
+                .decode("utf-8")
+                + "\n"
+            )
+            fd, tmp_name = tempfile.mkstemp(
+                prefix=f".{meta_target.name}.",
+                suffix=".tmp",
+                dir=str(meta_target.parent),
+            )
+            tmp_path = Path(tmp_name)
             try:
-                with tmp_path.open("w", encoding="utf-8") as tmp_stream:
+                with os.fdopen(fd, "w", encoding="utf-8") as tmp_stream:
                     tmp_stream.write(serialized)
                     tmp_stream.flush()
                     os.fsync(tmp_stream.fileno())
