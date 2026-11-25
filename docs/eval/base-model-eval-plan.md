@@ -1,6 +1,6 @@
 # 基座模型（base model）测评方案
 
-**状态：2026-11-13 方案稿 v5，未经实施验证。** v2–v5 变更：v2 新增 §8.1 跑通判据（区分 run 完整性与格式合法率），补充五类字段的事实源指引；v3 字段计数 13→11，依据 score.py 的 SINGLES/MULTIS/FIELDS 常量；v4 补入画幅分档必报维度（引用输入契约 §4.6）；v5 修正 §6 引言计数与不确定值口径。
+**状态：2026-11-25 方案稿 v6，未经实施验证。** v2–v6 变更：v2 新增 §8.1 跑通判据（区分 run 完整性与格式合法率），补充五类字段的事实源指引；v3 字段计数 13→11，依据 score.py 的 SINGLES/MULTIS/FIELDS 常量；v4 补入画幅分档必报维度（引用输入契约 §4.6）；v5 修正 §6 引言计数与不确定值口径；v6 按 [DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md) 同步首轮第一梯队 3+1 基座名单、8 帧 `evenly_spaced_inclusive` / `fail_closed` / `resize: null`、MiniCPM-V-4.5 首轮官方风格参数（及后续对照/优化跟踪）与 GLM-4.1V 主榜原生格式罚分口径。
 
 ## 1. 目的
 
@@ -12,16 +12,16 @@
 
 每条请求记录六项身份：基础权重标识、加载方式、prompt 版本、抽帧配置、解码配置、运行机器。六项写入 `model_id`、`prompt_id`、`input_id` 与运行记录，缺任一项不进入跨模型比较。
 
-下表前 3 项已有阶段性基线（见 `docs/decisions/README.md` 与 `docs/facts.yaml` DF-044），其余待决项由用户最终确认：
+下表配置已按 `docs/decisions/README.md`、`docs/facts.yaml`（`DF-044`、`DF-053`）与 [DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md) 同步，其中运行机器前置体检与各模型 processor `max_pixels` 细则仍待落地核对：
 
 | 配置项 | 当前状态 | 说明 |
 | --- | --- | --- |
-| 基础模型选型 | 已选基座 `openbmb/MiniCPM-V-4_5`（DF-044） | 选型决定能力上限及与微调模型的可比性；其余对比模型名单仍待确认（见 `TODO` EVAL-DESIGN）。 |
-| 加载方式 | `transformers`（DF-044） | 与服务化加载路径不同，决定是否与微调模型走同一条推理路径。 |
-| 单请求帧数上限 | 8 帧（DF-044，受 4090 显存限制） | 训练与推理统一 8 帧；帧数改变可见证据量。 |
-| 运行机器（本机 M4 无 GPU / 训练机） | 待定 | 决定能否跑全量及环境一致性；本机产出不作正式测评结果（DF-037）。 |
-| 分辨率上限 | 待定（`max_pixels` 默认值见 `eval-subset.md`） | 分辨率改变可见证据量；须与微调配置一致。 |
-| 是否携带 temporal ids | 待定 | 影响时序信息注入方式，与 3b 顺序对照的解释直接相关。 |
+| 基础模型选型 | **已锁定首轮第一梯队 3+1 款**（[DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md)）：`openbmb/MiniCPM-V-4_5`、`Qwen/Qwen3-VL-8B-Instruct`、`OpenGVLab/InternVL3-8B`、`OpenGVLab/InternVL3_5-8B`（标准版，不含 ViR） | 第二梯队（`Keye-VL-1.5-8B`、`Ovis2.5-9B`）与第三梯队（`Qwen3-VL-8B-Thinking`、`GLM-4.1V-9B-Thinking`、`MiMo-VL-7B-RL`）延后至首轮基线完成后评估。 |
+| 加载方式 | `MiniCPM-V-4.5` 走本地 `transformers`（DF-044 / DEC-006）；其余 3 款经 OpenAI-compatible `http`（vLLM）接入 | 当前真实 `transformers` 与 `http` backend 尚待代码适配落地；加载路径须写入运行身份。 |
+| 单请求帧数上限与抽帧口径 | 固定 **8 帧**，采用方案 A（`evenly_spaced_inclusive`，全片均匀含首尾）；短片（`total_frames < 8`）采用 `fail_closed`（DF-044 / DEC-006） | 训练与推理统一 8 帧；`frames.py` 默认帧数由 `3` 对齐为 `8`；主评测消费预抽 L3 PNG，禁止服务端二次抽帧。 |
+| 运行机器（本机 M4 无 GPU / 训练机） | 正式评测限定训练机（待完成只读体检） | 本机产出永不作为正式测评结果（DF-037）；训练机核对清单见 [eval-preflight-and-adapter-plan.md](../research/eval-preflight-and-adapter-plan.md) §2。 |
+| 分辨率上限与 L3 PNG 缩放 | L3 PNG 保持 L2 原始分辨率（**`resize: null`**）；各模型在各自 processor 应用约定 `max_pixels` 并写入运行身份（DEC-006） | 同一份 L3 PNG 兼顾 `DEC-005` 清晰人工核查与多模型复用；各模型 processor 实际 `max_pixels` 不可省略。 |
+| 是否携带 temporal ids（MiniCPM-V-4.5 参数） | **首轮采用官方风格（`0.1 s` 量化 `temporal_ids` + `max_slice_nums=1`）**，并登记为**后续对照/优化项**（DEC-006） | 后续可另起独立 `run_id` 与旧链路（`temporal_ids=None`、`max_slice_nums=2`、`max_pixels=65,536`）对照优化，两者不可混算；3b 顺序对照仍须关闭或重写时间编号防泄露。 |
 
 ## 3. 三层结构
 
@@ -71,6 +71,8 @@
 ### 6.1 **base 阶段的主指标是失败率，不是准确率**
 
 base 很可能大面积格式不合规或拒答。此时准确率低是格式失败造成的，不是「答错」。报告必须把 `request_failed`、`timeout`、`unprocessed`、`extraction_failed` 与「答错」并列呈现，否则会得出「基座能力接近 0」的假结论。
+
+按 [DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md) 第 6 条，主评测榜单统一维护严格单 JSON 输出契约：未来若纳入 `GLM-4.1V` 等输出自带 `<answer>...</answer>` 包裹标签的模型，主榜采用**原生格式罚分**（不预埋解包分支）；若确需验证解包对照，须另起独立 `run_id` 并在报告中显式披露。
 
 ## 7. 依赖与排期
 

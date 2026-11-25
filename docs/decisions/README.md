@@ -2,7 +2,7 @@
 
 这里帮助读者先看清本项目当前已确认的边界、仍待决定的问题，以及可以追溯的历史事实。完整标签规则见[标签说明](../label.md)，事实编号和证据锚点保留在 [facts.yaml](../facts.yaml)，进度与下一步以 [TODO](../TODO.md) 为准。
 
-**整理日期：2026-11-14（本轮为增量更新）。** 本目录是对现存材料的整理，不重新确认旧方案，也不因登记决定而授权实施。`facts.yaml` 的 `active` 仅表示条目在其适用范围内有效，不能据此把旧契约或历史实验当作当前链路。
+**整理日期：2026-11-25（本轮为增量更新）。** 本目录是对现存材料的整理，不重新确认旧方案，也不因登记决定而授权实施。`facts.yaml` 的 `active` 仅表示条目在其适用范围内有效，不能据此把旧契约或历史实验当作当前链路。
 
 ## 1. 当前已确认的边界
 
@@ -18,7 +18,8 @@
 | 冻结契约与新链路 | v4.1 保持其旧适用范围；新契约、输出编码和数据接入未实施，具体新身份与转换流程待设计确认。 | DF-014、DF-018；[模型评价设计第 8 节](../design-test.md#8-训练与测评衔接fi-阶段)（发布身份、新旧契约与发布验收三问）。 |
 | 评价口径（五类标签） | 2026-11-14 确认：模型必须具备输出「无法判断」的能力；多选 8 个叶项的「无法判断」为合法可比较类别，`over_uncertain_rate` 单列不合成；本轮只报数、不设正式阈值；来源层只并列，不合成加权总分。 | [DEC-003 评价口径与运行范围](0003-five-label-eval-scope.md)；DF-043。 |
 | 新评价与晋级 | 现有 v4.1 评分、七门阈值和晋级链不直接套用新五类标签；新评价稿仍待确认。 | DF-003～DF-006；[TODO 的 EVAL-DESIGN 与 EVAL-VERSIONING](../TODO.md)；本轮评价口径见 [DEC-003](0003-five-label-eval-scope.md)，阈值与晋级衔接仍未确认。 |
-| 帧对应抽帧取证 | 设计已定、未实现、按次取证、不替代机器证明。 | [DEC-005](0005-frame-correspondence-evidence.md)；DF-051。 |
+| 帧对应抽帧取证 | 设计已定、独立 CLI 已落地（PR #21，`script/frame_correspondence/`）、前置条件 1 已拍板（DEC-006）；按次取证、不替代机器证明。 | [DEC-005](0005-frame-correspondence-evidence.md)；DF-051、DF-052。 |
+| 评测抽帧口径与首轮模型名单 | 2026-11-25 确认：固定 8 帧 `evenly_spaced_inclusive`、短片 `< 8` 帧 `fail_closed`、L3 PNG `resize: null`、MiniCPM 首轮用官方风格（0.1 s `temporal_ids` + `max_slice_nums=1`，登记为后续可另起 `run_id` 对照优化项）、首轮锁定第一梯队 3+1 款（MiniCPM-V-4.5 / Qwen3-VL-8B-Instruct / InternVL3-8B / InternVL3.5-8B 标准版不含 ViR）、GLM-4.1V 主榜保留原生格式罚分不预埋解包分支。 | [DEC-006 评测抽帧口径与首轮模型名单](0006-eval-frame-sampling-and-model-lineup.md)；DF-053。 |
 
 ### 实施和验证进展另看什么
 
@@ -38,8 +39,8 @@
 | --- | --- | --- |
 | ROI、子视频与片段标签 | 旧处理是否适合本轮；窗口、采样、时间转换与缺失处理；源标签怎样转成片段建议并复核。 | [当前子视频生成逻辑](../subvideo-current-logic.md)；[facts.yaml](../facts.yaml) DF-045。 |
 | 审查、发布与新契约 | 队列、人工决定、组合校验、自动准入、发布身份、字段和编码如何衔接。 | [模型评价设计第 8 节](../design-test.md#8-训练与测评衔接fi-阶段)；[子视频审核与评价衔接](../subvideo-review-workflow.md)。 |
-| 评价与晋级 | 五类分母、未知和失败处理、多选评分、模型名单、样本充分性、正式阈值、性能条件与晋级接口。 | [TODO 的 EVAL-DESIGN 与 EVAL-VERSIONING](../TODO.md)；[评价设计稿](../design-test.md)。 |
-| 训练与推理输入 | 基座 `openbmb/MiniCPM-V-4_5`、transformers 加载、单请求 8 帧（训练与推理统一，受 4090 显存限制）；其余配置沿用默认。输入处理与训练配置的其余细节仍待确认。 | [DEC-003](0003-five-label-eval-scope.md)；[facts.yaml](../facts.yaml) DF-044。 |
+| 评价与晋级 | 首轮基座名单已锁定（见 DEC-006）；五类分母补充项、样本充分性、正式阈值、性能条件与晋级接口仍待确认。 | [TODO 的 EVAL-DESIGN 与 EVAL-VERSIONING](../TODO.md)；[评价设计稿](../design-test.md)；[DEC-006](0006-eval-frame-sampling-and-model-lineup.md)。 |
+| 训练与推理输入 | 单请求固定 8 帧（`evenly_spaced_inclusive`、短片 `fail_closed`）、L3 PNG `resize: null`、首轮 3+1 基座名单及 MiniCPM 官方风格首轮参数（后续对照优化项另记）已按 DEC-006 锁定；各模型 processor `max_pixels` 细则与训练配置其余细节仍待确认。 | [DEC-003](0003-five-label-eval-scope.md)；[DEC-006](0006-eval-frame-sampling-and-model-lineup.md)；[facts.yaml](../facts.yaml) DF-044、DF-053。 |
 
 **历史要求及本轮衔接：** DF-015 记录的 post 候选要求是事件之后、保护间隔之外仍有至少 2 秒源素材，不足则不生成；不能把旧代码的最小候选时长当作满足该要求。[当前子视频生成逻辑](../subvideo-current-logic.md)继续保留这项要求；此前候选批次在人工审核和发布前已按用户要求删除，历史生成不表示当前产物可用。
 
@@ -58,6 +59,7 @@
 | DF-014 | 新旧契约身份衔接的既有记录与证据缺口；具体新身份及转换流程待定。 |
 | DF-015 | 历史已确认、尚未落地的观察窗要求；本轮接入方式待明确。 |
 | DF-043、DF-044、DF-045、DF-046、DF-047 | 2026-11-14 记录的本轮评价口径、模型与输入配置、coverage 判据与初值规则变更、数据与运行位置迁移；审查台按候选标签预填 11 个字段的草稿初值口径；当前决定见本目录 DEC-003。 |
+| DF-049、DF-051、DF-052、DF-053 | 片段层删除「无」与分层评分（DEC-004）、帧对应抽帧取证设计（DEC-005）、映射节点重命名与输入记录 v3（`clip_to_model_input` / `clip_to_roi` / `roi_to_original`），以及 2026-11-25 拍板的 8 帧抽帧口径与首轮模型名单（DEC-006）。 |
 
 原条目及常见误读统一见 [facts.yaml](../facts.yaml)。其中声明的 `scripts/verify_design_facts.py` 已随历史 `scripts/` 目录按用户要求删除，不再在仓库内，当前无替代的文档路径自动校验器；它必须实跑才算校验——早先稀疏检出未包含该脚本，当时的记录只能写「未运行」，不能把脚本声明当作已执行校验。本轮合并（2026-11-12）后，于 2026-11-13 在临时补入被引用路径的稀疏检出中实跑两种模式各一次（默认校验与 `--check-doc-paths`），运行后已还原检出范围；两次均 exit 0：合计 170 项检查全部 PASS、FAIL 0（其中带 `expect` 的 evidence 164 条全部命中）；路径自检扫描 63 个受跟踪 md、538 处引用，存在 471 处、不存在 0 处、白名单豁免 67 处。上述数字是历史记录；该脚本已删除、当前无法执行，不能当作现行校验；纪律不变：在未运行该脚本的工作区，不得引用上述结果当作已执行校验。
 

@@ -192,6 +192,12 @@ schema 固定为 `five-label-lineage-summary/1`（`SUMMARY_SCHEMA`，`frames.py:
 
 补充：节点自证覆盖后两项——`verify_lineage` 校 `clip_to_roi.offset` 与 `roi_to_original` 的形态，并拦截任何旧键名或旧 `record_schema`；`clip_to_model_input` 是常量，不逐帧校验。
 
+**已拍板的 L3 抽帧口径（2026-11-25，[DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md)，关闭 `DEC-005` 前置条件 1）**：
+- **抽帧公式**：采用方案 A `evenly_spaced_inclusive`（全片均匀含首尾，固定 8 帧：`idx[i] = round(i * (total_frames - 1) / 7)`，`i = 0..7`）；`frames.py` 默认帧数由 `3` 对齐为 `8`。
+- **极短片段策略（`total_frames < 8`）**：采用 `fail_closed`，显式报错拒绝进入 8 帧主评测批次，不静默减帧或重复补帧。
+- **L3 PNG 缩放归属**：保持 L2 原始分辨率（`resize: null`，抽帧不加 `scale` 滤镜）；各模型在各自 processor 应用约定 `max_pixels` 并记入运行身份。
+- 注：以上为已拍板口径，代码侧默认帧数、短片守卫与参数落盘更新另行实施并核对；当前工作树实现现状仍以 §0 状态表为准。
+
 **失效条件：** `RECORD_SCHEMA`、三个节点键名、方向、`CLIP_TO_MODEL_INPUT` 的 `kind` 或旧 v2 拒绝策略变更即失效。
 
 ## 11. 最重要：来源级证据在 ROI 重生成后会静默错位

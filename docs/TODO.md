@@ -1,6 +1,6 @@
 # Project TODO
 
-本项目唯一任务台账（最新核对日期：**2026-11-24**，对应主线 `feat/tensileagent-finetune`）。设计与代码事实见 [facts.yaml](facts.yaml)，重要已确认决定见 [决策总览](decisions/README.md)，专题文档入口见 [项目导航](guide.md)。
+本项目唯一任务台账（最新核对日期：**2026-11-25**，对应主线 `feat/tensileagent-finetune`）。设计与代码事实见 [facts.yaml](facts.yaml)，重要已确认决定见 [决策总览](decisions/README.md)，专题文档入口见 [项目导航](guide.md)。
 
 ## 项目现状总览（2026-11-24 实测）
 
@@ -11,7 +11,7 @@
 
 | 编号与代号 | 任务名称 | 当前状态 | 当前关键进展／下一步 |
 | --- | --- | --- | --- |
-| [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径与 6 篇输入契约已就位；待定模型名单、样本充分性与正式阈值 |
+| [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径、6 篇输入契约、PR #20 三篇调研、PR #21 独立取证 CLI 及 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（8 帧抽帧口径与首轮 3+1 基座名单）已就位；待训练机体检、适配器代码、样本充分性与正式阈值 |
 | [3. EVAL-VERSIONING](#3-eval-versioning--按新评价设计更新-versioning-评价与晋级门槛) | 更新 `versioning` 评价与晋级门槛 | 待处理 | 依赖 `EVAL-DESIGN` 定稿与真实测评证据 |
 | [4. DATA-HANDOFF](#4-data-handoff--梳理新标注到数据生成的衔接方案) | 梳理新标注到数据生成的衔接方案 | 进行中 | 1,633 条新批次已回传核验；审核进度移交 `§6`，待定虚拟视频切分策略与发布衔接 |
 | [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 进行中 | 已产出子视频 1,633 条分层统计与 B2 抽样草稿 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md)（非冻结集，属子视频侧，区别于 `docs/eval/` 整体模型测评契约）；待确认冻结口径 |
@@ -24,7 +24,7 @@
 
 ## 2. EVAL-DESIGN — 设计并确认评价体系
 
-**状态：** 进行中。本轮五类评价口径已按 [DEC-003](decisions/0003-five-label-eval-scope.md)（2026-11-14）确认，片段层删除「无」与分层评分已按 [DEC-004](decisions/0004-fragment-label-no-value-removal.md)（2026-11-16）确认，帧对应抽帧取证设计已按 [DEC-005](decisions/0005-frame-correspondence-evidence.md)（2026-11-23）确认；评分工具与身份清单草稿工具已有合成验证；真实测评入口、具体模型名单、样本充分性、正式阈值与测评子集冻结尚未落地。
+**状态：** 进行中。本轮五类评价口径已按 [DEC-003](decisions/0003-five-label-eval-scope.md)（2026-11-14）确认，片段层删除「无」与分层评分已按 [DEC-004](decisions/0004-fragment-label-no-value-removal.md)（2026-11-16）确认，帧对应抽帧取证设计已按 [DEC-005](decisions/0005-frame-correspondence-evidence.md)（2026-11-23）确认且独立取证 CLI 已于 PR #21（2026-11-24）落地于 `script/frame_correspondence/`，PR #20（2026-11-24）三篇多模型评测调研已合入，首轮 8 帧抽帧口径与第一梯队 3+1 基座名单已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（2026-11-25）确认；评分工具与身份清单草稿工具已有合成验证；真实推理适配器、训练机前置体检、样本充分性、正式阈值与测评子集冻结尚未落地。
 
 ### 目标
 
@@ -36,7 +36,15 @@
 - **评测输入契约与方案文件已拆分归位**：2026-11-14 将原单文件索引 `docs/eval-input-contract.md` 并入 [评测专题目录](eval/README.md) 并拆为 6 篇专题（`output-contract.md`、`prompt.md`、`inference-entry.md`、`input-record.md`、`eval-subset.md`）；另已形成 [基座模型测评方案](eval/base-model-eval-plan.md)、[帧对应抽帧取证](frame-correspondence-evidence.md)（[DEC-005](decisions/0005-frame-correspondence-evidence.md)）及未冻结的 [Agent 视觉与交付契约草案](eval/agent-handoff-contract-draft.md)。
 - **评分工具完成合成验证**：用户已确认五类逐项输出、准确率与召回分母、失败与未知分列、冲突逐项评分，以及精确率、误报率和五类全对的补充口径（DF-030）。[本地评分工具](../script/five_label_eval/README.md)与身份清单草稿工具已通过人工构造的合成数据核验；完整片段与实际输入的人审分开，真实与虚拟分开。标签名称同步的浏览器核验亦基于合成 CSV，不代表真实标注或真实模型评价已验证。
 - **位置校准规则已降级收敛**：按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 7 条，以 [位置校准样例集](label-calibration/README.md) 现存 9 例样例与 [标签说明](label.md) 第 5 节「断裂位置」规则为准，不再整批重标。
-- **未落地项**：训练／业务契约、真实模型推理测评入口、正式通过阈值、模型名单与晋级衔接尚未落地。
+- **多模型调研与独立抽帧取证 CLI 已落地（2026-11-24）**：PR #20 已合入三篇专项调研（[8B/9B 模型选型对比](research/vlm-8b-9b-model-comparison.md)、[8 帧抽帧口径方案](research/model-input-frame-sampling-options.md)、[训练机前置体检与推理适配器规划](research/eval-preflight-and-adapter-plan.md)）；PR #21 已合入 `DEC-005` 独立帧对应抽帧取证 CLI（[script/frame_correspondence/README.md](../script/frame_correspondence/README.md)，尚未在真实运行产物上实跑）。
+- **评测 8 帧抽帧口径与首轮基座名单已拍板（2026-11-25，[DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) / `DF-053`）**：
+  1. 8 帧抽帧公式（关闭 `DEC-005` 前置条件 1）：采用方案 A（`evenly_spaced_inclusive`，全片均匀含首尾，固定 8 帧），`frames.py` 默认帧数由 `3` 对齐为 `8`；
+  2. 短片（`total_frames < 8`）策略：采用 `fail_closed` 报错拒接，不静默减帧或重复补帧；
+  3. L3 PNG 缩放归属：保持 L2 原始分辨率（`resize: null`），各模型 processor 应用约定 `max_pixels` 并记入运行身份；
+  4. `MiniCPM-V-4.5` 时序与切片参数：首轮采用官方风格（`0.1 s` 量化 `temporal_ids` + `max_slice_nums=1`），**并登记为后续对照/优化项**（首轮基线后可另起独立 `run_id` 与旧链路配置对照）；
+  5. 首轮 8B–9B 基座名单：锁定第一梯队 3+1 款（`MiniCPM-V-4.5`、`Qwen3-VL-8B-Instruct`、`InternVL3-8B`、`InternVL3.5-8B` 标准版不含 ViR），第二/三梯队延后至首轮基线之后；
+  6. `GLM-4.1V` `<answer>...</answer>` 处置：主榜采用方案 1（原生格式罚分），不预埋解包分支（未来若测试须另起独立 `run_id` 对照）。
+- **未落地项**：训练／业务契约、真实模型推理适配器（`http` / `transformers`）、训练机只读体检、正式通过阈值与晋级衔接尚未落地。
 
 ### 下一步
 
@@ -61,12 +69,13 @@
 - [x] 位置视觉规则典型样例校准：已按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 7 条收敛至 [样例集](label-calibration/README.md) 9 例与 `docs/label.md` 第 5 节。
 - [x] 评分工具合成验证：已用人工构造小例核验多选未知、缺字段、失败、组合冲突与已确认分母（仅合成数据，不代表真实测评）。
 - [ ] 补齐源视频近似素材去重核查及新增虚拟视频来源核查（现有 110 源划分覆盖与 65 条既有虚拟视频溯源见 [测评数据覆盖建议](research/evaluation-data-requirements.md) 与 [虚拟视频溯源](research/virtual-video-provenance.md)，近似素材与历史暴露仍待核查）。
-- [ ] 完成多模型输入及训练机资源适配调研（当前仅完成 [MiniCPM 视频加载核查](research/minicpm-video-loading.md)）。
+- [x] 完成多模型输入及训练机资源适配调研：已完成 [MiniCPM 视频加载核查](research/minicpm-video-loading.md) 与 PR #20 三篇专项调研（[8B/9B 模型选型](research/vlm-8b-9b-model-comparison.md)、[8 帧抽帧口径](research/model-input-frame-sampling-options.md)、[训练机前置体检与适配器规划](research/eval-preflight-and-adapter-plan.md)），6 项核心边界已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 拍板；待执行训练机只读体检与推理适配器落地。
 - [ ] 核对实际待测模型权重、微调结果、数据、输入及评分规则的完整身份。
+- [ ] （后续优化/对照项，首轮基线后）`MiniCPM-V-4.5` 时序与切片参数对照：首轮按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 采用官方风格（`0.1 s` 量化 `temporal_ids` + `max_slice_nums=1`），后续可另起独立 `run_id` 与旧链路配置（`temporal_ids=None`、`max_slice_nums=2`、`max_pixels=65,536` 规整）做同口径对照优化。
 
 ### 等待确认
 
-- 具体模型名单、样本是否足够、性能负载与超时条件、正式通过阈值和多模型组合方式，待审核数据、调研与开发证据具备后确认；本轮按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 3、4 条只报数、不设门槛。
+- 首轮基座名单（第一梯队 3+1 款）与 8 帧抽帧口径已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 确认；样本是否足够、正式通过阈值、第二/三梯队是否追加及多模型组合方式，待审核数据、训练机体检与首轮基线证据具备后确认；本轮按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 3、4 条只报数、不设门槛。
 - 组合冲突保留原回答、逐项评分并单列；本轮不自动接入晋级或发布，其他自动使用方式另行决定。
 
 ### 限制与关联

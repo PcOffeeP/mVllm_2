@@ -1,5 +1,7 @@
 # 模型输入 8 帧抽帧口径选型方案（DEC-005 前置条件 1）
 
+> **决策状态（2026-11-25）：已拍板，见 [DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md)。** §5 全部 4 项边界问题已由用户定案：① 抽帧公式采用方案 A（`evenly_spaced_inclusive`，固定 8 帧，`frames.py` 默认对齐为 8）；② 短片（`total_frames < 8`）采用 `fail_closed`；③ L3 PNG 保持 L2 原分辨率（`resize: null`），各模型 processor 自行应用 `max_pixels` 并记入运行身份；④ MiniCPM-V-4.5 首轮采用官方风格（`0.1 s` 量化 `temporal_ids` + `max_slice_nums=1`），并登记为后续可另起独立 `run_id` 的对照/优化项。下文保留原调研分析供追溯。
+
 **定位：**本文是 [DEC-005 帧对应抽帧取证](../decisions/0005-frame-correspondence-evidence.md) 前置条件 1（「模型输入抽帧口径须先落纸」，见 [frame-correspondence-evidence.md](../frame-correspondence-evidence.md)）的专项决策输入文档，基于第 2 批子视频**开发集（1,319 条候选 / 955 个锚点）**实测数据对比 4 种抽帧口径，明确 `clip_to_model_input` 参数表示草案与待用户拍板的 4 个边界问题。8B/9B 模型选型横评另见 [vlm-8b-9b-model-comparison.md](vlm-8b-9b-model-comparison.md)，训练机前置只读体检与推理适配器规划另见 [eval-preflight-and-adapter-plan.md](eval-preflight-and-adapter-plan.md)。
 
 **调研日期：** 2026-11-24。

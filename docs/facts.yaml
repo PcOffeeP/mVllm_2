@@ -753,7 +753,7 @@ facts:
     state: active
     topic: 画幅分档的倍率口径与「约 200 倍」的说法不成立
     claim: >
-      原始候选画幅跨 60×80 至 924×1232，面积 4,800 至 1,138,368 像素，逐像素约 237 倍（旧文档常写作「约 200 倍」）。经 `max_pixels`（默认 256×256 = 65,536 像素）钳制后**只缩不放、按比例缩放**：两端为 4,800（最小画幅面积不变）与 ≤ 65,536（默认真值 65,536），端点差约 13.6 倍；中间画幅按比例缩放到上限以内，**不收敛成两个离散值**——实测本仓 1,621 个候选按 `min(宽×高, 65,536)` 钳制后仍有 21 个不同面积值（942 个在 65,536 以下保持不变，679 个被压到上限）。分档仍按 `w_le_200`／`w_200_400`／`w_gt_400` 三档报告，但不得用「200 倍」作为报告理由：该数字是预处理前的量，不能用来论证模型侧看到的信息量差异；三档并列报告、不得跨档加权合成。
+      原始候选画幅跨 60×80 至 924×1232，面积 4,800 至 1,138,368 像素，逐像素约 237 倍（旧文档常写作「约 200 倍」）。经旧 MiniCPM 基线 `max_pixels`（默认 256×256 = 65,536 像素）钳制后**只缩不放、按比例缩放**：两端为 4,800（最小画幅面积不变）与 ≤ 65,536（默认真值 65,536），端点差约 13.6 倍；中间画幅按比例缩放到上限以内，**不收敛成两个离散值**——实测本仓 1,621 个候选按 `min(宽×高, 65,536)` 钳制后仍有 21 个不同面积值（942 个在 65,536 以下保持不变，679 个被压到上限）。分档仍按 `w_le_200`／`w_200_400`／`w_gt_400` 三档报告，但不得用「200 倍」作为报告理由：该数字是预处理前的量，不能用来论证模型侧看到的信息量差异；三档并列报告、不得跨档加权合成。补充（2026-11-25，DEC-006 / DF-053）：上述 65,536 与 13.6 倍仅适用旧 MiniCPM 预处理基线配置；多模型评测中 L3 PNG 保持 `resize: null`，各模型须按自身实际生效的视觉预处理参数（如 `max_pixels` 或切片上限）记入运行身份与报告。
     evidence:
       - ref: docs/eval/eval-subset.md:19
         expect: '| 原始画幅 | 60×80 至 924×1232；面积 4,800 → 1,138,368 像素 |'
@@ -1104,7 +1104,7 @@ facts:
 
   - id: DF-051
     state: active
-    topic: 帧对应抽帧取证（设计已定、未实现）
+    topic: 帧对应抽帧取证（设计已定，独立 CLI 已随 PR #21 落地，尚未在真实运行产物上执行）
     claim: >
       以一次运行实际输入的那组帧为锚点（DF-044：单请求 8 帧），按 DF-041 的实际方向读映射，不据遗留节点名反推方向。
       输入帧记录、清单映射的片段身份和各级媒体摘要共同绑定按次取证对象，不按批次绑定。
@@ -1148,6 +1148,38 @@ facts:
     established_by: 用户确认纯语义命名与显式拒绝旧 v2 策略；代码、单元测试（test_frames.py / test_infer_fake.py）与文档同步核对
     supersedes: DF-041
     affects: [eval, contract, code]
+
+  - id: DF-053
+    state: active
+    topic: 评测 8 帧抽帧口径、输入参数与首轮 3+1 基座模型名单（DEC-006）
+    claim: >
+      2026-11-25 用户确认 6 项评测口径（DEC-006），正式关闭 DEC-005 前置条件 1：
+      (1) 8 帧抽帧公式采用方案 A evenly_spaced_inclusive（全片均匀含首尾，固定 8 帧），frames.py 默认帧数由 3 对齐为 8；
+      (2) 极短片段（total_frames < 8）采用 fail_closed 显式报错拒绝，不静默减帧或重复补帧；
+      (3) L3 PNG 保持 L2 原始分辨率（resize: null），各模型在各自 processor 应用约定 max_pixels 并写入运行身份；
+      (4) MiniCPM-V-4.5 首轮采用官方风格（0.1 s 量化 temporal_ids + max_slice_nums=1），并登记为后续对照/优化项（可另起独立 run_id 与旧链路对照）；
+      (5) 首轮 8B–9B 基座锁定第一梯队 3+1 款（MiniCPM-V-4.5、Qwen3-VL-8B-Instruct、InternVL3-8B、InternVL3.5-8B 标准版不含 ViR），第二/三梯队延后至首轮基线后；
+      (6) GLM-4.1V 的 <answer>...</answer> 在主榜采用方案 1（原生格式罚分），不预埋解包分支（未来若测试须另起独立 run_id）。
+      本条仅记录已确认决策，不代表适配器代码或真实评测已完成。
+    evidence:
+      - ref: docs/decisions/0006-eval-frame-sampling-and-model-lineup.md:15
+        expect: '1. **8 帧抽帧公式（DEC-005 前置条件 1）：采用方案 A（`evenly_spaced_inclusive`，固定 8 帧）**'
+      - ref: docs/decisions/0006-eval-frame-sampling-and-model-lineup.md:20
+        expect: '2. **极短片段（`total_frames < 8`）策略：采用 `fail_closed`**'
+      - ref: docs/decisions/0006-eval-frame-sampling-and-model-lineup.md:23
+        expect: '3. **L3 PNG 缩放归属：保持 L2 原始分辨率（`resize: null`）**'
+      - ref: docs/decisions/0006-eval-frame-sampling-and-model-lineup.md:27
+        expect: '4. **MiniCPM-V-4.5 首轮时序与切片参数：采用官方风格，并登记为后续对照/优化项**'
+      - ref: docs/decisions/0006-eval-frame-sampling-and-model-lineup.md:31
+        expect: '5. **首轮 8B–9B 基座模型名单：锁定第一梯队（3+1 款）**'
+      - ref: docs/decisions/0006-eval-frame-sampling-and-model-lineup.md:39
+        expect: '6. **`GLM-4.1V` `<answer>...</answer>` 处置：主榜采用方案 1（原生格式罚分），不预埋解包分支**'
+      - ref: docs/decisions/README.md:22
+        expect: '[DEC-006 评测抽帧口径与首轮模型名单](0006-eval-frame-sampling-and-model-lineup.md)'
+    established: 2026-11-25
+    established_by: 用户确认 6 项评测抽帧口径与首轮基座模型名单，见 DEC-006。
+    supersedes: null
+    affects: [eval, contract]
 
 misreadings:
   - wrong: 父子窗口状态不同 = 数据矛盾
