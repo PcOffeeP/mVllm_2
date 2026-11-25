@@ -86,11 +86,7 @@ def main(argv=None):
         exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
         draft = build_draft(reviews, candidate_ids, args.manifest_version,
                             exclusions=exclusions, enforce_exclusions=not args.allow_excluded)
-        for sample in draft["samples"]:
-            selection.assert_manifest_sha256(
-                sample["manifest_sha256"],
-                context=f"build_manifest:{sample['candidate_id']}",
-            )
+        selection.assert_samples_match_source_manifest(draft["samples"], context="build_manifest")
         draft["input_files"] = {
             "reviews": {"path": args.reviews, "sha256": hashlib.sha256(export_bytes).hexdigest()},
             "candidate_ids": {"path": args.candidate_ids, "sha256": hashlib.sha256(ids_bytes).hexdigest()},

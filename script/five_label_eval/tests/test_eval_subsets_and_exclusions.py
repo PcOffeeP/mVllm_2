@@ -720,4 +720,90 @@ def test_infer_rejects_superset_manifest_for_frozen_subset_and_accepts_exact_sub
     assert len(scored["samples"]) == 210
     assert scored["groups"]["real"]["full_clip"]["clips"] == 210
 
+    # 3. Mutating one sample's clip_sha256 (while keeping 210 IDs and manifest_sha256 intact) MUST be rejected by infer & build_manifest
+    tampered_dev_manifest = json.loads(dev_manifest_out.read_text(encoding="utf-8"))
+    tampered_dev_manifest["samples"][0]["clip_sha256"] = "0" * 64
+    tampered_manifest_path = tmp_path / "tampered-dev-manifest.json"
+    tampered_manifest_path.write_text(json.dumps(tampered_dev_manifest, ensure_ascii=False) + "\n", encoding="utf-8")
+    tampered_records_path = tmp_path / "tampered-records.jsonl"
+    with tampered_records_path.open("w", encoding="utf-8") as stream:
+        for idx, sample in enumerate(tampered_dev_manifest["samples"]):
+            stream.write(
+                json.dumps(
+                    {
+                        "record_schema": "five-label-input-record/3",
+                        "candidate_id": sample["candidate_id"],
+                        "clip_sha256": sample["clip_sha256"],
+                        "manifest_sha256": sample["manifest_sha256"],
+                        "input_id": f"input-{idx:04d}",
+                    }
+                )
+                + "\n"
+            )
+    tampered_preds = tmp_path / "tampered-preds.jsonl"
+    err_tampered = io.StringIO()
+    with redirect_stderr(err_tampered):
+        rc_tampered = infer.main(
+            [
+                "--manifest",
+                str(tampered_manifest_path),
+                "--candidate-ids",
+                str(dev_subset_path),
+                "--input-config",
+                str(tampered_records_path),
+                "--prompt-file",
+                str(prompt_path),
+                "--run-id",
+                "run-tampered",
+                "--backend",
+                "fake",
+                "--model-id",
+                "fake",
+                "--output",
+                str(tampered_preds),
+            ]
+        )
+    assert rc_tampered == 2
+    assert "clip_sha256" in err_tampered.getvalue()
+    assert not tampered_preds.exists()
+
+    # build_manifest must also reject a review export whose clip_sha256 was altered
+    tampered_reviews_jsonl = tmp_path / "tampered-reviews.jsonl"
+    with tampered_reviews_jsonl.open("w", encoding="utf-8") as stream:
+        for idx, sample in enumerate(tampered_dev_manifest["samples"]):
+            stream.write(
+                json.dumps(
+                    {
+                        "manifest_sha256": sample["manifest_sha256"],
+                        "candidate_id": sample["candidate_id"],
+                        "clip_sha256": sample["clip_sha256"],
+                        "source_id": sample["source_id"],
+                        "source_type": sample["source_type"],
+                        "review_id": f"rev-{idx}",
+                        "review_status": "confirmed",
+                        "labels": {"断裂状态": "未断裂"},
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+    tampered_draft_out = tmp_path / "tampered-draft.json"
+    err_bm = io.StringIO()
+    with redirect_stderr(err_bm):
+        rc_bm = build_manifest.main(
+            [
+                "--reviews",
+                str(tampered_reviews_jsonl),
+                "--candidate-ids",
+                str(dev_subset_path),
+                "--manifest-version",
+                "tampered-bm/1",
+                "--output",
+                str(tampered_draft_out),
+            ]
+        )
+    assert rc_bm == 2
+    assert "clip_sha256" in err_bm.getvalue()
+    assert not tampered_draft_out.exists()
+
 

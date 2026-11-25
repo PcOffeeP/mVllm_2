@@ -61,6 +61,8 @@ class CandidateSelection:
     candidate_ids: list[str]
     expected_manifest_sha256: str | None = None
     subset_id: str | None = None
+    manifest_path: str | None = None
+    source_type: str | None = None
 
     def assert_manifest_sha256(self, actual_manifest_sha256: str, *, context: str = "selection") -> None:
         """Fail closed when a frozen eval subset is applied to a different manifest."""
@@ -72,6 +74,60 @@ class CandidateSelection:
                 f"{context}: frozen subset {label!r} requires manifest_sha256="
                 f"{self.expected_manifest_sha256}, got {actual_manifest_sha256!r}"
             )
+
+    def assert_samples_match_source_manifest(
+        self,
+        samples: Iterable[dict[str, Any]],
+        *,
+        context: str = "selection",
+        repo_root: Path = REPO_ROOT,
+    ) -> None:
+        """Independently verify downstream sample clip_sha256/source_id/source_type against the frozen source manifest."""
+        if self.expected_manifest_sha256 is None:
+            return
+        rel = self.manifest_path or "data/sub_video/manifest.json"
+        source_manifest_path = Path(rel) if Path(rel).is_absolute() else repo_root / rel
+        try:
+            raw = source_manifest_path.read_bytes()
+        except OSError as exc:
+            raise InputError(
+                f"{context}: cannot read frozen source manifest {source_manifest_path}: {exc}"
+            ) from exc
+        actual_sha = hashlib.sha256(raw).hexdigest()
+        self.assert_manifest_sha256(actual_sha, context=f"{context} source_manifest")
+        source_obj = decode_file(raw.decode("utf-8"), str(source_manifest_path))
+        raw_cands = source_obj.get("candidates") if isinstance(source_obj, dict) else None
+        if not isinstance(raw_cands, list):
+            raise InputError(f"{context}: frozen source manifest missing candidates array")
+        by_id = {
+            row["candidate_id"]: row
+            for row in raw_cands
+            if isinstance(row, dict) and isinstance(row.get("candidate_id"), str)
+        }
+        expected_stype = self.source_type or "real"
+        for sample in samples:
+            cid = sample.get("candidate_id")
+            self.assert_manifest_sha256(
+                sample.get("manifest_sha256", ""),
+                context=f"{context}:{cid}",
+            )
+            src = by_id.get(cid)
+            if src is None:
+                raise InputError(f"{context}:{cid}: candidate absent from frozen source manifest")
+            src_clip_sha = (src.get("output") or {}).get("sha256") if isinstance(src.get("output"), dict) else None
+            if sample.get("clip_sha256") != src_clip_sha:
+                raise InputError(
+                    f"{context}:{cid}: clip_sha256 {sample.get('clip_sha256')!r} != frozen source manifest {src_clip_sha!r}"
+                )
+            src_video_id = src.get("source_video_id")
+            if sample.get("source_id") != src_video_id:
+                raise InputError(
+                    f"{context}:{cid}: source_id {sample.get('source_id')!r} != frozen source manifest {src_video_id!r}"
+                )
+            if sample.get("source_type") != expected_stype:
+                raise InputError(
+                    f"{context}:{cid}: source_type {sample.get('source_type')!r} != frozen subset {expected_stype!r}"
+                )
 
 
 @dataclass(frozen=True)
@@ -283,6 +339,8 @@ def load_candidate_selection(path: Path | str) -> CandidateSelection:
     obj = decode_file(target.read_text(encoding="utf-8"), str(target))
     expected_manifest_sha256: str | None = None
     subset_id: str | None = None
+    manifest_path: str | None = None
+    source_type: str | None = None
     if isinstance(obj, list):
         ids = obj
     elif isinstance(obj, dict) and obj.get("schema") == EVAL_SUBSET_SCHEMA:
@@ -298,6 +356,10 @@ def load_candidate_selection(path: Path | str) -> CandidateSelection:
         expected_manifest_sha256 = manifest_sha
         raw_sid = obj.get("subset_id")
         subset_id = raw_sid if isinstance(raw_sid, str) and raw_sid.strip() else None
+        raw_mpath = inputs.get("manifest_path") if isinstance(inputs, dict) else None
+        manifest_path = raw_mpath if isinstance(raw_mpath, str) and raw_mpath.strip() else None
+        raw_stype = obj.get("source_type")
+        source_type = raw_stype if isinstance(raw_stype, str) and raw_stype.strip() else None
     else:
         raise InputError(
             f"{target}: candidate IDs must be a JSON array or {EVAL_SUBSET_SCHEMA!r} object"
@@ -321,6 +383,8 @@ def load_candidate_selection(path: Path | str) -> CandidateSelection:
         candidate_ids=ids,
         expected_manifest_sha256=expected_manifest_sha256,
         subset_id=subset_id,
+        manifest_path=manifest_path,
+        source_type=source_type,
     )
 
 

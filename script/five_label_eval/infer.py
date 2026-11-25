@@ -557,12 +557,10 @@ def main(argv=None) -> int:
                     f"(extra={len(extra)} {extra[:5]}, missing={len(missing_in_manifest)} {missing_in_manifest[:5]}); "
                     "build a subset-scoped scoring manifest with manifest_convert --candidate-ids"
                 )
-            for sample in manifest_samples.values():
-                if sample.get("candidate_id") in selected_set:
-                    selection.assert_manifest_sha256(
-                        sample.get("manifest_sha256", ""),
-                        context=f"infer manifest {sample.get('candidate_id')}",
-                    )
+            selection.assert_samples_match_source_manifest(
+                [sample for sample in manifest_samples.values() if sample.get("candidate_id") in selected_set],
+                context="infer manifest",
+            )
         if args.backend == "fake":
             if args.model_id != "fake":
                 raise InputError("fake backend only accepts --model-id fake")
