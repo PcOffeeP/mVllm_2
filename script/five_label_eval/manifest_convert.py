@@ -138,9 +138,9 @@ def main(argv=None) -> int:
         if selection is not None and selection.subset_id is not None:
             draft["eval_subset_id"] = selection.subset_id
         draft["input_files"] = {"source_manifest": {"path": args.input, "sha256": raw_sha256}}
+        prepare(draft, [], [], exclusions=exclusions, enforce_exclusions=not args.allow_excluded)  # Validate before writing.
         with Path(args.output).open("x", encoding="utf-8") as stream:
             stream.write(json.dumps(draft, ensure_ascii=False, indent=2) + "\n")
-        prepare(draft, [], [], exclusions=exclusions, enforce_exclusions=not args.allow_excluded)  # Scorer-side validation of the written draft.
         print(f"Wrote {args.output}; samples={len(draft['samples'])}; version={draft['manifest_version']}")
         print(draft["source_type_decision"]["rationale"])
         return 0

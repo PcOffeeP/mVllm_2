@@ -141,6 +141,17 @@ def test_manifest_convert_rejects_explicit_excluded_candidate_id(bad_cid: str, b
         )
 
 
+def test_manifest_convert_rejects_conflicting_source_id_masking_excluded_source_video_id() -> None:
+    masked = _synthetic_candidate("video_0006_pre_99", "video_0006", 99)
+    masked["source_id"] = "video_0001"
+    manifest_obj = {"schema": "synthetic/1", "candidates": [masked], "sources": []}
+    raw = json.dumps(manifest_obj, sort_keys=True).encode("utf-8")
+    with pytest.raises(InputError, match="conflicting source_id"):
+        manifest_convert.convert(manifest_obj, raw, manifest_version="masked-test/1")
+    with pytest.raises(InputError, match="conflicting source_id"):
+        manifest_convert.convert(manifest_obj, raw, candidate_ids=["video_0006_pre_99"], manifest_version="masked-test/1")
+
+
 def test_build_manifest_rejects_excluded_real_and_isolated_virtual_but_allows_clean() -> None:
     rows = [
         _synthetic_review_row("video_0001_pre_01", "video_0001", idx=1),

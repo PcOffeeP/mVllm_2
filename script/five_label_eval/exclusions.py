@@ -178,6 +178,26 @@ class DevExclusions:
             )
         )
 
+    @staticmethod
+    def _extract_source_id(row: dict[str, Any]) -> str | None:
+        sid = row.get("source_id")
+        svid = row.get("source_video_id")
+        if (
+            isinstance(sid, str)
+            and sid.strip()
+            and isinstance(svid, str)
+            and svid.strip()
+            and sid != svid
+        ):
+            raise InputError(
+                f"{row.get('candidate_id') or '<unknown>'}: conflicting source_id {sid!r} != source_video_id {svid!r}"
+            )
+        if isinstance(svid, str) and svid.strip():
+            return svid
+        if isinstance(sid, str) and sid.strip():
+            return sid
+        return None
+
     def find_violations(self, items: Iterable[Any]) -> list[dict[str, Any]]:
         """Inspect candidate IDs or candidate/sample dicts and return DEC-007 violations."""
         violations: list[dict[str, Any]] = []
@@ -186,7 +206,7 @@ class DevExclusions:
                 cid, sid, stype = item, None, None
             elif isinstance(item, dict):
                 cid = item.get("candidate_id")
-                sid = item.get("source_id") or item.get("source_video_id")
+                sid = self._extract_source_id(item)
                 stype = item.get("source_type")
             else:
                 continue
@@ -226,9 +246,10 @@ class DevExclusions:
         kept: list[dict[str, Any]] = []
         removed: list[dict[str, Any]] = []
         for row in candidates:
+            sid = self._extract_source_id(row)
             if self.is_excluded(
                 candidate_id=row.get("candidate_id"),
-                source_id=row.get("source_id") or row.get("source_video_id"),
+                source_id=sid,
                 source_type=row.get("source_type"),
             ):
                 removed.append(row)
