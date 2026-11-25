@@ -25,9 +25,9 @@
 | **`MiniCPM-V-4.5`** | **Run A（`transformers` DEC-006 方向）**：`0.1 s` 量化 `temporal_ids`，`max_slice_nums=1` | 历史初步观测（2026-11-25；processor 实际逐帧像素上限未核实，补齐运行身份前不入正式跨模型主榜） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-tf-dev-v1/`](20261125-minicpm-v45-tf-dev-v1/) |
 | **`MiniCPM-V-4.5`** | **Run A（`vLLM HTTP` 对照）**：同 8 帧输入服务化对照 | 历史初步观测（2026-11-25；服务端 processor 实际像素上限未记录，补齐前不入正式跨模型主榜） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-vllm-dev-v1/`](20261125-minicpm-v45-vllm-dev-v1/) |
 | **`MiniCPM-V-4.5`** | **Run B 无画面盲答**：`vLLM 0.34.0` HTTP 描述性纯文本先验对照（剥离全部图像帧，解码参数未记入 `run_meta.json`） | 历史初步观测（2026-11-25；仅作描述性先验对照，非严格配对实验） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261125-minicpm-v45-runb-noimage-dev-v1/`](20261125-minicpm-v45-runb-noimage-dev-v1/) |
-| **`Qwen3-VL-8B-Instruct`** | **Run A（`vLLM 0.34.0` HTTP）**：`bfloat16`、`--max-model-len 8192`、`mm_processor_kwargs=null`（模型默认视觉 processor，无 `trust_remote_code`） | 首轮 Run A 已完成并归档（2026-11-26；无配对 Run B） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261126-qwen3-vl-8b-vllm-dev-v1/`](20261126-qwen3-vl-8b-vllm-dev-v1/) |
-| **`InternVL3-8B`**（原生非 `-HF`） | **Run A（`vLLM 0.34.0` HTTP）**：`bfloat16`、`--trust-remote-code`、`--max-model-len 12288`、`--hf-overrides '{"max_dynamic_patch": 4}'`（单帧至多 4×`448×448` 切块） | 首轮 Run A 已完成并归档（2026-11-26；全量带 ```` ```json ```` 围栏但均成功解析；无配对 Run B） | 0/210 (0.0%) | `0 / 0 / 0` | [`20261126-internvl3-8b-vllm-dev-v1/`](20261126-internvl3-8b-vllm-dev-v1/) |
-| **`InternVL3_5-8B`**（标准版不含 ViR） | **Run A（`vLLM 0.34.0` HTTP）**：`bfloat16`、`--trust-remote-code`、`--max-model-len 12288`、`--hf-overrides '{"max_dynamic_patch": 4}'`（单帧至多 4×`448×448` 切块） | 首轮 Run A 已完成并归档（2026-11-26；1 条带围栏；无配对 Run B） | 209/210 (99.5%) | `0 / 0 / 0` | [`20261126-internvl3_5-8b-vllm-dev-v1/`](20261126-internvl3_5-8b-vllm-dev-v1/) |
+| **`Qwen3-VL-8B-Instruct`** | **Run A（`vLLM 0.34.0` HTTP）**：`bfloat16`、`--max-model-len 8192`、`mm_processor_kwargs=null`（快照默认 `Qwen2VLImageProcessorFast`：`min_pixels=65,536`、`max_pixels=16,777,216`、`patch_size=16`、`merge_size=2`） | 首轮 Run A 已完成并归档（2026-11-26；无配对 Run B） | 210/210 (100.0%) | `0 / 0 / 0` | [`20261126-qwen3-vl-8b-vllm-dev-v1/`](20261126-qwen3-vl-8b-vllm-dev-v1/) |
+| **`InternVL3-8B`**（原生非 `-HF`） | **Run A（`vLLM 0.34.0` HTTP）**：`bfloat16`、`--trust-remote-code`、`--max-model-len 12288`、`--hf-overrides '{"max_dynamic_patch": 4}'`（`use_thumbnail=true`，动态网格上限 4 块 + 1 块全图缩略图 = 单帧至多 5 块 `448×448`） | 首轮 Run A 已完成并归档（2026-11-26；全量带 ```` ```json ```` 围栏但均成功解析；无配对 Run B） | 0/210 (0.0%) | `0 / 0 / 0` | [`20261126-internvl3-8b-vllm-dev-v1/`](20261126-internvl3-8b-vllm-dev-v1/) |
+| **`InternVL3_5-8B`**（标准版不含 ViR） | **Run A（`vLLM 0.34.0` HTTP）**：`bfloat16`、`--trust-remote-code`、`--max-model-len 12288`、`--hf-overrides '{"max_dynamic_patch": 4}'`（`use_thumbnail=true`，动态网格上限 4 块 + 1 块全图缩略图 = 单帧至多 5 块 `448×448`） | 首轮 Run A 已完成并归档（2026-11-26；1 条带围栏；无配对 Run B） | 209/210 (99.5%) | `0 / 0 / 0` | [`20261126-internvl3_5-8b-vllm-dev-v1/`](20261126-internvl3_5-8b-vllm-dev-v1/) |
 
 ---
 
@@ -36,7 +36,7 @@
 ### 3.1 三画幅档独立对比表（`eval-dev-v1` 宽度分档：`width_rule_le200_lt400`）
 
 > 按 [`docs/eval/eval-subset.md`](../eval-subset.md) §1、§3、§4 契约要求，在各档样本上使用 `script.five_label_eval.score.aggregate` 独立统计（`eval-dev-v1` 全部为 `source_type = real`，虚拟数据 0 条；L3 落盘 `resize: null`）。下表展示 4 款第一梯队基座（共 6 个正式 Run）核心字段分档对照；**全部 11 个叶字段**的分档准确率、模型与人工 `无法判断` 比例及各 Run 实际生效的 vLLM/processor 参数详见 **[三画幅档完整必报项分档报告](width-band-breakdown.md)**。
-> 注：各模型视觉预处理存在差异——`MiniCPM-V-4.5` 两组视觉 Run 尚未记录 processor 实际像素上限（标为历史初步观测）；`Qwen3-VL-8B-Instruct` 沿用模型默认视觉 processor（`mm_processor_kwargs=null`，`prompt_tokens` 1190~7430）；`InternVL3-8B` 与 `InternVL3_5-8B` 通过 `--hf-overrides '{"max_dynamic_patch": 4}'` 限制单帧动态切块上限为 4 块以适配 `--max-model-len 12288`（详见各 Run `run_meta.json`）。
+> 注：各模型视觉预处理存在差异——`MiniCPM-V-4.5` 两组视觉 Run 尚未记录 processor 实际像素上限（标为历史初步观测）；`Qwen3-VL-8B-Instruct` 沿用模型快照 `preprocessor_config.json` 默认配置（`Qwen2VLImageProcessorFast`：`shortest_edge/min_pixels=65,536`、`longest_edge/max_pixels=16,777,216`、`patch_size=16`、`merge_size=2`，`prompt_tokens` 1190~7430）；`InternVL3-8B` 与 `InternVL3_5-8B` 在 `config.json` 启用 `use_thumbnail=true`、`force_image_size=448`，并通过 `--hf-overrides '{"max_dynamic_patch": 4}'` 将动态网格上限设为 4 块（多块时追加 1 块全图缩略图，单帧实际总块数上限为 `4+1=5` 块 `448×448`、每块 256 视觉 token，单帧上限 1,280 视觉 token）以适配 `--max-model-len 12288`（详见各 Run `run_meta.json`）。
 
 | 画幅档（来源数 / 片段数 / 断裂真值数） | 模型 / Run | 请求失败 / 超时 / 未处理 | 断裂状态准确率（模型 `unc`） | 断裂模式 (`frac`) | 断裂位置 (`frac`) | 断裂现象.伸长（模型 `unc`） | 五类全对（补充） |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -68,7 +68,7 @@
 1. **共性瓶颈——普遍存在强「未断裂」先验偏置**：
    - 全部 4 款基座在零样本下对 **`已断裂`** 类别的召回在三个画幅档均为 **`0`**（`w_le_200` `0/9`、`w_200_400` `0/4`、`w_gt_400` `0/4`）；绝大多数模型的 `断裂状态` 准确率主要来自对多数类 `未断裂` 的命中。
 2. **`Qwen3-VL-8B-Instruct`（综合最均衡、工程最省心）**：
-   - **优势**：严格格式合法率 **100.0%**（210/210 零违约）；无需 `--trust-remote-code`，`--max-model-len 8192` 下直接跑通 8 帧原图；在中/高画幅档的 `断裂状态`（`52.38%` / `60.71%`）、`五类全对`（`9.52%` / `17.86%`）及 `断裂现象` 积极判别上显著领先——尤其在 `w_gt_400` 档 5 项 `断裂现象` 均 0% `unc`，`开裂` 96.43%、`界面分离` 100.00%、`断后脱夹` 96.43%。
+   - **优势**：严格格式合法率 **100.0%**（210/210 零违约）；无需 `--trust-remote-code`，`--max-model-len 8192` 下直接跑通 8 帧原图；在中/高画幅档的 `断裂状态`（`52.38%` / `60.71%`）与 `五类全对`（`9.52%` / `17.86%`）领先，并在 `断裂现象` 上观察到更高准确率、较少输出 `无法判断`——在 `w_gt_400` 档 5 项 `断裂现象` 均 0% `unc`，`开裂` 96.43%、`界面分离` 100.00%、`断后脱夹` 96.43%（注：`w_gt_400` 档 `界面分离` 100.00% 来自 56 条全阴性样本，`断后脱夹` 96.43% 亦未命中该档唯一阳性样本，需结合类别分布解读）。
    - **短板**：对真实断裂仍偏保守，`发生断裂` 召回为 `w_le_200` `0/42`、`w_200_400` `1/13`、`w_gt_400` `3/14`；`断裂模式` 仅在 `w_gt_400` 命中 1 条非 `unc` 真值（`脆性断裂` 1/5），`断裂位置` 非 `unc` 召回为 0。
 3. **`InternVL3-8B`（真实断裂视觉捕捉最积极，但格式围栏硬伤）**：
    - **优势**：**唯一在全部三个画幅档均取得非零 `发生断裂` 召回**（`w_le_200` `4/42`、`w_200_400` `1/13`、`w_gt_400` `5/14`）且在三档均命中非 `unc` `断裂模式`（`脆性断裂` 2/27、`韧性断裂` 1/11、`韧性断裂` 1/12）与 `断裂位置`（`标距内` 3/28、1/12、2/10）的基座；`异常情况` 三项全档准确率领先（87.50%–100.00%）。
@@ -88,7 +88,7 @@
      - **`w_gt_400`**（`n=56`）：Run B 恒定猜 `"是"` 拿到 **41/56 (73.21%)**，仍高于全部 4 款视觉模型（最高的 `Qwen3-VL-8B-Instruct` 为 32/56 = 57.14%，`MiniCPM-V-4.5` `tf-dev-v1` 为 50.00%）；
      - **`w_200_400`**（`n=42`）：Run B 拿到 **10/42 (23.81%)**，与 `Qwen3-VL-8B-Instruct`（23.81%）持平；而 `InternVL3_5-8B` 虽拿到 22/42 (52.38%)，实为 97.62% 输出 `无法判断` 命中人工 `unc` 占比；
      - **`w_le_200`**（`n=112`）：Run B 为 **21/112 (18.75%)**，按档拆看可见盲答与全 `unc` 策略都会随各档真值分布产生表面高分，必须结合 `unc` 率与类别召回解读。
-  2. **「断裂模式」在多数基座上正确预测仍主要落在 `无法判断` 真值上**：`MiniCPM-V-4.5` 与 `InternVL3_5-8B` 三档非 `unc` 类别召回均为 `0`；`Qwen3-VL-8B-Instruct` 仅在 `w_gt_400` 命中 1 条 `脆性断裂`（1/5）；仅 `InternVL3-8B` 在三档均出现非 `unc` 命中（共 4 条：2 脆性 + 2 韧性）。
+  2. **「断裂模式」在多数基座上正确预测仍主要落在 `无法判断` 真值上**：`MiniCPM-V-4.5` 与 `InternVL3_5-8B` 三档非 `unc` 类别召回均为 `0`；`Qwen3-VL-8B-Instruct` 仅在 `w_gt_400` 命中 1 条 `脆性断裂`（1/5）；仅 `InternVL3-8B` 在三档均出现非 `unc` 命中（按档分别为：`w_le_200` 2 条 `脆性断裂` 2/27、`w_200_400` 1 条 `韧性断裂` 1/11、`w_gt_400` 1 条 `韧性断裂` 1/12）。
 
 ### 3.4 下一步微调基座选型参考依据（供用户决策，不作自动晋级）
 
