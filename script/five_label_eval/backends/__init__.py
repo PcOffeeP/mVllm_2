@@ -90,4 +90,29 @@ def normalize_result(result: InferenceResult) -> InferenceResult:
             reasoning_content=result.reasoning_content,
             extra_meta=dict(result.extra_meta),
         )
+    try:
+        result.raw_output.encode("utf-8")
+    except UnicodeEncodeError:
+        return InferenceResult(
+            status="request_failed",
+            raw_output=None,
+            latency_seconds=result.latency_seconds,
+            error_detail="model returned invalid UTF-8 string (unpaired surrogate)",
+            reasoning_content=None,
+            extra_meta=dict(result.extra_meta),
+        )
+    reasoning = result.reasoning_content
+    if isinstance(reasoning, str):
+        try:
+            reasoning.encode("utf-8")
+        except UnicodeEncodeError:
+            reasoning = reasoning.encode("utf-8", errors="replace").decode("utf-8")
+            return InferenceResult(
+                status=result.status,
+                raw_output=result.raw_output,
+                latency_seconds=result.latency_seconds,
+                error_detail=result.error_detail,
+                reasoning_content=reasoning,
+                extra_meta=dict(result.extra_meta),
+            )
     return result

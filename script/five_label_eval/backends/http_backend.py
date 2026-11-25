@@ -93,6 +93,10 @@ class HttpBackend:
             key = os.environ.get(self.api_key_env)
             if not key:
                 raise InputError(f"API key env var {self.api_key_env!r} is not set or empty")
+            if any(ord(ch) < 33 or ord(ch) > 126 for ch in key):
+                raise InputError(
+                    f"API key in env var {self.api_key_env!r} contains illegal whitespace or control characters"
+                )
             self._api_key = key
 
         self.timeout_seconds = float(timeout_seconds)
@@ -249,11 +253,12 @@ class HttpBackend:
                 error_detail=f"timeout after {time.monotonic() - started:.3f}s: {exc}",
             )
         except (httpx.HTTPError, OSError) as exc:
+            # Record only the safe exception class name to prevent header/credential echo in metadata.
             return InferenceResult(
                 status="request_failed",
                 raw_output=None,
                 latency_seconds=time.monotonic() - started,
-                error_detail=f"transport error: {exc}",
+                error_detail=f"transport error: {type(exc).__name__}",
             )
 
         elapsed = time.monotonic() - started

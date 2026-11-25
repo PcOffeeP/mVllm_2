@@ -24,9 +24,11 @@ from script.five_label_eval import infer
 from script.five_label_eval.backends import InferenceRequest, sanitize_base_url
 from script.five_label_eval.backends.http_backend import HttpBackend
 from script.five_label_eval.backends.transformers_backend import (
+    InternVLNativeImageProcessor,
     TransformersBackend,
     compute_minicpm_temporal_ids,
     detect_model_family,
+    internvl_dynamic_preprocess,
     verify_trusted_snapshot_sha256,
 )
 from script.five_label_eval.frames import RECORD_SCHEMA
@@ -952,7 +954,10 @@ def test_r3_regression_tokenizer_auto_map_internvl_default_loader_seed_and_meta_
         with pytest.raises(InputError, match="tokenizer_config.json"):
             verify_trusted_snapshot_sha256(mdir, manifest_sha)
 
-    # 2. Default loader uses AutoImageProcessor (not AutoProcessor) for native InternVL with model.chat().
+    # 2. Default loader uses InternVLNativeImageProcessor (not AutoProcessor or CLIP AutoImageProcessor)
+    #    for native InternVL with model.chat().
+    from PIL import Image
+
     loader_calls: list[str] = []
 
     class FakeCuda:
@@ -975,6 +980,7 @@ def test_r3_regression_tokenizer_auto_map_internvl_default_loader_seed_and_meta_
             return self
 
         def chat(self, tokenizer, pixel_values, question, generation_config, num_patches_list=None):
+            loader_calls.append(f"chat_patches={num_patches_list}")
             return LEGAL_JSON
 
     class FakeAutoModel:
@@ -990,13 +996,12 @@ def test_r3_regression_tokenizer_auto_map_internvl_default_loader_seed_and_meta_
     class FakeAutoImageProcessor:
         @staticmethod
         def from_pretrained(*_a, **_kw):
-            loader_calls.append("AutoImageProcessor.from_pretrained")
-            return lambda images, return_tensors="pt": {"pixel_values": "PV_TENSOR"}
+            raise AssertionError("native InternVL must not use CLIP AutoImageProcessor")
 
     class FakeAutoProcessor:
         @staticmethod
         def from_pretrained(*_a, **_kw):
-            raise AssertionError("native InternVL must use AutoImageProcessor, not AutoProcessor")
+            raise AssertionError("native InternVL must use InternVLNativeImageProcessor, not AutoProcessor")
 
     fake_transformers = types.SimpleNamespace(
         AutoModel=FakeAutoModel,
@@ -1008,8 +1013,17 @@ def test_r3_regression_tokenizer_auto_map_internvl_default_loader_seed_and_meta_
     monkeypatch.setitem(sys.modules, "torch", fake_torch)
     monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
 
-    model, proc, tok = _default_model_loader(tmp_path, "internvl3", None)
-    assert "AutoImageProcessor.from_pretrained" in loader_calls
+    internvl_dir = tmp_path / "internvl3_snap"
+    internvl_dir.mkdir()
+    (internvl_dir / "config.json").write_text(json.dumps({"force_image_size": 32}), encoding="utf-8")
+    (internvl_dir / "preprocessor_config.json").write_text(
+        json.dumps({"feature_extractor_type": "CLIPFeatureExtractor", "do_center_crop": True}),
+        encoding="utf-8",
+    )
+
+    model, proc, tok = _default_model_loader(internvl_dir, "internvl3", None)
+    assert isinstance(proc, InternVLNativeImageProcessor)
+    assert proc.image_size == 32
     backend = TransformersBackend(
         model_id="OpenGVLab/InternVL3-8B@sha256:1",
         temperature=0.2,
@@ -1017,12 +1031,13 @@ def test_r3_regression_tokenizer_auto_map_internvl_default_loader_seed_and_meta_
         model=model,
         processor=proc,
         tokenizer=tok,
-        image_loader=lambda p: p.name,
+        image_loader=lambda _p: Image.new("RGB", (64, 32), color=(10, 20, 30)),
     )
     res = backend.infer_one(_make_request(tmp_path / "r3_internvl"))
     assert res.status == "success"
     assert res.raw_output == LEGAL_JSON
     assert "torch.manual_seed(42)" in loader_calls
+    assert f"chat_patches={[3] * 8}" in loader_calls
 
     # 3. Interruption mid-batch checkpoints run_meta (never 0 bytes) alongside flushed predictions.
     rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r3_interrupt", cid="c00")
@@ -1158,3 +1173,124 @@ def test_r4_regression_peft_rejection_error_secret_redaction_and_atomic_meta(tmp
     surviving = json.loads(meta_path.read_text(encoding="utf-8"))
     assert surviving["total_requests"] == 1
     assert surviving["backend_identity"]["backend"] == "http"
+
+
+def test_r5_regression_internvl_native_full_frame_preservation_and_max_pixels(tmp_path, monkeypatch):
+    """Regression tests for PR #24 P2 findings: full-frame InternVL preprocessing and max_pixels enforcement."""
+    import numpy as np
+    from PIL import Image
+
+    # Build a 2:1 non-square image with distinct edge markers that CLIP center-crop would discard:
+    # left 80px = pure red (255, 0, 0), center 480px = black (0, 0, 0), right 80px = pure blue (0, 0, 255).
+    edge_arr = np.zeros((320, 640, 3), dtype=np.uint8)
+    edge_arr[:, :80, 0] = 255
+    edge_arr[:, 560:, 2] = 255
+    edge_img = Image.fromarray(edge_arr, mode="RGB")
+
+    # 1. Dynamic tiling preserves both left (red) and right (blue) edges + full-frame thumbnail.
+    #    For 640x320 with image_size=64 and max_num=12, area > 0.5*64*64*8 selects (4, 2) = 8 tiles + 1 thumbnail = 9.
+    proc = InternVLNativeImageProcessor(image_size=64, max_num=12, use_thumbnail=True)
+    out_tiled = proc(images=[edge_img], return_tensors="np")
+    pv_tiled = out_tiled["pixel_values"]
+    assert out_tiled["num_patches_list"] == [9]
+    assert pv_tiled.shape == (9, 3, 64, 64)
+    # Tile 0 (top-left of 4x2 grid): left edge has high R, low B.
+    assert pv_tiled[0, 0, :, :4].mean() > pv_tiled[0, 2, :, :4].mean() + 2.0
+    # Tile 3 (top-right of 4x2 grid): right edge has high B, low R.
+    assert pv_tiled[3, 2, :, -4:].mean() > pv_tiled[3, 0, :, -4:].mean() + 2.0
+    # Tile -1 (full-frame thumbnail): preserves BOTH left red edge and right blue edge.
+    assert pv_tiled[-1, 0, :, :4].mean() > pv_tiled[-1, 2, :, :4].mean() + 2.0
+    assert pv_tiled[-1, 2, :, -4:].mean() > pv_tiled[-1, 0, :, -4:].mean() + 2.0
+
+    # 2. Single-tile square resize (max_num=1) also preserves both edges with no center crop.
+    tiles_sq = internvl_dynamic_preprocess(edge_img, min_num=1, max_num=1, image_size=64, use_thumbnail=True)
+    assert len(tiles_sq) == 1
+    sq_arr = np.asarray(tiles_sq[0])
+    assert sq_arr[:, :4, 0].mean() > 200 and sq_arr[:, :4, 2].mean() < 20
+    assert sq_arr[:, -4:, 2].mean() > 200 and sq_arr[:, -4:, 0].mean() < 20
+
+    # 3. max_pixels enforces BOTH source-image downscaling and tiled patch budget,
+    #    producing measurably different visual tensors across pixel budgets.
+    y_grid, x_grid = np.mgrid[0:400, 0:800]
+    pattern = np.stack(
+        [
+            ((x_grid // 4 + y_grid // 4) % 2 * 255).astype(np.uint8),
+            ((x_grid * 255) // 799).astype(np.uint8),
+            ((y_grid * 255) // 399).astype(np.uint8),
+        ],
+        axis=-1,
+    )
+    pattern_img = Image.fromarray(pattern, mode="RGB")
+
+    captured_runs: dict[int, tuple[np.ndarray, list[int]]] = {}
+
+    for budget in (1024, 4096, 12288):
+        class CaptureInternVL:
+            def chat(self, tokenizer, pixel_values, question, generation_config, num_patches_list=None):
+                captured_runs[budget] = (np.asarray(pixel_values), list(num_patches_list or []))
+                return LEGAL_JSON
+
+        backend = TransformersBackend(
+            model_id="OpenGVLab/InternVL3-8B@sha256:1",
+            max_pixels=budget,
+            model=CaptureInternVL(),
+            processor=InternVLNativeImageProcessor(image_size=64, max_num=12, use_thumbnail=True),
+            tokenizer=object(),
+            image_loader=lambda _p, img=pattern_img: img.copy(),
+        )
+        res = backend.infer_one(_make_request(tmp_path / f"r5_budget_{budget}"))
+        assert res.status == "success"
+
+    pv_1024, patches_1024 = captured_runs[1024]
+    pv_4096, patches_4096 = captured_runs[4096]
+    pv_12288, patches_12288 = captured_runs[12288]
+
+    assert patches_1024 == [1] * 8 and pv_1024.shape == (8, 3, 64, 64)
+    assert patches_4096 == [1] * 8 and pv_4096.shape == (8, 3, 64, 64)
+    assert patches_12288 == [3] * 8 and pv_12288.shape == (24, 3, 64, 64)
+    # Different single-tile budgets must NOT produce identical visual tensors.
+    assert not np.allclose(pv_1024, pv_4096)
+
+    # 4. Injected custom processor also receives images pre-downscaled to <= max_pixels.
+    seen_input_sizes: list[tuple[int, int]] = []
+
+    class SpyInternVLProcessor:
+        def __call__(self, **kwargs):
+            for im in kwargs["images"]:
+                seen_input_sizes.append(im.size)
+            return {"pixel_values": "PV", "num_patches_list": [1] * len(kwargs["images"])}
+
+    class SpyInternVLModel:
+        def chat(self, tokenizer, pixel_values, question, generation_config, num_patches_list=None):
+            return LEGAL_JSON
+
+    spy_backend = TransformersBackend(
+        model_id="OpenGVLab/InternVL3.5-8B@sha256:2",
+        max_pixels=10000,
+        model=SpyInternVLModel(),
+        processor=SpyInternVLProcessor(),
+        tokenizer=object(),
+        image_loader=lambda _p: Image.new("RGB", (400, 200)),
+    )
+    assert spy_backend.infer_one(_make_request(tmp_path / "r5_spy")).status == "success"
+    assert len(seen_input_sizes) == 8
+    assert all(w * h <= 10000 for w, h in seen_input_sizes)
+
+    # 5. Hardening checks: unpaired UTF-8 surrogate, illegal API key chars, configuration_files redirect.
+    from script.five_label_eval.backends import InferenceResult, normalize_result
+
+    bad_utf8 = normalize_result(InferenceResult(status="success", raw_output="bad\ud800surrogate", latency_seconds=0.1))
+    assert bad_utf8.status == "request_failed"
+    assert bad_utf8.raw_output is None
+
+    monkeypatch.setenv("BAD_KEY_NL", "secret\nheader")
+    with pytest.raises(InputError, match="illegal whitespace or control"):
+        HttpBackend(endpoint="http://127.0.0.1:8000", model_id="Qwen3-VL-8B-Instruct@1", api_key_env="BAD_KEY_NL")
+
+    cfg_dir = tmp_path / "cfg_redir"
+    cfg_dir.mkdir()
+    (cfg_dir / "config.json").write_bytes(b'{"configuration_files": ["other.json"]}')
+    with pytest.raises(InputError, match="configuration_files"):
+        verify_trusted_snapshot_sha256(
+            cfg_dir, {"config.json": hashlib.sha256((cfg_dir / "config.json").read_bytes()).hexdigest()}
+        )

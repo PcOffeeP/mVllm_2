@@ -36,6 +36,11 @@ from . import InferenceRequest, InferenceResult, normalize_result
 SUPPORTED_MODEL_FAMILIES = ("minicpm-v-4.5", "qwen3-vl", "internvl3", "internvl3.5")
 MINICPM_TEMPORAL_GRID_SECONDS = 0.1
 MINICPM_DEFAULT_MAX_SLICE_NUMS = 1
+INTERNVL_DEFAULT_IMAGE_SIZE = 448
+INTERNVL_IMAGENET_MEAN = (0.485, 0.456, 0.406)
+INTERNVL_IMAGENET_STD = (0.229, 0.224, 0.225)
+INTERNVL_DEFAULT_MIN_NUM = 1
+INTERNVL_DEFAULT_MAX_NUM = 12
 SHA256_RE = re.compile(r"[a-f0-9]{64}")
 TRUSTED_REQUIRED_CONFIG_FILES = (
     "config.json",
@@ -193,6 +198,11 @@ def verify_trusted_snapshot_sha256(
         except (OSError, ValueError) as exc:
             raise InputError(f"failed to parse trusted config {cfg_name}: {exc}") from exc
         auto_map = cfg_obj.get("auto_map") if isinstance(cfg_obj, dict) else None
+        if isinstance(cfg_obj, dict) and cfg_obj.get("configuration_files"):
+            raise InputError(
+                f"{cfg_name} declares 'configuration_files' redirection, which is refused under "
+                "fail-closed local trust_remote_code verification"
+            )
         if isinstance(auto_map, dict):
             for key, value in auto_map.items():
                 refs = value if isinstance(value, list) else [value]
@@ -210,6 +220,19 @@ def verify_trusted_snapshot_sha256(
                         "is refused under fail-closed local trust_remote_code verification"
                     )
     return verified
+
+
+def _resize_image_bicubic(image: Any, size: tuple[int, int]) -> Any:
+    """Resize a PIL or PIL-like image using bicubic resampling when available."""
+    try:
+        from PIL import Image as _PILImage
+
+        if isinstance(image, _PILImage.Image):
+            resample = getattr(getattr(_PILImage, "Resampling", _PILImage), "BICUBIC")
+            return image.resize(size, resample=resample)
+    except ImportError:
+        pass
+    return image.resize(size)
 
 
 def _resize_image_to_max_pixels(image: Any, max_pixels: int | None) -> Any:
@@ -236,7 +259,271 @@ def _resize_image_to_max_pixels(image: Any, max_pixels: int | None) -> Any:
             new_w -= 1
         elif new_h > 1:
             new_h -= 1
-    return resize_fn((new_w, new_h))
+    return _resize_image_bicubic(image, (new_w, new_h))
+
+
+def _find_closest_aspect_ratio(
+    aspect_ratio: float,
+    target_ratios: Sequence[tuple[int, int]],
+    width: int,
+    height: int,
+    image_size: int,
+) -> tuple[int, int]:
+    """Select the InternVL tiling grid (cols, rows) closest to the input aspect ratio."""
+    best_ratio_diff = float("inf")
+    best_ratio = (1, 1)
+    area = width * height
+    for ratio in target_ratios:
+        target_aspect_ratio = ratio[0] / ratio[1]
+        ratio_diff = abs(aspect_ratio - target_aspect_ratio)
+        if ratio_diff < best_ratio_diff:
+            best_ratio_diff = ratio_diff
+            best_ratio = ratio
+        elif ratio_diff == best_ratio_diff:
+            if area > 0.5 * image_size * image_size * ratio[0] * ratio[1]:
+                best_ratio = ratio
+    return best_ratio
+
+
+def internvl_dynamic_preprocess(
+    image: Any,
+    *,
+    min_num: int = INTERNVL_DEFAULT_MIN_NUM,
+    max_num: int = INTERNVL_DEFAULT_MAX_NUM,
+    image_size: int = INTERNVL_DEFAULT_IMAGE_SIZE,
+    use_thumbnail: bool = True,
+) -> list[Any]:
+    """Official InternVL full-frame dynamic tiling (or square resize when ``max_num == 1``).
+
+    Preserves the full frame with no center-cropping so edge evidence (grips,
+    necking, fracture boundaries) is never discarded.
+    """
+    if getattr(image, "mode", None) not in (None, "RGB") and callable(getattr(image, "convert", None)):
+        image = image.convert("RGB")
+    orig_width, orig_height = image.size
+    aspect_ratio = orig_width / float(orig_height)
+
+    target_ratios = sorted(
+        {
+            (i, j)
+            for n in range(min_num, max_num + 1)
+            for i in range(1, n + 1)
+            for j in range(1, n + 1)
+            if min_num <= i * j <= max_num
+        },
+        key=lambda pair: pair[0] * pair[1],
+    )
+    if not target_ratios:
+        target_ratios = [(1, 1)]
+
+    target_aspect_ratio = _find_closest_aspect_ratio(
+        aspect_ratio, target_ratios, orig_width, orig_height, image_size
+    )
+    target_width = image_size * target_aspect_ratio[0]
+    target_height = image_size * target_aspect_ratio[1]
+    blocks = target_aspect_ratio[0] * target_aspect_ratio[1]
+
+    resized_img = _resize_image_bicubic(image, (target_width, target_height))
+    cols = target_width // image_size
+    processed_images: list[Any] = []
+    for idx in range(blocks):
+        left = (idx % cols) * image_size
+        top = (idx // cols) * image_size
+        box = (left, top, left + image_size, top + image_size)
+        processed_images.append(resized_img.crop(box))
+    if use_thumbnail and len(processed_images) != 1:
+        processed_images.append(_resize_image_bicubic(image, (image_size, image_size)))
+    return processed_images
+
+
+class InternVLNativeImageProcessor:
+    """Native InternVL3/3.5 image preprocessor (full-frame dynamic tiling + ImageNet normalization).
+
+    Replaces CLIPImageProcessor's shortest-edge resize + center crop so non-square
+    frames keep full edge content, and enforces ``max_pixels`` on both source-image
+    resolution and tiled patch count.
+    """
+
+    def __init__(
+        self,
+        *,
+        image_size: int = INTERNVL_DEFAULT_IMAGE_SIZE,
+        image_mean: Sequence[float] = INTERNVL_IMAGENET_MEAN,
+        image_std: Sequence[float] = INTERNVL_IMAGENET_STD,
+        min_num: int = INTERNVL_DEFAULT_MIN_NUM,
+        max_num: int = INTERNVL_DEFAULT_MAX_NUM,
+        use_thumbnail: bool = True,
+    ) -> None:
+        if isinstance(image_size, bool) or not isinstance(image_size, int) or image_size <= 0:
+            raise InputError(f"InternVL image_size must be a positive int, got {image_size!r}")
+        mean = tuple(float(v) for v in image_mean)
+        std = tuple(float(v) for v in image_std)
+        if len(mean) != 3 or not all(math.isfinite(v) for v in mean):
+            raise InputError(f"InternVL image_mean must have 3 finite floats, got {image_mean!r}")
+        if len(std) != 3 or not all(math.isfinite(v) and v > 0 for v in std):
+            raise InputError(f"InternVL image_std must have 3 positive finite floats, got {image_std!r}")
+        if isinstance(min_num, bool) or not isinstance(min_num, int) or min_num < 1:
+            raise InputError(f"InternVL min_num must be >= 1, got {min_num!r}")
+        if isinstance(max_num, bool) or not isinstance(max_num, int) or max_num < min_num:
+            raise InputError(f"InternVL max_num must be >= min_num, got {max_num!r}")
+
+        self.image_size = image_size
+        self.image_mean = mean
+        self.image_std = std
+        self.min_num = min_num
+        self.max_num = max_num
+        self.use_thumbnail = bool(use_thumbnail)
+
+    @classmethod
+    def from_model_path(cls, model_path: Path, model: Any = None) -> "InternVLNativeImageProcessor":
+        image_size: int | None = None
+        min_num = INTERNVL_DEFAULT_MIN_NUM
+        max_num = INTERNVL_DEFAULT_MAX_NUM
+        use_thumbnail = True
+        image_mean: Sequence[float] = INTERNVL_IMAGENET_MEAN
+        image_std: Sequence[float] = INTERNVL_IMAGENET_STD
+
+        model_cfg = getattr(model, "config", None)
+        if model_cfg is not None:
+            for candidate in (
+                getattr(model_cfg, "force_image_size", None),
+                getattr(getattr(model_cfg, "vision_config", None), "image_size", None),
+            ):
+                if isinstance(candidate, int) and not isinstance(candidate, bool) and candidate > 0:
+                    image_size = candidate
+                    break
+
+        cfg_file = model_path / "config.json"
+        if cfg_file.is_file():
+            try:
+                cfg = json.loads(cfg_file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                cfg = {}
+            if isinstance(cfg, dict):
+                if image_size is None:
+                    vision_cfg = cfg.get("vision_config") if isinstance(cfg.get("vision_config"), dict) else {}
+                    for candidate in (cfg.get("force_image_size"), vision_cfg.get("image_size")):
+                        if isinstance(candidate, int) and not isinstance(candidate, bool) and candidate > 0:
+                            image_size = candidate
+                            break
+                if cfg.get("dynamic_image_size") is False:
+                    max_num = 1
+                    use_thumbnail = False
+                else:
+                    if isinstance(cfg.get("use_thumbnail"), bool):
+                        use_thumbnail = cfg["use_thumbnail"]
+                    if (
+                        isinstance(cfg.get("min_dynamic_patch"), int)
+                        and not isinstance(cfg.get("min_dynamic_patch"), bool)
+                        and cfg["min_dynamic_patch"] >= 1
+                    ):
+                        min_num = cfg["min_dynamic_patch"]
+                    if (
+                        isinstance(cfg.get("max_dynamic_patch"), int)
+                        and not isinstance(cfg.get("max_dynamic_patch"), bool)
+                        and cfg["max_dynamic_patch"] >= min_num
+                    ):
+                        max_num = cfg["max_dynamic_patch"]
+
+        pre_file = model_path / "preprocessor_config.json"
+        if pre_file.is_file():
+            try:
+                pre = json.loads(pre_file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                pre = {}
+            if isinstance(pre, dict):
+                if isinstance(pre.get("image_mean"), (list, tuple)) and len(pre["image_mean"]) == 3:
+                    image_mean = pre["image_mean"]
+                if isinstance(pre.get("image_std"), (list, tuple)) and len(pre["image_std"]) == 3:
+                    image_std = pre["image_std"]
+                if image_size is None:
+                    for key in ("crop_size", "size"):
+                        val = pre.get(key)
+                        if isinstance(val, int) and not isinstance(val, bool) and val > 0:
+                            image_size = val
+                            break
+                        if isinstance(val, dict):
+                            for subkey in ("height", "shortest_edge", "width"):
+                                sv = val.get(subkey)
+                                if isinstance(sv, int) and not isinstance(sv, bool) and sv > 0:
+                                    image_size = sv
+                                    break
+                            if image_size is not None:
+                                break
+
+        return cls(
+            image_size=image_size or INTERNVL_DEFAULT_IMAGE_SIZE,
+            image_mean=image_mean,
+            image_std=image_std,
+            min_num=min_num,
+            max_num=max_num,
+            use_thumbnail=use_thumbnail,
+        )
+
+    def _effective_tile_limits(self, max_pixels: int | None) -> tuple[int, int, bool]:
+        if max_pixels is None:
+            return self.min_num, self.max_num, self.use_thumbnail
+        tile_pixels = self.image_size * self.image_size
+        max_total_tiles = max(1, max_pixels // tile_pixels)
+        if self.use_thumbnail:
+            if max_total_tiles >= 3:
+                eff_max = min(self.max_num, max_total_tiles - 1)
+                eff_thumb = True
+            else:
+                eff_max = 1
+                eff_thumb = False
+        else:
+            eff_max = min(self.max_num, max_total_tiles)
+            eff_thumb = False
+        eff_min = min(self.min_num, eff_max)
+        return eff_min, eff_max, eff_thumb
+
+    def __call__(
+        self,
+        *,
+        images: Sequence[Any],
+        return_tensors: str = "pt",
+        max_pixels: int | None = None,
+    ) -> dict[str, Any]:
+        if not images:
+            raise RuntimeError("InternVL native preprocessing requires at least one image")
+        import numpy as np
+
+        eff_min, eff_max, eff_thumb = self._effective_tile_limits(max_pixels)
+        mean = np.asarray(self.image_mean, dtype=np.float32).reshape(1, 1, 3)
+        std = np.asarray(self.image_std, dtype=np.float32).reshape(1, 1, 3)
+
+        tile_arrays: list[Any] = []
+        num_patches_list: list[int] = []
+        for img in images:
+            bounded = _resize_image_to_max_pixels(img, max_pixels) if max_pixels is not None else img
+            tiles = internvl_dynamic_preprocess(
+                bounded,
+                min_num=eff_min,
+                max_num=eff_max,
+                image_size=self.image_size,
+                use_thumbnail=eff_thumb,
+            )
+            num_patches_list.append(len(tiles))
+            for tile in tiles:
+                rgb = tile.convert("RGB") if getattr(tile, "mode", None) != "RGB" else tile
+                arr = np.asarray(rgb, dtype=np.float32) / 255.0
+                arr = (arr - mean) / std
+                tile_arrays.append(np.transpose(arr, (2, 0, 1)))
+
+        stacked = np.ascontiguousarray(np.stack(tile_arrays, axis=0), dtype=np.float32)
+        pixel_values: Any = stacked
+        if return_tensors == "pt":
+            try:
+                import torch
+            except ImportError:
+                torch = None
+            if torch is not None and hasattr(torch, "from_numpy"):
+                pixel_values = torch.from_numpy(stacked)
+        return {
+            "pixel_values": pixel_values,
+            "num_patches_list": num_patches_list,
+        }
 
 
 def _move_inputs_to_model_device(inputs: Any, model: Any) -> Any:
@@ -354,14 +641,10 @@ def _default_model_loader(
         model = AutoModelForCausalLM.from_pretrained(str(model_path), **common_kwargs).eval()
     tokenizer = AutoTokenizer.from_pretrained(str(model_path), local_files_only=True, trust_remote_code=True)
     if hasattr(model, "chat"):
-        # Native OpenGVLab InternVL checkpoints define an image feature extractor in
-        # preprocessor_config.json rather than a registered AutoProcessor (which would
-        # silently fall back to AutoTokenizer and reject images=...).
-        from transformers import AutoImageProcessor
-
-        processor = AutoImageProcessor.from_pretrained(
-            str(model_path), local_files_only=True, trust_remote_code=True
-        )
+        # Native OpenGVLab InternVL checkpoints ship a CLIP preprocessor_config.json
+        # that center-crops non-square frames and ignores max_pixels. Use the official
+        # full-frame dynamic tiling preprocessor instead.
+        processor = InternVLNativeImageProcessor.from_model_path(model_path, model=model)
     else:
         processor = AutoProcessor.from_pretrained(str(model_path), **processor_kwargs)
     return model, processor, tokenizer
@@ -558,6 +841,8 @@ class TransformersBackend:
             raise RuntimeError(f"{self.model_family} requires a processor")
 
         if self.model_family in ("internvl3", "internvl3.5") and hasattr(self._model, "chat"):
+            if self.max_pixels is not None:
+                images = [_resize_image_to_max_pixels(img, self.max_pixels) for img in images]
             proc_kwargs: dict[str, Any] = {"images": images, "return_tensors": "pt"}
             if self.max_pixels is not None:
                 proc_kwargs["max_pixels"] = self.max_pixels
