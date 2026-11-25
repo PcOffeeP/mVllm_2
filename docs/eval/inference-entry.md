@@ -96,3 +96,8 @@
 | `http` | **拟增，当前未实现** | 远端服务推理，按 HTTP 结果映射三态 | 尚无参数、无代码、无超时实现；不得按已支持三选验收 |
 
 不变项：三个 backend 共用同一份身份字段口径、同一份输出字段与三态语义；切换 backend 不改变 `predictions.jsonl` 的字段与校验。
+
+**已拍板的多模型适配与运行身份补充（2026-11-25，[DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md)）**：
+- **首轮基座分工**：第一梯队 3+1 款中，`openbmb/MiniCPM-V-4_5` 走本地 `transformers` backend，`Qwen/Qwen3-VL-8B-Instruct`、`OpenGVLab/InternVL3-8B`、`OpenGVLab/InternVL3_5-8B`（标准版，不含 ViR）走 OpenAI-compatible `http` backend（均待代码适配落地，当前 CLI 现状仍以上表为准）。
+- **processor 参数写入运行身份**：L3 PNG 落盘保持 `resize: null`，各模型在各自 processor 应用约定 `max_pixels` 并写入运行身份；`MiniCPM-V-4.5` 首轮采用官方风格（`0.1 s` 量化 `temporal_ids` + `max_slice_nums=1`），且登记为后续对照/优化项——若后续与旧链路参数（`temporal_ids=None`、`max_slice_nums=2`、`max_pixels=65,536`）对照，须按 §6 另起独立 `run_id`。
+- **`raw_output` 原文透传边界**：严格遵守严格单 JSON 契约，**不在适配器中预埋 `GLM-4.1V` `<answer>...</answer>` 解包分支**；主榜保留原生格式罚分，未来若确需解包对照须另起独立 `run_id`。

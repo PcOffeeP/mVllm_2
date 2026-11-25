@@ -1,5 +1,7 @@
 # 训练机评测前置只读体检清单与推理适配器规划
 
+> **决策状态（2026-11-25）：阶段 0 决策项已拍板，见 [DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md)。** 8 帧抽帧口径（`evenly_spaced_inclusive` / 短片 `fail_closed` / L3 `resize: null`）、首轮第一梯队 3+1 基座名单、`MiniCPM-V-4.5` 首轮官方风格参数（并登记为后续对照/优化项）以及 `GLM-4.1V` 主榜原生格式罚分（不预埋解包分支）均已定案；下文 §2.2 训练机只读体检与 §3 代码适配规划按此口径推进。
+
 **定位：**本文是基座模型测评落地前的工程实施专题文档，涵盖三项工程事项：（1）现有评测代码与输入契约的接口缺口核对；（2）训练机启动前可直接复制执行的严格静态只读体检清单（Pre-flight Runbook）；（3）供用户审批后实施的最小双后端（OpenAI-compatible `http` + 薄本地 `transformers`）推理适配器落地路线。8B/9B 模型选型横评另见 [vlm-8b-9b-model-comparison.md](vlm-8b-9b-model-comparison.md)，8 帧抽帧口径选型另见 [model-input-frame-sampling-options.md](model-input-frame-sampling-options.md)。
 
 **调研日期：** 2026-11-24。

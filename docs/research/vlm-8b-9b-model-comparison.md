@@ -1,5 +1,7 @@
 # 8B/9B 开源视频多模态基座模型综合对比与选型调研
 
+> **决策状态（2026-11-25）：已拍板，见 [DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md)。** 首轮基座模型摸底已锁定**第一梯队（3+1 款）**：`MiniCPM-V-4.5`、`Qwen3-VL-8B-Instruct`、`InternVL3-8B`、`InternVL3.5-8B`（标准版，不含 ViR），第二/三梯队延后至首轮基线完成后再议；`GLM-4.1V` `<answer>...</answer>` 在主榜采用方案 1（原生格式罚分），不预埋解包分支。下文保留原选型横评材料供追溯。
+
 **定位：**本文是纯模型选型与视频输入机制专题调研，聚焦用户已确认的 3 款核心模型（MiniCPM-V-4.5、Qwen3-VL-8B、InternVL3-8B）及 Hugging Face / ModelScope 上同规模（7B–9B）主流开源视频多模态模型的横向对比，输出首轮基座模型摸底测评的候选梯队与跨模型输入适配要点。模型输入 8 帧抽帧公式选型另见 [model-input-frame-sampling-options.md](model-input-frame-sampling-options.md)，训练机前置只读体检与代码适配规划另见 [eval-preflight-and-adapter-plan.md](eval-preflight-and-adapter-plan.md)。
 
 **调研日期：** 2026-11-24。

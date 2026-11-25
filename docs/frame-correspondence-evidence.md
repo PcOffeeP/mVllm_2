@@ -3,7 +3,7 @@
 ## 定位与边界
 
 抽帧取证是独立环节，不属于 `subvideo_generation`，也不属于 `checks`。
-设计已定、未实现；预留目录 `script/frame_correspondence/` 只有说明文档，没有抽取逻辑或 `CLI`，不可运行。
+设计已定，独立取证 `CLI` 已于 2026-11-24 随 PR #21 落地于 `script/frame_correspondence/`（用法、参数与红线见 [script/frame_correspondence/README.md](../script/frame_correspondence/README.md)），尚未在真实模型运行产物上执行。
 该取证独立于子视频生成流程，不需要重新生成当前 1,633 条批次，待实现后按需对目标运行抽取即可。
 
 ## 取证锚点
@@ -42,7 +42,7 @@
 
 ## 实现前置条件与失效条件
 
-1. 模型输入抽帧口径须先落纸。
+1. 模型输入抽帧口径已于 2026-11-25 拍板落纸（见 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)：采用方案 A `evenly_spaced_inclusive` 固定 8 帧、短片 `< 8` 帧 `fail_closed`、L3 PNG `resize: null`；待 `script/five_label_eval/frames.py` 完成代码对齐后即可产出对应记录供本 CLI 消费）。
 2. 映射字段命名已定案并落地（见[待办](TODO.md)任务 7 `MAPPING-NODE-RENAME` 与 `DF-052`：`clip_to_model_input`／`clip_to_roi`／`roi_to_original`）。
 
 **失效条件：** 前置条件、映射表、锚点定义或证明强度口径变化时，须重新核对本设计。

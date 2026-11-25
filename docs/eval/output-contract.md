@@ -53,6 +53,8 @@
 
 **提取失败与 issue 全集**：`not exactly one extractable JSON object`（189 行，无对象或多于一个并列对象）、`top level is not object`（195 行）、`top_level_keys_mismatch`（198 行，顶层键集合不等于 5 键）、`<组名>: expected explicit per-item object`（201 行）。上述任一与 189／195 行同属「整份无法解析」时，11 个叶字段全记 `extraction_failed`；`strict_format_valid` 要求严格解析成功、无任何 issue、且 11 个字段全 `valid`（220 行）。`combinations()` 只对 `valid` 字段生效。
 
+**包裹标签与主榜口径（2026-11-25，[DEC-006](../decisions/0006-eval-frame-sampling-and-model-lineup.md) 第 6 条）**：主评测榜单维护本契约的严格单 JSON 约束。对 `GLM-4.1V-9B-Thinking` 等即使开启服务端思考段剥离仍保留 `<answer>...</answer>` 包裹标签的模型，主榜采用**原生格式罚分**（`<answer>...</answer>` 原样落入 `raw_output`，按上表样例 (d) 记 `surrounding_text_or_fence` 且 `strict_format_valid=False`），**不预埋解包分支**；未来若确需做解包对照，须另起独立 `run_id` 并在报告中显式披露。
+
 ## 3. `predictions.jsonl` 必填项
 
 每条由 `prepare()`（235 行）校验，逐条在 279–297 行。
