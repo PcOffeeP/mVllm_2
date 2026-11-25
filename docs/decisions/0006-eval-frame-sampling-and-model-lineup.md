@@ -22,7 +22,7 @@
 
 3. **L3 PNG 缩放归属：保持 L2 原始分辨率（`resize: null`）**
    - `frames.py` 落盘 L3 PNG 时不加缩放滤镜（`resize: null`），保留 L2 子视频原始像素，使同一份 L3 PNG 同时满足 `DEC-005` 清晰人工核查与多模型复用。
-   - 各模型在各自 processor / `mm_processor_kwargs` 中按约定 `max_pixels` 进行视觉预处理，并将实际 `max_pixels` 写入运行身份。
+   - 各模型在各自 processor / `mm_processor_kwargs` 中按约定视觉预处理参数（如 `max_pixels`，或 InternVL 系列的动态切块规格与 `max_num` / `max_dynamic_patch` 等）进行缩放与切片，并将**实际生效的视觉预处理参数**完整写入运行身份。
 
 4. **MiniCPM-V-4.5 首轮时序与切片参数：采用官方风格，并登记为后续对照/优化项**
    - 首轮基座摸底采用官方模型卡风格：**`0.1 s` 量化 `temporal_ids` + `max_slice_nums=1`**，并在运行身份中显式记录。

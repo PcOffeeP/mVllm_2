@@ -4,7 +4,7 @@
 
 抽帧取证是独立环节，不属于 `subvideo_generation`，也不属于 `checks`。
 设计已定，独立取证 `CLI` 已于 2026-11-24 随 PR #21 落地于 `script/frame_correspondence/`（用法、参数与红线见 [script/frame_correspondence/README.md](../script/frame_correspondence/README.md)），尚未在真实模型运行产物上执行。
-该取证独立于子视频生成流程，不需要重新生成当前 1,633 条批次，待实现后按需对目标运行抽取即可。
+该取证独立于子视频生成流程，不需要重新生成当前 1,633 条批次；待上游 `DEC-006` 抽帧代码适配落地并产出真实模型输入记录后，即可按需对目标运行抽取。
 
 ## 取证锚点
 
