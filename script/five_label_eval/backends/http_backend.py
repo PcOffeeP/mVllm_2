@@ -2,8 +2,8 @@
 
 Sends ordered L3 PNG frames as ``data:image/png;base64,...`` image URLs plus the
 verbatim prompt text (no stripping, no ``<answer>`` unwrapping, no candidate ID
-or filesystem path leakage). Enforces an end-to-end wall-clock deadline covering
-connection, headers, and streaming response body.
+or filesystem path leakage). Enforces a true cancellable end-to-end wall-clock
+deadline covering connection, trickling headers, and trickling response bodies.
 """
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import base64
 import json
 import os
 from pathlib import Path
+import threading
 import time
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -99,12 +100,8 @@ class HttpBackend:
         self.sampling_policy = dict(sampling_policy) if isinstance(sampling_policy, dict) else None
         self.extra_body = dict(extra_body) if isinstance(extra_body, dict) else None
 
-        self._owns_client = client is None
-        self._client = (
-            client
-            if client is not None
-            else httpx.Client(transport=transport, trust_env=False)
-        )
+        self._transport = transport
+        self._external_client = client
 
     def run_identity(self) -> dict[str, Any]:
         return {
@@ -148,10 +145,84 @@ class HttpBackend:
             payload.update(self.extra_body)
         return payload
 
+    def _execute_with_wall_clock_deadline(
+        self,
+        request_url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str],
+        timeout: float,
+    ) -> tuple[int, bytes]:
+        """Execute streaming POST under a true cancellable wall-clock deadline.
+
+        Even if a server trickles response header bytes or chunked body bytes faster than
+        per-read timeouts, the wall-clock deadline fires on time, closes the active
+        client/connection to abort the in-flight socket, and raises ``_WallClockTimeout``.
+        """
+        deadline = time.monotonic() + timeout
+        cancel_event = threading.Event()
+        outcome: dict[str, Any] = {}
+        active_client = (
+            self._external_client
+            if self._external_client is not None
+            else httpx.Client(transport=self._transport, trust_env=False)
+        )
+        owns_client = self._external_client is None
+        active_response: list[httpx.Response] = []
+
+        def _worker() -> None:
+            try:
+                with active_client.stream(
+                    "POST",
+                    request_url,
+                    json=payload,
+                    headers=headers,
+                    timeout=httpx.Timeout(timeout),
+                ) as response:
+                    active_response.append(response)
+                    if cancel_event.is_set() or time.monotonic() > deadline:
+                        raise _WallClockTimeout("request exceeded wall-clock deadline after headers")
+                    chunks: list[bytes] = []
+                    for chunk in response.iter_bytes():
+                        if cancel_event.is_set() or time.monotonic() > deadline:
+                            raise _WallClockTimeout("request exceeded wall-clock deadline while reading body")
+                        chunks.append(chunk)
+                    outcome["result"] = (response.status_code, b"".join(chunks))
+            except BaseException as exc:  # noqa: BLE001
+                outcome["error"] = exc
+            finally:
+                if owns_client:
+                    try:
+                        active_client.close()
+                    except Exception:  # noqa: BLE001
+                        pass
+
+        worker = threading.Thread(target=_worker, daemon=True)
+        worker.start()
+        worker.join(timeout=timeout)
+        if worker.is_alive():
+            cancel_event.set()
+            # Actively abort the in-flight stream/connection so the peer sees cancellation.
+            if active_response:
+                try:
+                    active_response[0].close()
+                except Exception:  # noqa: BLE001
+                    pass
+            if owns_client:
+                try:
+                    active_client.close()
+                except Exception:  # noqa: BLE001
+                    pass
+            raise _WallClockTimeout(f"request exceeded wall-clock deadline of {timeout:.3f}s")
+
+        if "error" in outcome:
+            raise outcome["error"]
+        if "result" not in outcome:
+            raise _WallClockTimeout(f"request terminated without result within {timeout:.3f}s")
+        return outcome["result"]
+
     def infer_one(self, request: InferenceRequest) -> InferenceResult:
         started = time.monotonic()
         timeout = float(request.timeout_seconds if request.timeout_seconds is not None else self.timeout_seconds)
-        deadline = started + timeout
         try:
             payload = self.build_payload(request)
         except OSError as exc:
@@ -170,22 +241,9 @@ class HttpBackend:
             request_url = sanitize_base_url(self.completions_url)
 
         try:
-            with self._client.stream(
-                "POST",
-                request_url,
-                json=payload,
-                headers=headers,
-                timeout=httpx.Timeout(timeout),
-            ) as response:
-                if time.monotonic() > deadline:
-                    raise _WallClockTimeout("request exceeded wall-clock deadline after response headers")
-                chunks: list[bytes] = []
-                for chunk in response.iter_bytes():
-                    if time.monotonic() > deadline:
-                        raise _WallClockTimeout("request exceeded wall-clock deadline while reading body")
-                    chunks.append(chunk)
-                status_code = response.status_code
-                body_bytes = b"".join(chunks)
+            status_code, body_bytes = self._execute_with_wall_clock_deadline(
+                request_url, payload, headers, timeout
+            )
         except (_WallClockTimeout, httpx.TimeoutException) as exc:
             return InferenceResult(
                 status="timeout",
@@ -278,5 +336,4 @@ class HttpBackend:
         )
 
     def close(self) -> None:
-        if self._owns_client:
-            self._client.close()
+        return None

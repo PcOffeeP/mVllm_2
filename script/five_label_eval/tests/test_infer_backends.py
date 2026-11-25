@@ -302,6 +302,8 @@ def _start_loopback_server(handler_cls):
 
 
 def test_http_backend_loopback_slow_headers_and_slow_body_hit_wall_clock_timeout(tmp_path):
+    aborted_paths: list[str] = []
+
     class SlowHandler(BaseHTTPRequestHandler):
         def log_message(self, _fmt, *_args):
             return None
@@ -310,12 +312,20 @@ def test_http_backend_loopback_slow_headers_and_slow_body_hit_wall_clock_timeout
             length = int(self.headers.get("Content-Length", "0"))
             if length:
                 self.rfile.read(length)
-            if self.path.startswith("/slow-headers"):
-                time.sleep(0.8)
+            if self.path.startswith("/trickle-headers"):
+                # Trickle response headers faster than per-read timeout so only a true
+                # end-to-end wall-clock deadline can cancel the request on time.
                 try:
-                    self.send_response(200)
-                    self.end_headers()
+                    self.wfile.write(b"HTTP/1.1 200 OK\r\n")
+                    self.wfile.flush()
+                    for idx in range(40):
+                        self.wfile.write(f"X-Pad-{idx}: 1\r\n".encode("ascii"))
+                        self.wfile.flush()
+                        time.sleep(0.04)
+                    self.wfile.write(b"Content-Length: 2\r\n\r\n{}")
+                    self.wfile.flush()
                 except OSError:
+                    aborted_paths.append(self.path)
                     return
             else:
                 self.send_response(200)
@@ -323,30 +333,33 @@ def test_http_backend_loopback_slow_headers_and_slow_body_hit_wall_clock_timeout
                 self.send_header("Transfer-Encoding", "chunked")
                 self.end_headers()
                 try:
-                    for _ in range(20):
-                        chunk = b" "
-                        self.wfile.write(b"1\r\n" + chunk + b"\r\n")
+                    for _ in range(40):
+                        self.wfile.write(b"1\r\n \r\n")
                         self.wfile.flush()
-                        time.sleep(0.05)
+                        time.sleep(0.04)
                     self.wfile.write(b"0\r\n\r\n")
                 except OSError:
+                    aborted_paths.append(self.path)
                     return
 
     server, base_url = _start_loopback_server(SlowHandler)
     try:
-        req = _make_request(tmp_path, timeout=0.2)
-        for path in ("/slow-headers/v1/chat/completions", "/slow-body/v1/chat/completions"):
+        req = _make_request(tmp_path, timeout=0.25)
+        for path in ("/trickle-headers/v1/chat/completions", "/slow-body/v1/chat/completions"):
             backend = HttpBackend(
                 endpoint=base_url + path,
                 model_id="Qwen3-VL-8B-Instruct@sha256:abc",
-                timeout_seconds=0.2,
+                timeout_seconds=0.25,
             )
             try:
+                started = time.monotonic()
                 result = backend.infer_one(req)
+                elapsed = time.monotonic() - started
             finally:
                 backend.close()
             assert result.status == "timeout"
             assert result.raw_output is None
+            assert elapsed < 0.8, f"wall-clock timeout took too long ({elapsed:.3f}s) for {path}"
     finally:
         server.shutdown()
         server.server_close()
@@ -479,9 +492,18 @@ def test_transformers_backend_trusted_snapshot_sha256_fails_closed(tmp_path):
     model_dir.mkdir()
     cfg = model_dir / "config.json"
     cfg.write_bytes(b'{"version": "4.5"}')
-    good_sha = hashlib.sha256(cfg.read_bytes()).hexdigest()
+    py_mod = model_dir / "modeling_minicpmv.py"
+    py_mod.write_bytes(b"def init():\n    return True\n")
+    good_cfg = hashlib.sha256(cfg.read_bytes()).hexdigest()
+    good_py = hashlib.sha256(py_mod.read_bytes()).hexdigest()
 
-    assert verify_trusted_snapshot_sha256(model_dir, {"config.json": good_sha}) == {"config.json": good_sha}
+    # Must cover both config.json and every .py file before trust_remote_code=True.
+    with pytest.raises(InputError, match="uncovered"):
+        verify_trusted_snapshot_sha256(model_dir, {"config.json": good_cfg})
+
+    assert verify_trusted_snapshot_sha256(
+        model_dir, {"config.json": good_cfg, "modeling_minicpmv.py": good_py}
+    ) == {"config.json": good_cfg, "modeling_minicpmv.py": good_py}
 
     loader_called = False
 
@@ -490,15 +512,108 @@ def test_transformers_backend_trusted_snapshot_sha256_fails_closed(tmp_path):
         loader_called = True
         return object(), None, None
 
-    backend = TransformersBackend(
+    # Omitting trusted_files_sha256 entirely must fail closed before loading.
+    backend_no_manifest = TransformersBackend(
         model_id="openbmb/MiniCPM-V-4_5@sha256:deadbeef",
         model_path=model_dir,
-        trusted_files_sha256={"config.json": "0" * 64},
+        model_loader=fake_loader,
+    )
+    with pytest.raises(InputError, match="trusted_files_sha256"):
+        backend_no_manifest.infer_one(_make_request(tmp_path))
+    assert loader_called is False
+
+    # Hash mismatch must fail closed before loading.
+    backend_bad_hash = TransformersBackend(
+        model_id="openbmb/MiniCPM-V-4_5@sha256:deadbeef",
+        model_path=model_dir,
+        trusted_files_sha256={"config.json": "0" * 64, "modeling_minicpmv.py": good_py},
         model_loader=fake_loader,
     )
     with pytest.raises(InputError, match="SHA-256 mismatch"):
-        backend.infer_one(_make_request(tmp_path))
+        backend_bad_hash.infer_one(_make_request(tmp_path))
     assert loader_called is False
+
+
+def test_transformers_backend_trims_prompt_tokens_from_batch_feature_mapping(tmp_path):
+    """HF BatchFeature is a Mapping (not a plain dict); prompt tokens must be trimmed."""
+    from collections.abc import Mapping
+
+    class FakeBatchFeature(Mapping):
+        def __init__(self, data):
+            self._data = data
+
+        def __getitem__(self, key):
+            return self._data[key]
+
+        def __iter__(self):
+            return iter(self._data)
+
+        def __len__(self):
+            return len(self._data)
+
+    decoded_seqs: list = []
+
+    class FakeProcessor:
+        def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+            return "PROMPT"
+
+        def __call__(self, **kwargs):
+            return FakeBatchFeature({"input_ids": [[10, 20, 30]]})
+
+        def batch_decode(self, sequences, skip_special_tokens=True):
+            decoded_seqs.extend(sequences)
+            # Only return pure JSON when prompt tokens [10, 20, 30] were trimmed!
+            return [LEGAL_JSON if sequences == [[99, 100]] else f"PROMPT{LEGAL_JSON}"]
+
+    class FakeModel:
+        def generate(self, **kwargs):
+            return [[10, 20, 30, 99, 100]]
+
+    backend = TransformersBackend(
+        model_id="Qwen/Qwen3-VL-8B-Instruct@sha256:1111",
+        model=FakeModel(),
+        processor=FakeProcessor(),
+        image_loader=lambda p: p.name,
+    )
+    result = backend.infer_one(_make_request(tmp_path))
+
+    assert decoded_seqs == [[99, 100]]
+    assert result.status == "success"
+    assert result.raw_output == LEGAL_JSON
+
+
+def test_transformers_backend_internvl_native_chat_uses_pixel_values_signature(tmp_path):
+    """Native OpenGVLab InternVL3/3.5 chat() expects (tokenizer, pixel_values, question, generation_config, num_patches_list)."""
+    called: dict = {}
+
+    class FakeInternVLProcessor:
+        def __call__(self, **kwargs):
+            called["proc_kwargs"] = kwargs
+            return {"pixel_values": "TENSOR_PV", "num_patches_list": [1] * len(kwargs["images"])}
+
+    class FakeInternVLNativeModel:
+        def chat(self, tokenizer, pixel_values, question, generation_config, num_patches_list=None):
+            called["args"] = (tokenizer, pixel_values, question, generation_config, num_patches_list)
+            return LEGAL_JSON
+
+    tok = object()
+    backend = TransformersBackend(
+        model_id="OpenGVLab/InternVL3.5-8B@sha256:3333",
+        max_pixels=262144,
+        model=FakeInternVLNativeModel(),
+        processor=FakeInternVLProcessor(),
+        tokenizer=tok,
+        image_loader=lambda p: p.name,
+    )
+    result = backend.infer_one(_make_request(tmp_path, prompt_text="请判断五类标签"))
+
+    assert result.status == "success"
+    assert result.raw_output == LEGAL_JSON
+    assert called["args"][0] is tok
+    assert called["args"][1] == "TENSOR_PV"
+    assert called["args"][2].count("<image>") == 8
+    assert called["args"][2].endswith("请判断五类标签")
+    assert called["args"][4] == [1] * 8
 
 
 def test_transformers_backend_sigalrm_timeout_and_oom_error_handling(tmp_path):
@@ -595,3 +710,109 @@ def test_infer_cli_http_backend_end_to_end_with_loopback_server(tmp_path):
     assert meta["backend_identity"]["max_pixels"] == 65536
     assert meta["sampling_policy"]["target_frame_count"] == 8
     assert meta["status_counts"] == {"success": 1, "request_failed": 0, "timeout": 0}
+
+
+def test_run_inference_guards_8_frame_contract_path_traversal_png_and_meta_output(tmp_path):
+    class SpyBackend:
+        backend_name = "http"
+
+        def __init__(self):
+            self.calls = 0
+
+        def run_identity(self):
+            return {"backend": "http"}
+
+        def infer_one(self, request):
+            self.calls += 1
+            raise AssertionError("backend must not be called when pre-flight validation fails")
+
+        def close(self):
+            return None
+
+    # 1. Reject 3-frame record under real backend
+    rec3, manifest, frames_dir = _build_record_and_manifest(tmp_path / "case_3f")
+    rec3["frames"] = rec3["frames"][:3]
+    rec3["sampling"]["target_frame_count"] = 3
+    with pytest.raises(InputError, match="8-frame"):
+        infer.run_inference(
+            [rec3], manifest, backend=SpyBackend(), run_id="r1",
+            prompt_id="prompt@sha256:" + "a" * 64, prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1", frames_dir=frames_dir,
+        )
+
+    # 2. Reject path traversal in frame image name
+    rec_trav, manifest, frames_dir = _build_record_and_manifest(tmp_path / "case_trav")
+    rec_trav["frames"][0]["image"] = "../escape.png"
+    with pytest.raises(InputError, match="safe path component"):
+        infer.run_inference(
+            [rec_trav], manifest, backend=SpyBackend(), run_id="r1",
+            prompt_id="prompt@sha256:" + "a" * 64, prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1", frames_dir=frames_dir,
+        )
+
+    # 3. Reject symlink frame pointing outside candidate dir
+    rec_sym, manifest, frames_dir = _build_record_and_manifest(tmp_path / "case_sym")
+    outside = tmp_path / "outside.png"
+    outside.write_bytes(PNG_HEADER + b"outside")
+    target = frames_dir / "c00" / rec_sym["frames"][0]["image"]
+    target.unlink()
+    target.symlink_to(outside)
+    rec_sym["frames"][0]["sha256"] = hashlib.sha256(outside.read_bytes()).hexdigest()
+    with pytest.raises(InputError, match="symlink"):
+        infer.run_inference(
+            [rec_sym], manifest, backend=SpyBackend(), run_id="r1",
+            prompt_id="prompt@sha256:" + "a" * 64, prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1", frames_dir=frames_dir,
+        )
+
+    # 4. Reject non-PNG bytes even when sha256 matches
+    rec_nonpng, manifest, frames_dir = _build_record_and_manifest(tmp_path / "case_nonpng")
+    target = frames_dir / "c00" / rec_nonpng["frames"][0]["image"]
+    target.write_bytes(b"NOT A PNG SECRET")
+    rec_nonpng["frames"][0]["sha256"] = hashlib.sha256(b"NOT A PNG SECRET").hexdigest()
+    with pytest.raises(InputError, match="valid PNG"):
+        infer.run_inference(
+            [rec_nonpng], manifest, backend=SpyBackend(), run_id="r1",
+            prompt_id="prompt@sha256:" + "a" * 64, prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1", frames_dir=frames_dir,
+        )
+
+    # 5. Reserve meta_output_path before making any backend request
+    rec_meta, manifest, frames_dir = _build_record_and_manifest(tmp_path / "case_meta")
+    existing_meta = tmp_path / "existing.meta.json"
+    existing_meta.write_text("{}", encoding="utf-8")
+    spy = SpyBackend()
+    with pytest.raises(FileExistsError):
+        infer.run_inference(
+            [rec_meta], manifest, backend=spy, run_id="r1",
+            prompt_id="prompt@sha256:" + "a" * 64, prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1", frames_dir=frames_dir,
+            output_path=tmp_path / "new_preds.jsonl",
+            meta_output_path=existing_meta,
+        )
+    assert spy.calls == 0
+
+
+def test_infer_fake_cli_works_without_httpx_installed(tmp_path, monkeypatch):
+    """Fake backend CLI must not import httpx at module import time."""
+    record, manifest, frames_dir = _build_record_and_manifest(tmp_path)
+    records_path = frames_dir / "records.jsonl"
+    records_path.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+    prompt_path = tmp_path / "prompt.txt"
+    prompt_path.write_text("只输出一个 JSON 对象\n", encoding="utf-8")
+    output_path = tmp_path / "fake_predictions.jsonl"
+
+    monkeypatch.setitem(sys.modules, "httpx", None)
+    rc = infer.main([
+        "--backend", "fake",
+        "--model-id", "fake",
+        "--run-id", "run-fake-no-httpx",
+        "--manifest", str(manifest_path),
+        "--input-config", str(records_path),
+        "--prompt-file", str(prompt_path),
+        "--output", str(output_path),
+    ])
+    assert rc == 0
+    assert output_path.is_file()

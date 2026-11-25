@@ -15,12 +15,15 @@ Strict single-JSON output contract: raw model text is returned verbatim with NO
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from contextlib import contextmanager
 import hashlib
 import math
 from pathlib import Path
+import random
 import re
 import signal
+import sys
 import threading
 import time
 from typing import Any, Callable, Sequence
@@ -32,6 +35,7 @@ SUPPORTED_MODEL_FAMILIES = ("minicpm-v-4.5", "qwen3-vl", "internvl3", "internvl3
 MINICPM_TEMPORAL_GRID_SECONDS = 0.1
 MINICPM_DEFAULT_MAX_SLICE_NUMS = 1
 SHA256_RE = re.compile(r"[a-f0-9]{64}")
+TRUSTED_REQUIRED_CONFIG_FILES = ("config.json", "preprocessor_config.json", "tokenizer_config.json")
 
 
 class _InferenceTimeoutError(Exception):
@@ -113,11 +117,11 @@ def verify_trusted_snapshot_sha256(
     model_path: Path,
     trusted_files_sha256: dict[str, str],
 ) -> dict[str, str]:
-    """Fail-closed SHA-256 check for local files before ``trust_remote_code=True`` execution."""
+    """Fail-closed SHA-256 check covering all local ``.py`` and core config files before ``trust_remote_code``."""
     if not isinstance(trusted_files_sha256, dict) or not trusted_files_sha256:
         raise InputError("trusted_files_sha256 must be a non-empty {relative_path: sha256} mapping")
-    verified: dict[str, str] = {}
     root = model_path.resolve()
+    normalized_map: dict[str, str] = {}
     for rel_path, expected in trusted_files_sha256.items():
         if not isinstance(rel_path, str) or not rel_path.strip():
             raise InputError(f"invalid relative path in trusted_files_sha256: {rel_path!r}")
@@ -125,11 +129,33 @@ def verify_trusted_snapshot_sha256(
             raise InputError(f"trusted sha256 for {rel_path!r} must be 64-char lowercase hex")
         target = (root / rel_path).resolve()
         try:
-            target.relative_to(root)
+            rel_norm = target.relative_to(root).as_posix()
         except ValueError as exc:
             raise InputError(f"trusted path {rel_path!r} escapes model directory {root}") from exc
         if not target.is_file():
             raise InputError(f"trusted snapshot file missing: {target}")
+        normalized_map[rel_norm] = expected
+
+    # Every Python module and present core config file in the local snapshot must be pinned.
+    required_files: set[str] = set()
+    for py_file in sorted(root.rglob("*.py")):
+        if py_file.is_file():
+            required_files.add(py_file.relative_to(root).as_posix())
+    for cfg_name in TRUSTED_REQUIRED_CONFIG_FILES:
+        cfg_file = root / cfg_name
+        if cfg_file.is_file():
+            required_files.add(cfg_name)
+
+    uncovered = sorted(required_files - set(normalized_map))
+    if uncovered:
+        raise InputError(
+            f"trusted_files_sha256 must cover all local .py and core config files before trust_remote_code; "
+            f"uncovered: {uncovered}"
+        )
+
+    verified: dict[str, str] = {}
+    for rel_norm, expected in sorted(normalized_map.items()):
+        target = root / rel_norm
         digest = hashlib.sha256()
         with target.open("rb") as stream:
             for chunk in iter(lambda: stream.read(1 << 20), b""):
@@ -137,10 +163,22 @@ def verify_trusted_snapshot_sha256(
         actual = digest.hexdigest()
         if actual != expected:
             raise InputError(
-                f"trusted snapshot SHA-256 mismatch for {rel_path}: expected {expected}, got {actual}"
+                f"trusted snapshot SHA-256 mismatch for {rel_norm}: expected {expected}, got {actual}"
             )
-        verified[rel_path] = actual
+        verified[rel_norm] = actual
     return verified
+
+
+def _apply_seed(seed: int | None) -> None:
+    """Apply deterministic seed to Python RNG and (if already loaded) PyTorch."""
+    if seed is None:
+        return
+    random.seed(seed)
+    torch_mod = sys.modules.get("torch")
+    if torch_mod is not None:
+        torch_mod.manual_seed(seed)
+        if hasattr(torch_mod, "cuda") and torch_mod.cuda.is_available():
+            torch_mod.cuda.manual_seed_all(seed)
 
 
 @contextmanager
@@ -303,10 +341,14 @@ class TransformersBackend:
             raise InputError("transformers backend requires --model-path when no model hook is injected")
         if not self.model_path.is_dir():
             raise InputError(f"transformers model_path does not exist or is not a directory: {self.model_path}")
-        if self._trusted_files_sha256 is not None:
-            self.verified_snapshot_sha256 = verify_trusted_snapshot_sha256(
-                self.model_path, self._trusted_files_sha256
+        if self._trusted_files_sha256 is None:
+            raise InputError(
+                "transformers backend requires --trusted-sha256-file (trusted_files_sha256) "
+                "before loading local model files with trust_remote_code=True"
             )
+        self.verified_snapshot_sha256 = verify_trusted_snapshot_sha256(
+            self.model_path, self._trusted_files_sha256
+        )
         started = time.monotonic()
         loaded = self._model_loader(self.model_path, self.model_family, self.max_pixels)
         if not isinstance(loaded, tuple) or len(loaded) != 3:
@@ -352,6 +394,8 @@ class TransformersBackend:
         decode = request.decode_config or {}
         temperature = float(decode.get("temperature", self.temperature))
         max_tokens = int(decode.get("max_tokens", self.max_tokens))
+        seed = decode.get("seed", self.seed)
+        _apply_seed(seed)
         do_sample = temperature > 0.0
         meta = {
             "temporal_ids": temporal_ids,
@@ -398,26 +442,43 @@ class TransformersBackend:
         decode = request.decode_config or {}
         temperature = float(decode.get("temperature", self.temperature))
         max_tokens = int(decode.get("max_tokens", self.max_tokens))
+        seed = decode.get("seed", self.seed)
+        _apply_seed(seed)
         do_sample = temperature > 0.0
         meta: dict[str, Any] = {"model_family": self.model_family, "max_pixels": self.max_pixels}
 
-        if self.model_family in ("internvl3", "internvl3.5") and hasattr(self._model, "chat"):
-            chat_kwargs: dict[str, Any] = {
-                "tokenizer": self._tokenizer,
-                "images": images,
-                "question": request.prompt_text,
-                "generation_config": {
-                    "max_new_tokens": max_tokens,
-                    "do_sample": do_sample,
-                    **({"temperature": temperature} if do_sample else {}),
-                },
-            }
-            if self.max_pixels is not None:
-                chat_kwargs["max_pixels"] = self.max_pixels
-            return self._model.chat(**chat_kwargs), meta
-
         if self._processor is None:
             raise RuntimeError(f"{self.model_family} requires a processor")
+
+        if self.model_family in ("internvl3", "internvl3.5") and hasattr(self._model, "chat"):
+            proc_kwargs: dict[str, Any] = {"images": images, "return_tensors": "pt"}
+            if self.max_pixels is not None:
+                proc_kwargs["max_pixels"] = self.max_pixels
+            visual = self._processor(**proc_kwargs)
+            if not isinstance(visual, Mapping) or "pixel_values" not in visual:
+                raise RuntimeError(
+                    f"{self.model_family} native chat requires processor output containing 'pixel_values'"
+                )
+            pixel_values = visual["pixel_values"]
+            num_patches_list = visual.get("num_patches_list")
+            if num_patches_list is None:
+                num_patches_list = [1] * len(images)
+            frame_prefix = "\n".join(f"Frame{i + 1}: <image>" for i in range(len(images)))
+            question = f"{frame_prefix}\n{request.prompt_text}"
+            generation_config: dict[str, Any] = {
+                "max_new_tokens": max_tokens,
+                "do_sample": do_sample,
+            }
+            if do_sample:
+                generation_config["temperature"] = temperature
+            raw_text = self._model.chat(
+                self._tokenizer,
+                pixel_values,
+                question,
+                generation_config,
+                num_patches_list=list(num_patches_list),
+            )
+            return raw_text, meta
 
         messages = [
             {
@@ -435,7 +496,7 @@ class TransformersBackend:
         else:
             prompt_for_processor = request.prompt_text
 
-        proc_kwargs: dict[str, Any] = {
+        proc_kwargs = {
             "text": prompt_for_processor,
             "images": images,
             "return_tensors": "pt",
@@ -454,7 +515,8 @@ class TransformersBackend:
         if decoder is None or not hasattr(decoder, "batch_decode"):
             return output_ids if isinstance(output_ids, str) else str(output_ids)
         trimmed = output_ids
-        if isinstance(inputs, dict) and "input_ids" in inputs:
+        # HF processor outputs BatchFeature (a Mapping, not a plain dict).
+        if isinstance(inputs, Mapping) and "input_ids" in inputs:
             try:
                 prompt_len = len(inputs["input_ids"][0])
                 trimmed = [seq[prompt_len:] for seq in output_ids]

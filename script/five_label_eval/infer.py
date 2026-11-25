@@ -10,17 +10,28 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import sys
 from typing import Any
 
 from . import paths
 from .backends import InferenceBackend, InferenceRequest, normalize_result
 from .backends.fake_backend import CATEGORY_ORDER, LEGAL, NON_ANSWERS, fake_raw_output
-from .backends.http_backend import HttpBackend
 from .backends.transformers_backend import SUPPORTED_MODEL_FAMILIES, TransformersBackend
-from .frames import RECORD_SCHEMA, read_records, verify_lineage
+from .frames import (
+    DEFAULT_CLIPS_PER_RECORD,
+    DEFAULT_RESIZE,
+    RECORD_SCHEMA,
+    SAMPLING_RULE,
+    SHORT_CLIP_POLICY,
+    read_records,
+    verify_lineage,
+)
 from .prompt_id import load_prompt
 from .score import InputError, decode_file, read_json, require_text
+
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+SHA256_RE = re.compile(r"[a-f0-9]{64}")
 
 
 def _sha256_file(path: Path) -> str:
@@ -29,6 +40,18 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _validate_safe_component(value: str, label: str) -> None:
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or value in (".", "..")
+        or "/" in value
+        or "\\" in value
+        or Path(value).name != value
+    ):
+        raise InputError(f"{label} must be a single safe path component, got {value!r}")
 
 
 def _validate_manifest_samples(manifest) -> dict[str, dict]:
@@ -57,15 +80,69 @@ def _validate_record_against_manifest(record: Any, samples: dict[str, dict]) -> 
     return cid
 
 
+def _record_sampling_policy(record: dict) -> dict[str, Any]:
+    cid = record.get("candidate_id", "<unknown>")
+    sampling = record.get("sampling")
+    if isinstance(sampling, dict):
+        policy = {
+            "sampling_rule": sampling.get("sampling_rule"),
+            "target_frame_count": sampling.get("target_frame_count"),
+            "short_clip_policy": sampling.get("short_clip_policy"),
+            "resize": sampling.get("resize"),
+        }
+    else:
+        frames = record.get("frames")
+        c2m = (
+            frames[0].get("frame_index_mapping", {}).get("clip_to_model_input")
+            if isinstance(frames, list) and frames and isinstance(frames[0], dict)
+            else None
+        )
+        if not isinstance(c2m, dict):
+            raise InputError(f"{cid}: missing sampling metadata; re-extract with 8-frame frames.py")
+        policy = {
+            "sampling_rule": c2m.get("sampling_rule"),
+            "target_frame_count": c2m.get("target_frame_count"),
+            "short_clip_policy": c2m.get("short_clip_policy"),
+            "resize": c2m.get("resize"),
+        }
+    expected = {
+        "sampling_rule": SAMPLING_RULE,
+        "target_frame_count": DEFAULT_CLIPS_PER_RECORD,
+        "short_clip_policy": SHORT_CLIP_POLICY,
+        "resize": DEFAULT_RESIZE,
+    }
+    if policy != expected:
+        raise InputError(
+            f"{cid}: sampling policy {policy!r} != required 8-frame contract {expected!r}; "
+            "re-extract records with frames.py default 8-frame settings"
+        )
+    return policy
+
+
 def _resolve_record_frames(record: dict, frames_dir: Path) -> tuple[tuple[Path, ...], tuple[float, ...]]:
     cid = record["candidate_id"]
+    _validate_safe_component(cid, "candidate_id")
     raw_frames = record.get("frames")
-    if not isinstance(raw_frames, list) or not raw_frames:
-        raise InputError(f"{cid}: input record has no frames")
+    if not isinstance(raw_frames, list) or len(raw_frames) != DEFAULT_CLIPS_PER_RECORD:
+        got = len(raw_frames) if isinstance(raw_frames, list) else type(raw_frames).__name__
+        raise InputError(
+            f"{cid}: real inference requires exactly {DEFAULT_CLIPS_PER_RECORD} frames "
+            f"(got {got}); re-extract records with frames.py default 8-frame settings"
+        )
     ordered = sorted(
         raw_frames,
         key=lambda item: item.get("display_order", -1) if isinstance(item, dict) else -1,
     )
+    root_dir = frames_dir.resolve()
+    raw_clip_dir = frames_dir / cid
+    if raw_clip_dir.is_symlink():
+        raise InputError(f"{cid}: candidate frame directory must not be a symlink: {raw_clip_dir}")
+    clip_dir = raw_clip_dir.resolve()
+    try:
+        clip_dir.relative_to(root_dir)
+    except ValueError as exc:
+        raise InputError(f"{cid}: candidate frame directory escapes frames_dir: {clip_dir}") from exc
+
     frame_paths: list[Path] = []
     frame_pts: list[float] = []
     for expected_order, entry in enumerate(ordered):
@@ -77,19 +154,33 @@ def _resolve_record_frames(record: dict, frames_dir: Path) -> tuple[tuple[Path, 
                 f"got {entry.get('display_order')!r}"
             )
         image_name = entry.get("image")
-        if not isinstance(image_name, str) or not image_name.strip():
-            raise InputError(f"{cid}: frames[{expected_order}].image missing")
-        img_path = frames_dir / cid / image_name
+        _validate_safe_component(image_name, f"{cid}: frames[{expected_order}].image")
+        raw_img_path = clip_dir / image_name
+        if raw_img_path.is_symlink():
+            raise InputError(f"{cid}: L3 frame PNG must not be a symlink: {raw_img_path}")
+        img_path = raw_img_path.resolve()
+        try:
+            img_path.relative_to(clip_dir)
+        except ValueError as exc:
+            raise InputError(f"{cid}: L3 frame PNG escapes candidate directory: {img_path}") from exc
         if not img_path.is_file():
             raise InputError(f"{cid}: L3 frame PNG missing on disk: {img_path}")
+
         expected_sha = entry.get("sha256")
-        if isinstance(expected_sha, str) and expected_sha:
-            actual_sha = _sha256_file(img_path)
-            if actual_sha != expected_sha:
-                raise InputError(
-                    f"{cid}: L3 frame PNG sha256 mismatch for {img_path}: "
-                    f"expected {expected_sha}, got {actual_sha}"
-                )
+        if not isinstance(expected_sha, str) or not SHA256_RE.fullmatch(expected_sha):
+            raise InputError(
+                f"{cid}: frames[{expected_order}].sha256 missing or invalid; "
+                "re-extract records with frames.py so every L3 PNG is digest-pinned"
+            )
+        raw_bytes = img_path.read_bytes()
+        if not raw_bytes.startswith(PNG_MAGIC):
+            raise InputError(f"{cid}: L3 frame is not a valid PNG file: {img_path}")
+        actual_sha = hashlib.sha256(raw_bytes).hexdigest()
+        if actual_sha != expected_sha:
+            raise InputError(
+                f"{cid}: L3 frame PNG sha256 mismatch for {img_path}: "
+                f"expected {expected_sha}, got {actual_sha}"
+            )
         frame_paths.append(img_path)
         pts = entry.get("pts_seconds")
         if isinstance(pts, (int, float)) and not isinstance(pts, bool):
@@ -125,21 +216,10 @@ def plan_predictions(records, manifest, run_id, prompt_id, model_id="fake") -> l
 def _extract_sampling_policy(records: list[dict]) -> dict[str, Any] | None:
     if not records:
         return None
-    first = records[0]
-    if isinstance(first.get("sampling"), dict):
-        return dict(first["sampling"])
-    frames = first.get("frames")
-    if isinstance(frames, list) and frames and isinstance(frames[0], dict):
-        mapping = frames[0].get("frame_index_mapping")
-        if isinstance(mapping, dict) and isinstance(mapping.get("clip_to_model_input"), dict):
-            c2m = mapping["clip_to_model_input"]
-            return {
-                "sampling_rule": c2m.get("sampling_rule"),
-                "target_frame_count": c2m.get("target_frame_count", len(frames)),
-                "short_clip_policy": c2m.get("short_clip_policy"),
-                "resize": c2m.get("resize"),
-            }
-    return None
+    first_policy = _record_sampling_policy(records[0])
+    for rec in records[1:]:
+        _record_sampling_policy(rec)
+    return first_policy
 
 
 def run_inference(
@@ -158,7 +238,7 @@ def run_inference(
     meta_output_path: Path | None = None,
     verify_record_lineage: bool = True,
 ) -> tuple[list[dict], dict[str, Any]]:
-    """Validate all inputs up-front, run backend per candidate, and stream predictions."""
+    """Validate all inputs up-front, reserve outputs exclusively, run backend, and stream predictions."""
     require_text({"run_id": run_id}, "run_id", "run")
     require_text({"prompt_id": prompt_id}, "prompt_id", "run")
     require_text({"model_id": model_id}, "model_id", "run")
@@ -168,6 +248,7 @@ def run_inference(
     samples = _validate_manifest_samples(manifest)
     prepared: list[tuple[str, dict, tuple[Path, ...], tuple[float, ...]]] = []
     seen_cids: set[str] = set()
+    batch_sampling_policy: dict[str, Any] | None = None
     for record in records:
         cid = _validate_record_against_manifest(record, samples)
         if cid in seen_cids:
@@ -176,12 +257,29 @@ def run_inference(
         if verify_record_lineage and "lineage_media" in record:
             if failures := verify_lineage(record):
                 raise InputError(f"{cid}: lineage check failed before inference: {' | '.join(failures)}")
+        policy = _record_sampling_policy(record)
+        if batch_sampling_policy is None:
+            batch_sampling_policy = policy
         frame_paths, frame_pts = _resolve_record_frames(record, frames_dir)
         prepared.append((cid, record, frame_paths, frame_pts))
 
+    # Reserve both exclusive output files BEFORE issuing any backend requests.
+    stream = None
+    meta_stream = None
+    try:
+        if output_path is not None:
+            stream = Path(output_path).open("x", encoding="utf-8")
+        if meta_output_path is not None:
+            meta_stream = Path(meta_output_path).open("x", encoding="utf-8")
+    except Exception:
+        if stream is not None:
+            stream.close()
+        if meta_stream is not None:
+            meta_stream.close()
+        raise
+
     predictions: list[dict] = []
     request_metas: list[dict[str, Any]] = []
-    stream = Path(output_path).open("x", encoding="utf-8") if output_path is not None else None
     try:
         for cid, record, frame_paths, frame_pts in prepared:
             req = InferenceRequest(
@@ -220,26 +318,29 @@ def run_inference(
             if stream is not None:
                 stream.write(json.dumps(row, ensure_ascii=False) + "\n")
                 stream.flush()
+
+        run_meta: dict[str, Any] = {
+            "run_id": run_id,
+            "model_id": model_id,
+            "prompt_id": prompt_id,
+            "sampling_policy": batch_sampling_policy,
+            "backend_identity": backend.run_identity(),
+            "total_requests": len(predictions),
+            "status_counts": {
+                status: sum(1 for row in predictions if row["status"] == status)
+                for status in ("success", "request_failed", "timeout")
+            },
+            "requests": request_metas,
+        }
+        if meta_stream is not None:
+            meta_stream.write(json.dumps(run_meta, ensure_ascii=False, indent=2) + "\n")
+            meta_stream.flush()
     finally:
         if stream is not None:
             stream.close()
+        if meta_stream is not None:
+            meta_stream.close()
 
-    run_meta: dict[str, Any] = {
-        "run_id": run_id,
-        "model_id": model_id,
-        "prompt_id": prompt_id,
-        "sampling_policy": _extract_sampling_policy(records),
-        "backend_identity": backend.run_identity(),
-        "total_requests": len(predictions),
-        "status_counts": {
-            status: sum(1 for row in predictions if row["status"] == status)
-            for status in ("success", "request_failed", "timeout")
-        },
-        "requests": request_metas,
-    }
-    if meta_output_path is not None:
-        with Path(meta_output_path).open("x", encoding="utf-8") as meta_stream:
-            meta_stream.write(json.dumps(run_meta, ensure_ascii=False, indent=2) + "\n")
     return predictions, run_meta
 
 
@@ -275,7 +376,7 @@ def main(argv=None) -> int:
     parser.add_argument("--max-slice-nums", type=int, default=None, help="MiniCPM-V-4.5 max_slice_nums (default: 1)")
     parser.add_argument(
         "--trusted-sha256-file",
-        help="Optional JSON mapping {relative_file: sha256} verified fail-closed before trust_remote_code",
+        help="JSON mapping {relative_file: sha256} verified fail-closed before trust_remote_code (required for local loading)",
     )
     args = parser.parse_args(argv)
     try:
@@ -329,6 +430,10 @@ def main(argv=None) -> int:
         if args.backend == "http":
             if not args.endpoint:
                 raise InputError("--endpoint is required for --backend http")
+            try:
+                from .backends.http_backend import HttpBackend
+            except ImportError as exc:
+                raise InputError(f"http backend requires httpx to be installed: {exc}") from exc
             backend = HttpBackend(
                 endpoint=args.endpoint,
                 model_id=args.model_id,
