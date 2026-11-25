@@ -318,6 +318,7 @@ class HttpBackend:
     def infer_one(self, request: InferenceRequest) -> InferenceResult:
         started = time.monotonic()
         timeout = float(request.timeout_seconds if request.timeout_seconds is not None else self.timeout_seconds)
+        deadline = started + timeout
         try:
             payload = self.build_payload(request)
         except OSError as exc:
@@ -326,6 +327,16 @@ class HttpBackend:
                 raw_output=None,
                 latency_seconds=time.monotonic() - started,
                 error_detail=f"failed to read L3 frame image: {exc}",
+            )
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            elapsed = time.monotonic() - started
+            return InferenceResult(
+                status="timeout",
+                raw_output=None,
+                latency_seconds=elapsed,
+                error_detail=f"timeout after {elapsed:.3f}s: wall-clock deadline exhausted during payload build",
             )
 
         headers = {"Content-Type": "application/json"}
@@ -337,7 +348,7 @@ class HttpBackend:
 
         try:
             status_code, body_bytes = self._execute_with_wall_clock_deadline(
-                request_url, payload, headers, timeout
+                request_url, payload, headers, remaining
             )
         except (_WallClockTimeout, httpx.TimeoutException) as exc:
             return InferenceResult(

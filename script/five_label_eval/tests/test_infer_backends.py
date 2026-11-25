@@ -1920,3 +1920,80 @@ def test_r11_regression_auto_map_local_module_allowlist_and_hf_internvl_max_pixe
     assert hf_backend.infer_one(_make_request(tmp_path / "r11_hf_px")).status == "success"
     assert len(seen_sizes) == 8
     assert all(w * h <= 10000 for w, h in seen_sizes)
+
+
+def test_r12_regression_payload_timeout_tokenizer_json_pin_and_sampling_indices(tmp_path):
+    """Regression tests for R12 blocking findings: payload-build deadline, full *.json pinning, and sampling-rule index validation."""
+    # 1. If build_payload() exhausts timeout budget, infer_one returns timeout without ever hitting network.
+    network_called = False
+
+    def should_not_receive(_request: httpx.Request) -> httpx.Response:
+        nonlocal network_called
+        network_called = True
+        return httpx.Response(200, json={"choices": [{"message": {"content": LEGAL_JSON}}]})
+
+    slow_payload_backend = HttpBackend(
+        endpoint="http://127.0.0.1:8000",
+        model_id="Qwen3-VL-8B-Instruct@1",
+        timeout_seconds=0.05,
+        transport=httpx.MockTransport(should_not_receive),
+    )
+    orig_build = slow_payload_backend.build_payload
+
+    def delayed_build(req):
+        time.sleep(0.08)
+        return orig_build(req)
+
+    slow_payload_backend.build_payload = delayed_build  # type: ignore[method-assign]
+    try:
+        res = slow_payload_backend.infer_one(_make_request(tmp_path / "r12_payload", timeout=0.05))
+    finally:
+        slow_payload_backend.close()
+    assert res.status == "timeout"
+    assert network_called is False
+
+    # 2. All *.json files (including tokenizer.json) must be pinned and copied (not symlinked) in staging.
+    tok_dir = tmp_path / "tok_json_snap"
+    tok_dir.mkdir()
+    (tok_dir / "config.json").write_bytes(b'{"version": "4.5"}')
+    (tok_dir / "tokenizer.json").write_bytes(b'{"version": "1.0"}')
+    cfg_sha = hashlib.sha256((tok_dir / "config.json").read_bytes()).hexdigest()
+    tok_sha = hashlib.sha256((tok_dir / "tokenizer.json").read_bytes()).hexdigest()
+    with pytest.raises(InputError, match="tokenizer.json"):
+        verify_trusted_snapshot_sha256(tok_dir, {"config.json": cfg_sha})
+    assert verify_trusted_snapshot_sha256(tok_dir, {"config.json": cfg_sha, "tokenizer.json": tok_sha}) == {
+        "config.json": cfg_sha,
+        "tokenizer.json": tok_sha,
+    }
+
+    # 3. Repeated or non-uniform clip_frame_index sequence violating evenly_spaced_inclusive fails closed.
+    rec_bad, m_bad, frames_dir_bad = _build_record_and_manifest(tmp_path / "r12_indices", cid="c00")
+    for f in rec_bad["frames"]:
+        f["clip_frame_index"] = 0
+        f["roi_frame_index"] = 973
+        f["original_source_frame_index"] = 973
+    rec_bad["input_id"] = compute_record_input_id(rec_bad)
+
+    class FailBackend:
+        backend_name = "http"
+
+        def run_identity(self):
+            return {"backend": "http"}
+
+        def infer_one(self, request):
+            raise AssertionError("should reject non-uniform clip_frame_index before backend")
+
+        def close(self):
+            return None
+
+    with pytest.raises(InputError, match="evenly_spaced_inclusive"):
+        infer.run_inference(
+            [rec_bad],
+            m_bad,
+            backend=FailBackend(),
+            run_id="r12-indices",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir_bad,
+        )

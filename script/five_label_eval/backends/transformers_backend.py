@@ -162,15 +162,12 @@ def verify_trusted_snapshot_sha256(
             raise InputError(f"trusted snapshot file missing: {target}")
         normalized_map[rel_norm] = expected
 
-    # Every Python module and present core config file in the local snapshot must be pinned.
+    # Every Python module, JSON config/tokenizer file, and Jinja template in the local snapshot must be pinned.
     required_files: set[str] = set()
-    for py_file in sorted(root.rglob("*.py")):
-        if py_file.is_file():
-            required_files.add(py_file.relative_to(root).as_posix())
-    for cfg_name in TRUSTED_REQUIRED_CONFIG_FILES:
-        cfg_file = root / cfg_name
-        if cfg_file.is_file():
-            required_files.add(cfg_name)
+    for pattern in ("*.py", "*.json", "*.jinja"):
+        for req_file in sorted(root.rglob(pattern)):
+            if req_file.is_file():
+                required_files.add(req_file.relative_to(root).as_posix())
 
     uncovered = sorted(required_files - set(normalized_map))
     if uncovered:
@@ -240,12 +237,10 @@ def verify_trusted_snapshot_sha256(
             for idx, item in enumerate(node):
                 _scan_trusted_config_node(item, cfg_name, f"{loc}[{idx}]")
 
-    for cfg_name in TRUSTED_REQUIRED_CONFIG_FILES:
-        if not cfg_name.endswith(".json"):
-            continue
-        cfg_file = root / cfg_name
+    for cfg_file in sorted(root.rglob("*.json")):
         if not cfg_file.is_file():
             continue
+        cfg_name = cfg_file.relative_to(root).as_posix()
         try:
             cfg_obj = json.loads(cfg_file.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
@@ -815,9 +810,7 @@ class TransformersBackend:
                 rel = entry.relative_to(source_root)
                 rel_posix = rel.as_posix()
                 if (
-                    entry.suffix == ".py"
-                    or entry.name in TRUSTED_REQUIRED_CONFIG_FILES
-                    or entry.name == "adapter_config.json"
+                    entry.suffix in (".py", ".json", ".jinja")
                     or rel_posix in trusted_files_sha256
                 ):
                     copy_rels.add(rel_posix)

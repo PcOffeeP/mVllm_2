@@ -28,6 +28,7 @@ from .frames import (
     SHORT_CLIP_POLICY,
     compute_record_input_id,
     read_records,
+    sample_frame_indices,
     verify_lineage,
 )
 from .prompt_id import load_prompt
@@ -138,6 +139,16 @@ def _resolve_record_frames(
         raw_frames,
         key=lambda item: item.get("display_order", -1) if isinstance(item, dict) else -1,
     )
+    media = record.get("media") if isinstance(record.get("media"), dict) else {}
+    l2_total = media.get("total_frames")
+    if isinstance(l2_total, int) and not isinstance(l2_total, bool) and l2_total >= len(ordered):
+        expected_indices = sample_frame_indices(l2_total, len(ordered))
+        actual_indices = [item.get("clip_frame_index") if isinstance(item, dict) else None for item in ordered]
+        if actual_indices != expected_indices:
+            raise InputError(
+                f"{cid}: clip_frame_index sequence {actual_indices} does not match "
+                f"{SAMPLING_RULE} for total_frames={l2_total} (expected {expected_indices})"
+            )
     root_dir = frames_dir.resolve()
     raw_clip_dir = frames_dir / cid
     if raw_clip_dir.is_symlink():
