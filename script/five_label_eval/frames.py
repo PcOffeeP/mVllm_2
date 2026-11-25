@@ -52,9 +52,16 @@ FALLBACK_TOOL_DIRS = ("/opt/homebrew/bin", "/usr/local/bin")
 SHA256 = re.compile(r"[a-f0-9]{64}")
 SHOWINFO = re.compile(r"\] n:\s*(\d+)\s+pts:\s*(-?\d+)\s+pts_time:(-?\d+(?:\.\d+)?)")
 LAYERS = ("l0", "l1", "l2")
+DEFAULT_CLIPS_PER_RECORD = 8
+SAMPLING_RULE = "evenly_spaced_inclusive"
+SHORT_CLIP_POLICY = "fail_closed"
+DEFAULT_RESIZE = None
 # L3 帧是 L2 的第 ``clip_frame_index`` 个解码帧：抽帧规则本身就是 L2→L3 的映射。
 CLIP_TO_MODEL_INPUT = {"kind": "ffmpeg_select_nth_decoded_frame", "offset": None,
-                       "reason": "L3 帧由 ffmpeg select=eq(n\\,clip_frame_index) 从 L2 按解码序抽取"}
+                       "reason": "L3 帧由 ffmpeg select=eq(n\\,clip_frame_index) 从 L2 按解码序抽取",
+                       "sampling_rule": SAMPLING_RULE,
+                       "short_clip_policy": SHORT_CLIP_POLICY,
+                       "resize": DEFAULT_RESIZE}
 # 同一路径一次运行内只探测一次：``-count_frames`` 会全解码，重复调用很贵。
 _FRAME_COUNT_CACHE: dict[str, int | None] = {}
 _MEDIA_INFO_CACHE: dict[str, dict] = {}
@@ -643,8 +650,38 @@ def _extract_frames(clip: Path, indices: list[int], target: Path) -> tuple[list[
     return times, names
 
 
-def extract_record(candidate, profiles, out_dir, clips_per_record=3, manifest_sha256=None,
-                   source_evidence=None) -> dict:
+def sample_frame_indices(total_frames: int, num_frames: int = DEFAULT_CLIPS_PER_RECORD, *,
+                         sampling_rule: str = SAMPLING_RULE,
+                         short_clip_policy: str = SHORT_CLIP_POLICY) -> list[int]:
+    """Deterministically pick 0-based decoded frame indices for L3 model input.
+
+    Under ``evenly_spaced_inclusive`` + ``fail_closed``:
+    - ``total_frames`` and ``num_frames`` must be positive integers (booleans rejected).
+    - Short clips with ``total_frames < num_frames`` are refused via ``InputError``;
+      frames are never silently dropped, duplicated, or padded.
+    - Returned indices are strictly increasing, unique, and inclusive of ``0`` and
+      ``total_frames - 1`` (when ``num_frames >= 2``).
+    """
+    if sampling_rule != SAMPLING_RULE:
+        raise InputError(f"unsupported sampling_rule {sampling_rule!r}; expected {SAMPLING_RULE!r}")
+    if short_clip_policy != SHORT_CLIP_POLICY:
+        raise InputError(f"unsupported short_clip_policy {short_clip_policy!r}; expected {SHORT_CLIP_POLICY!r}")
+    if any(isinstance(v, bool) or not isinstance(v, int) or v <= 0 for v in (num_frames, total_frames)):
+        raise InputError(
+            f"clips_per_record={num_frames!r} / total_frames={total_frames!r} must be positive integers"
+        )
+    if total_frames < num_frames:
+        raise InputError(
+            f"short clip refused under {SHORT_CLIP_POLICY} policy: "
+            f"total_frames={total_frames} < num_frames={num_frames}"
+        )
+    if num_frames == 1:
+        return [0]
+    return [round(i * (total_frames - 1) / (num_frames - 1)) for i in range(num_frames)]
+
+
+def extract_record(candidate, profiles, out_dir, clips_per_record=DEFAULT_CLIPS_PER_RECORD,
+                   manifest_sha256=None, source_evidence=None) -> dict:
     """Probe one clip, decode through the last selected frame and keep only those PNGs.
 
     ``source_evidence`` 是该候选 ``source_video_id`` 对应的来源级 replay 证据（``sources[]`` 声明 +
@@ -681,10 +718,10 @@ def extract_record(candidate, profiles, out_dir, clips_per_record=3, manifest_sh
     }
     media = media_info(clip)
     bucket, total = size_bucket(media["width"]), lineage_media["l2"]["total_frames"]
-    if any(isinstance(v, bool) or not isinstance(v, int) or v <= 0 for v in (clips_per_record, total)):
-        raise InputError(f"{cid}: clips_per_record={clips_per_record!r} / total_frames={total!r} must be positive integers")
-    count = min(clips_per_record, total)
-    indices = [0] if count == 1 else [round(i * (total - 1) / (count - 1)) for i in range(count)]
+    try:
+        indices = sample_frame_indices(total, clips_per_record)
+    except InputError as exc:
+        raise InputError(f"{cid}: {exc}") from exc
     times, names = _extract_frames(clip, indices, Path(out_dir) / cid)
     checked_at = _utc_timestamp()
     anchors = mapping.get("anchors") if isinstance(mapping.get("anchors"), list) else []
@@ -693,6 +730,7 @@ def extract_record(candidate, profiles, out_dir, clips_per_record=3, manifest_sh
         anchor_output = _anchor_frames(anchor)[0]
         if anchor_output is not None:
             anchor_by_output.setdefault(anchor_output, anchor)
+    clip_to_model_input = {**CLIP_TO_MODEL_INPUT, "target_frame_count": clips_per_record}
     frames = []
     for order, (clip_frame_index, pts_seconds, image) in enumerate(zip(indices, times, names)):
         lineage = derive_lineage(candidate, clip_frame_index, manifest_sha256=manifest_sha256,
@@ -704,15 +742,20 @@ def extract_record(candidate, profiles, out_dir, clips_per_record=3, manifest_sh
                        "is_anchor": clip_frame_index in anchor_by_output,
                        "anchor_ref": anchor_by_output.get(clip_frame_index), "media_role": "clip",
                        "image": image, "pts_seconds": pts_seconds,
+                       "width": media["width"], "height": media["height"],
+                       "sha256": _sha256_file(Path(out_dir) / cid / image),
                        "frame_index_mapping": {"clip_to_roi": lineage["clip_to_roi"],
-                                               "clip_to_model_input": dict(CLIP_TO_MODEL_INPUT),
+                                               "clip_to_model_input": dict(clip_to_model_input),
                                                "roi_to_original": lineage["roi_to_original"]}})
     # 候选级证据：verdict_id/method/evidence_sha256/checked_at 只取决于候选，不取决于具体帧号。
     candidate_lineage = derive_lineage(candidate, 0, manifest_sha256=manifest_sha256,
                                        checked_at=checked_at, source_evidence=source_evidence)
     verification = candidate_lineage["verification"]
+    sampling = {"sampling_rule": SAMPLING_RULE, "target_frame_count": clips_per_record,
+                "short_clip_policy": SHORT_CLIP_POLICY, "resize": DEFAULT_RESIZE}
     identity = {"record_schema": RECORD_SCHEMA, "clip_sha256": digest, "media_sha256": digest, "size_bucket": bucket,
-                "selection_rule": "evenly_spaced_inclusive", "clips_per_record": clips_per_record,
+                "selection_rule": SAMPLING_RULE, "clips_per_record": clips_per_record,
+                "short_clip_policy": SHORT_CLIP_POLICY, "resize": DEFAULT_RESIZE,
                 "clip_frame_indices": indices,
                 "roi_frame_indices": [frame["roi_frame_index"] for frame in frames],
                 "original_source_frame_indices": [frame["original_source_frame_index"] for frame in frames],
@@ -725,7 +768,8 @@ def extract_record(candidate, profiles, out_dir, clips_per_record=3, manifest_sh
     input_id = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
     record = {"record_schema": RECORD_SCHEMA, "candidate_id": cid, "clip_sha256": digest,
               "manifest_sha256": manifest_sha256, "input_id": f"input@sha256:{input_id}",
-              "frame_count_convention": "decoded", "verification": verification, "lineage_check": "pass",
+              "frame_count_convention": "decoded", "sampling": sampling,
+              "verification": verification, "lineage_check": "pass",
               "media": {"role": "clip", "path": str(clip), "sha256": digest, "height": media["height"],
                         "size_bucket": bucket, "size_bucket_source": SIZE_BUCKET_SOURCE,
                         **{key: media[key] for key in ("fps", "total_frames", "width")}},
@@ -884,7 +928,7 @@ def main(argv=None) -> int:
     parser.add_argument("--output", required=True,
                         help="New records JSONL (extract mode) or lineage summary JSON (--coverage-scan)")
     parser.add_argument("--out-dir", help="New directory for extracted frame images; required unless --coverage-scan")
-    parser.add_argument("--clips-per-record", type=int, default=3)
+    parser.add_argument("--clips-per-record", type=int, default=DEFAULT_CLIPS_PER_RECORD)
     parser.add_argument("--export-lineage-png", action="store_true",
                         help="Also dump L0/L1/L2/L3 PNG per sampled frame under <out-dir>/lineage/<candidate_id>/")
     parser.add_argument("--coverage-scan", action="store_true",

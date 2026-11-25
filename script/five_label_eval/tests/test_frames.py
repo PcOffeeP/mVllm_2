@@ -1103,16 +1103,29 @@ def test_extract_record_should_derive_roi_and_source_index_for_every_frame(tmp_p
     record = frames.extract_record(lineage_candidate(digests), profiles, tmp_path / "frames",
                                    manifest_sha256="b" * 64)
 
-    assert [frame["clip_frame_index"] for frame in record["frames"]] == [0, 120, 239]
-    assert [frame["roi_frame_index"] for frame in record["frames"]] == [973, 1093, 1212]
-    assert [frame["original_source_frame_index"] for frame in record["frames"]] == [973, 1093, 1212]
+    expected_clip = [0, 34, 68, 102, 137, 171, 205, 239]
+    assert [frame["clip_frame_index"] for frame in record["frames"]] == expected_clip
+    assert [frame["roi_frame_index"] for frame in record["frames"]] == [973 + i for i in expected_clip]
+    assert [frame["original_source_frame_index"] for frame in record["frames"]] == [973 + i for i in expected_clip]
+    assert record["sampling"] == {
+        "sampling_rule": "evenly_spaced_inclusive",
+        "target_frame_count": 8,
+        "short_clip_policy": "fail_closed",
+        "resize": None,
+    }
     for frame in record["frames"]:
         assert set(FRAME_FIELDS) <= set(frame)
+        assert frame["width"] == 320
+        assert frame["height"] == 296
         # 新增 L1→L0 节点：键集合固定三个。
         assert set(frame["frame_index_mapping"]) == {"clip_to_roi", "clip_to_model_input", "roi_to_original"}
         for mapping in frame["frame_index_mapping"].values():
             assert set(MAPPING_FIELDS) <= set(mapping)
         assert frame["frame_index_mapping"]["clip_to_roi"]["offset"] == 973
+        assert frame["frame_index_mapping"]["clip_to_model_input"]["sampling_rule"] == "evenly_spaced_inclusive"
+        assert frame["frame_index_mapping"]["clip_to_model_input"]["short_clip_policy"] == "fail_closed"
+        assert frame["frame_index_mapping"]["clip_to_model_input"]["target_frame_count"] == 8
+        assert frame["frame_index_mapping"]["clip_to_model_input"]["resize"] is None
         assert frame["frame_index_mapping"]["roi_to_original"]["kind"] == "explicit_pairs"
         assert frame["frame_index_mapping"]["roi_to_original"]["offset"] == 0
 
@@ -1558,3 +1571,104 @@ def test_read_records_should_explicitly_reject_legacy_mapping_keys(tmp_path, leg
     message = str(excinfo.value)
     assert legacy_key in message
     assert frames.RECORD_SCHEMA in message
+
+
+# --------------------------------------------------------------------------------------
+# 8-frame evenly_spaced_inclusive alignment, fail_closed short clips, and resize=null
+# --------------------------------------------------------------------------------------
+def test_default_frame_count_and_constants_should_align_to_eight_frame_contract():
+    assert frames.DEFAULT_CLIPS_PER_RECORD == 8
+    assert frames.SAMPLING_RULE == "evenly_spaced_inclusive"
+    assert frames.SHORT_CLIP_POLICY == "fail_closed"
+    assert frames.DEFAULT_RESIZE is None
+    assert frames.CLIP_TO_MODEL_INPUT["resize"] is None
+    assert frames.CLIP_TO_MODEL_INPUT["sampling_rule"] == "evenly_spaced_inclusive"
+    assert frames.CLIP_TO_MODEL_INPUT["short_clip_policy"] == "fail_closed"
+
+
+@pytest.mark.parametrize("total_frames,expected", [
+    (8, [0, 1, 2, 3, 4, 5, 6, 7]),
+    (9, [0, 1, 2, 3, 5, 6, 7, 8]),
+    (45, [0, 6, 13, 19, 25, 31, 38, 44]),
+    (150, [0, 21, 43, 64, 85, 106, 128, 149]),
+    (240, [0, 34, 68, 102, 137, 171, 205, 239]),
+    (600, [0, 86, 171, 257, 342, 428, 513, 599]),
+])
+def test_sample_frame_indices_should_compute_deterministic_evenly_spaced_inclusive(total_frames, expected):
+    indices = frames.sample_frame_indices(total_frames)
+
+    assert indices == expected
+    assert len(indices) == 8
+    assert indices[0] == 0
+    assert indices[-1] == total_frames - 1
+    assert indices == sorted(set(indices))
+    assert all(isinstance(idx, int) and not isinstance(idx, bool) for idx in indices)
+
+
+@pytest.mark.parametrize("total_frames,num_frames", [
+    (1, 8),
+    (3, 8),
+    (7, 8),
+    (4, 5),
+])
+def test_sample_frame_indices_should_fail_closed_on_short_clip(total_frames, num_frames):
+    with pytest.raises(InputError) as excinfo:
+        frames.sample_frame_indices(total_frames, num_frames)
+
+    msg = str(excinfo.value)
+    assert "fail_closed" in msg
+    assert str(total_frames) in msg
+    assert str(num_frames) in msg
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"total_frames": 0},
+    {"total_frames": -5},
+    {"total_frames": True},
+    {"total_frames": 10, "num_frames": 0},
+    {"total_frames": 10, "num_frames": False},
+    {"total_frames": 10, "sampling_rule": "uniform_bucket_midpoint"},
+    {"total_frames": 10, "short_clip_policy": "pad_last"},
+])
+def test_sample_frame_indices_should_reject_invalid_parameters(kwargs):
+    with pytest.raises(InputError):
+        frames.sample_frame_indices(**kwargs)
+
+
+def test_extract_record_should_fail_closed_and_not_invoke_ffmpeg_on_short_clip(tmp_path, monkeypatch):
+    profiles, digests = lineage_profiles(tmp_path)
+    patch_media(monkeypatch, decoded={"sub_video_videos": 7})
+
+    def boom(*args, **kwargs):
+        raise AssertionError("_extract_frames must not run for a short clip refused by fail_closed")
+
+    monkeypatch.setattr(frames, "_extract_frames", boom)
+
+    with pytest.raises(InputError) as excinfo:
+        frames.extract_record(lineage_candidate(digests), profiles, tmp_path / "frames",
+                              manifest_sha256="b" * 64)
+
+    assert "fail_closed" in str(excinfo.value)
+    assert "c00" in str(excinfo.value)
+
+
+def test_main_should_default_to_eight_frames_with_resize_null(tmp_path, monkeypatch):
+    profiles, manifest_path = scan_manifest(tmp_path)
+    patch_media(monkeypatch)
+    monkeypatch.setattr(frames.paths, "load_profile", lambda name: profiles)
+    output = tmp_path / "records.jsonl"
+    out_dir = tmp_path / "frames"
+
+    rc = run_main(["--manifest", str(manifest_path), "--output", str(output), "--out-dir", str(out_dir)])
+
+    assert rc == 0
+    records = frames.read_records(output)
+    assert len(records) == 2
+    for rec in records:
+        assert len(rec["frames"]) == 8
+        assert rec["sampling"]["target_frame_count"] == 8
+        assert rec["sampling"]["sampling_rule"] == "evenly_spaced_inclusive"
+        assert rec["sampling"]["short_clip_policy"] == "fail_closed"
+        assert rec["sampling"]["resize"] is None
+        for frame in rec["frames"]:
+            assert frame["frame_index_mapping"]["clip_to_model_input"]["resize"] is None
