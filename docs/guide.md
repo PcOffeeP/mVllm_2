@@ -40,7 +40,7 @@
 | --- | --- |
 | 整体测评方案 | [整体模型测评方案](design-test.md)：五类离线评价体系、分母口径、失败处理与测试安排。 |
 | 评测输入契约与基座方案 | [评测专题目录](eval/README.md)：含 6 篇输入契约（输出/Prompt/入口/输入记录/[评测子集](eval/eval-subset.md) §6.1 已冻结 `data/eval-subsets/eval-{dev,test}-v1.json`）及 [基座模型测评方案](eval/base-model-eval-plan.md)。 |
-| 正式评测结果总入口 | [正式评测结果总入口](eval/runs/README.md)：归档 `eval-dev-v1` 评测轻量报告与跨模型对照总表（首批已归档 `MiniCPM-V-4.5` 三次历史初步观测：Run A `transformers` DEC-006 方向、`vLLM` 对照与 Run B 描述性纯文本先验对照；补齐实际 processor 像素上限运行身份前不入正式跨模型主榜，预留其余 3 款第一梯队基座对比位）。 |
+| 正式评测结果总入口 | [正式评测结果总入口](eval/runs/README.md)：归档 `eval-dev-v1` 评测轻量报告与跨模型对照总表（已归档第一梯队全部 4 款基座首轮 Run A：`MiniCPM-V-4.5` 三次历史初步观测及 `Qwen3-VL-8B-Instruct`、`InternVL3-8B`、`InternVL3_5-8B` 三组 `vLLM 0.34.0` Run A，附全 11 叶字段三画幅档明细与微调基座选型参考）。 |
 | 评测抽帧与首轮模型名单 | [DEC-006 评测抽帧口径与首轮模型名单](decisions/0006-eval-frame-sampling-and-model-lineup.md)：2026-11-25 确认 8 帧 `evenly_spaced_inclusive`、短片 `fail_closed`、L3 `resize: null`、MiniCPM 首轮官方风格（登记后续对照优化项）、首轮 3+1 基座名单及 GLM-4.1V 主榜原生格式罚分。 |
 | 帧对应抽帧取证 | [帧对应抽帧取证](frame-correspondence-evidence.md)：设计已定、独立 CLI 已落地（PR #21，`script/frame_correspondence/`），前置条件 1 已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 拍板。 |
 | 跨仓交接契约 | [虚拟数据集交接契约](virtual-dataset-handoff-contract.md)（`BlenderTensileVideo` → 本仓） · [Agent 视觉与交付契约草案](eval/agent-handoff-contract-draft.md)（本仓 → `TensileAgent`，未冻结）。 |
