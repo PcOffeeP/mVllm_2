@@ -799,6 +799,50 @@ def test_infer_rejects_superset_manifest_for_frozen_subset_and_accepts_exact_sub
     with pytest.raises(InputError, match="source_type"):
         score.score(virtual_mutated, [], inherited_rows)
 
+    # 2g. Direct API call plan_predictions(..., eval_subset_id="eval-dev-v1") on full_manifest MUST fail closed!
+    with pytest.raises(InputError, match="do not match frozen subset"):
+        infer.plan_predictions([], full_manifest, "run-api", "prompt-api", eval_subset_id="eval-dev-v1")
+
+    # 2h. Records carrying eval_subset_id="eval-dev-v1" with full_manifest (and no --candidate-ids) MUST fail closed in infer!
+    stamped_records_path = tmp_path / "stamped-records.jsonl"
+    with stamped_records_path.open("w", encoding="utf-8") as stream:
+        for idx, sample in enumerate(dev_manifest["samples"]):
+            stream.write(
+                json.dumps(
+                    {
+                        "record_schema": "five-label-input-record/3",
+                        "candidate_id": sample["candidate_id"],
+                        "clip_sha256": sample["clip_sha256"],
+                        "manifest_sha256": sample["manifest_sha256"],
+                        "input_id": f"input-{idx:04d}",
+                        "eval_subset_id": "eval-dev-v1",
+                    }
+                )
+                + "\n"
+            )
+    err_rec = io.StringIO()
+    with redirect_stderr(err_rec):
+        rc_rec = infer.main(
+            [
+                "--manifest",
+                str(full_manifest_out),
+                "--input-config",
+                str(stamped_records_path),
+                "--prompt-file",
+                str(prompt_path),
+                "--run-id",
+                "run-rec",
+                "--backend",
+                "fake",
+                "--model-id",
+                "fake",
+                "--output",
+                str(tmp_path / "rec-preds.jsonl"),
+            ]
+        )
+    assert rc_rec == 2
+    assert "do not match frozen subset" in err_rec.getvalue()
+
     # 3. Mutating one sample's clip_sha256 (while keeping 210 IDs and manifest_sha256 intact) MUST be rejected by infer & build_manifest
     tampered_dev_manifest = json.loads(dev_manifest_out.read_text(encoding="utf-8"))
     tampered_dev_manifest["samples"][0]["clip_sha256"] = "0" * 64

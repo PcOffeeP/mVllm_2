@@ -244,6 +244,38 @@ def _resolve_record_frames(
     return tuple(frame_paths), tuple(frame_pts), tuple(frame_bytes)
 
 
+def _resolve_and_verify_frozen_subset(
+    records: list[dict],
+    samples: dict[str, dict],
+    manifest: dict,
+    *,
+    eval_subset_id: str | None = None,
+) -> str | None:
+    """Resolve eval_subset_id from explicit arg, manifest, and records; verify frozen v1 manifest up-front."""
+    seen: set[str] = set()
+    if eval_subset_id is not None:
+        if not isinstance(eval_subset_id, str) or not eval_subset_id.strip():
+            raise InputError(f"eval_subset_id must be nonempty string, got {eval_subset_id!r}")
+        seen.add(eval_subset_id)
+    manifest_subset_id = manifest.get("eval_subset_id") if isinstance(manifest, dict) else None
+    if manifest_subset_id is not None:
+        if not isinstance(manifest_subset_id, str) or not manifest_subset_id.strip():
+            raise InputError(f"manifest eval_subset_id must be nonempty string, got {manifest_subset_id!r}")
+        seen.add(manifest_subset_id)
+    for rec in records:
+        if isinstance(rec, dict) and rec.get("eval_subset_id") is not None:
+            rec_sid = rec["eval_subset_id"]
+            if not isinstance(rec_sid, str) or not rec_sid.strip():
+                raise InputError(f"record eval_subset_id must be nonempty string, got {rec_sid!r}")
+            seen.add(rec_sid)
+    if len(seen) > 1:
+        raise InputError(f"infer eval_subset_id mismatch across inputs: {sorted(seen)}")
+    effective = next(iter(seen)) if seen else None
+    if effective is not None:
+        verify_frozen_subset_samples(effective, samples.values(), context="infer manifest")
+    return effective
+
+
 def plan_predictions(
     records,
     manifest,
@@ -259,6 +291,9 @@ def plan_predictions(
     require_text({"run_id": run_id}, "run_id", "run")
     require_text({"prompt_id": prompt_id}, "prompt_id", "run")
     samples = _validate_manifest_samples(manifest, exclusions=exclusions, enforce_exclusions=enforce_exclusions)
+    effective_subset_id = _resolve_and_verify_frozen_subset(
+        records, samples, manifest, eval_subset_id=eval_subset_id
+    )
     predictions = []
     for index, record in enumerate(records):
         cid = _validate_record_against_manifest(record, samples)
@@ -276,8 +311,8 @@ def plan_predictions(
             "input_review_id": None,
             "fake_category": category,
         }
-        if eval_subset_id is not None:
-            row["eval_subset_id"] = eval_subset_id
+        if effective_subset_id is not None:
+            row["eval_subset_id"] = effective_subset_id
         predictions.append(row)
     return predictions
 
@@ -329,6 +364,9 @@ def run_inference(
             raise InputError(f"temperature must be a finite number >= 0, got {temp_val!r}")
 
     samples = _validate_manifest_samples(manifest, exclusions=exclusions, enforce_exclusions=enforce_exclusions)
+    effective_subset_id = _resolve_and_verify_frozen_subset(
+        records, samples, manifest, eval_subset_id=eval_subset_id
+    )
     prepared: list[tuple[str, dict, tuple[Path, ...], tuple[float, ...], tuple[bytes, ...]]] = []
     seen_cids: set[str] = set()
     batch_sampling_policy: dict[str, Any] | None = None
@@ -446,8 +484,8 @@ def run_inference(
                 "status": result.status,
                 "input_review_id": None,
             }
-            if eval_subset_id is not None:
-                row["eval_subset_id"] = eval_subset_id
+            if effective_subset_id is not None:
+                row["eval_subset_id"] = effective_subset_id
             if stream is not None:
                 stream.write(_dumps_jsonl_line(row) + "\n")
                 stream.flush()

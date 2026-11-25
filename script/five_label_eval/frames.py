@@ -992,6 +992,7 @@ def main(argv=None) -> int:
         exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
         manifest_sha256 = hashlib.sha256(raw).hexdigest()
         selected = list(by_id)
+        selection = None
         if args.candidate_ids:
             selection = load_candidate_selection(args.candidate_ids)
             selection.assert_manifest_sha256(manifest_sha256, context="frames")
@@ -1022,6 +1023,9 @@ def main(argv=None) -> int:
                                   manifest_sha256=manifest_sha256,
                                   source_evidence=evidence.get(by_id[cid].get("source_video_id")))
                    for cid in selected]
+        if selection is not None and selection.subset_id is not None:
+            for record in records:
+                record["eval_subset_id"] = selection.subset_id
         with Path(args.output).open("x", encoding="utf-8") as stream:
             for record in records:
                 stream.write(json.dumps(record, ensure_ascii=False) + "\n")
