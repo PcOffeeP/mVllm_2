@@ -760,6 +760,45 @@ def test_infer_rejects_superset_manifest_for_frozen_subset_and_accepts_exact_sub
     with pytest.raises(InputError, match="manifest_sha256"):
         score.score(reserialized_manifest, [], inherited_rows)
 
+    # 2e. Mislabeled full manifest carrying eval_subset_id="eval-dev-v1" WITHOUT --candidate-ids MUST be rejected by infer!
+    mislabeled_full = json.loads(full_manifest_out.read_text(encoding="utf-8"))
+    mislabeled_full["eval_subset_id"] = "eval-dev-v1"
+    mislabeled_full_path = tmp_path / "mislabeled-full-manifest.json"
+    mislabeled_full_path.write_text(json.dumps(mislabeled_full, ensure_ascii=False) + "\n", encoding="utf-8")
+    mislabeled_preds = tmp_path / "mislabeled-preds.jsonl"
+    err_mislabeled = io.StringIO()
+    with redirect_stderr(err_mislabeled):
+        rc_mislabeled = infer.main(
+            [
+                "--manifest",
+                str(mislabeled_full_path),
+                "--input-config",
+                str(records_path),
+                "--prompt-file",
+                str(prompt_path),
+                "--run-id",
+                "run-mislabeled",
+                "--backend",
+                "fake",
+                "--model-id",
+                "fake",
+                "--output",
+                str(mislabeled_preds),
+            ]
+        )
+    assert rc_mislabeled == 2
+    assert "do not match frozen subset" in err_mislabeled.getvalue()
+    assert not mislabeled_preds.exists()
+
+    # 2f. Score MUST reject a dev manifest whose sample source_type was mutated to "virtual"!
+    virtual_mutated = json.loads(dev_manifest_out.read_text(encoding="utf-8"))
+    for sample in virtual_mutated["samples"]:
+        if sample["candidate_id"] == "video_0001_fracture_02":
+            sample["source_type"] = "virtual"
+            break
+    with pytest.raises(InputError, match="source_type"):
+        score.score(virtual_mutated, [], inherited_rows)
+
     # 3. Mutating one sample's clip_sha256 (while keeping 210 IDs and manifest_sha256 intact) MUST be rejected by infer & build_manifest
     tampered_dev_manifest = json.loads(dev_manifest_out.read_text(encoding="utf-8"))
     tampered_dev_manifest["samples"][0]["clip_sha256"] = "0" * 64

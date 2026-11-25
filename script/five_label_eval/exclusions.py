@@ -388,6 +388,42 @@ def load_candidate_selection(path: Path | str) -> CandidateSelection:
     )
 
 
+def verify_frozen_subset_samples(
+    subset_id: str | None,
+    samples: Iterable[dict[str, Any]],
+    *,
+    context: str = "selection",
+    repo_root: Path = REPO_ROOT,
+) -> None:
+    """Single canonical validator for official frozen v1 subsets across build_manifest/infer/score.
+
+    Checks exact pinned member set, source-manifest SHA-256, and per-sample
+    ``manifest_sha256``, ``clip_sha256``, ``source_id``, and ``source_type``.
+    """
+    if subset_id not in V1_PINNED_MEMBERS:
+        return
+    sample_list = list(samples)
+    pin = V1_PINNED_MEMBERS[subset_id]
+    cids = sorted(
+        s["candidate_id"]
+        for s in sample_list
+        if isinstance(s, dict) and isinstance(s.get("candidate_id"), str)
+    )
+    if len(sample_list) != pin["candidate_count"] or len(cids) != pin["candidate_count"] or candidate_ids_sha256(cids) != pin["candidate_ids_sha256"]:
+        raise InputError(
+            f"{context}: manifest samples do not match frozen subset {subset_id!r} "
+            f"(expected count={pin['candidate_count']} sha256={pin['candidate_ids_sha256']}, "
+            f"got count={len(sample_list)} sha256={candidate_ids_sha256(cids)})"
+        )
+    CandidateSelection(
+        candidate_ids=cids,
+        expected_manifest_sha256=V1_PINNED_INPUTS["manifest_sha256"],
+        subset_id=subset_id,
+        manifest_path="data/sub_video/manifest.json",
+        source_type="real",
+    ).assert_samples_match_source_manifest(sample_list, context=context, repo_root=repo_root)
+
+
 def load_candidate_ids_input(path: Path | str) -> list[str]:
     """Load candidate IDs from either a JSON array or a frozen eval-subset JSON file."""
     return load_candidate_selection(path).candidate_ids

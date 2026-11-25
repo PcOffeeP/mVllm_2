@@ -18,7 +18,7 @@ import tempfile
 from typing import Any
 
 from . import paths
-from .exclusions import DevExclusions, load_candidate_selection, load_dev_exclusions
+from .exclusions import DevExclusions, load_candidate_selection, load_dev_exclusions, verify_frozen_subset_samples
 from .backends import InferenceBackend, InferenceRequest, normalize_result
 from .backends.fake_backend import CATEGORY_ORDER, LEGAL, NON_ANSWERS, fake_raw_output
 from .backends.transformers_backend import SUPPORTED_MODEL_FAMILIES, TransformersBackend
@@ -560,10 +560,16 @@ def main(argv=None) -> int:
                 f"infer eval_subset_id mismatch: --candidate-ids={selection_subset_id!r} != manifest={manifest_subset_id!r}"
             )
         effective_subset_id = selection_subset_id or manifest_subset_id
-        if selection is not None:
-            manifest_samples = _validate_manifest_samples(
-                manifest, exclusions=exclusions, enforce_exclusions=not args.allow_excluded
+        manifest_samples = _validate_manifest_samples(
+            manifest, exclusions=exclusions, enforce_exclusions=not args.allow_excluded
+        )
+        if effective_subset_id is not None:
+            verify_frozen_subset_samples(
+                effective_subset_id,
+                manifest_samples.values(),
+                context="infer manifest",
             )
+        if selection is not None:
             selected_set = set(selection.candidate_ids)
             if selection.expected_manifest_sha256 is not None and set(manifest_samples) != selected_set:
                 extra = sorted(set(manifest_samples) - selected_set)

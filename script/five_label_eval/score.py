@@ -309,23 +309,9 @@ def prepare(manifest, reviews, predictions, input_reviews=(), *, exclusions=None
             )
         subset_ids_seen.add(manifest_subset_id)
     if len(subset_ids_seen) == 1:
-        from .exclusions import V1_PINNED_INPUTS, V1_PINNED_MEMBERS, candidate_ids_sha256
+        from .exclusions import verify_frozen_subset_samples
         bound_subset_id = next(iter(subset_ids_seen))
-        if bound_subset_id in V1_PINNED_MEMBERS:
-            pin = V1_PINNED_MEMBERS[bound_subset_id]
-            manifest_cids = sorted(samples)
-            if len(manifest_cids) != pin["candidate_count"] or candidate_ids_sha256(manifest_cids) != pin["candidate_ids_sha256"]:
-                raise InputError(
-                    f"score manifest samples do not match frozen subset {bound_subset_id!r} "
-                    f"(expected count={pin['candidate_count']}, got count={len(manifest_cids)})"
-                )
-            expected_msha = V1_PINNED_INPUTS["manifest_sha256"]
-            for cid, sample in samples.items():
-                if sample.get("manifest_sha256") != expected_msha:
-                    raise InputError(
-                        f"score manifest {cid}: manifest_sha256 {sample.get('manifest_sha256')!r} != "
-                        f"frozen subset {bound_subset_id!r} {expected_msha!r}"
-                    )
+        verify_frozen_subset_samples(bound_subset_id, samples.values(), context="score manifest")
     input_index = {}
     for review in input_reviews:
         for key in ("candidate_id", "clip_sha256") + REQUEST_KEYS + ("input_review_id",):
