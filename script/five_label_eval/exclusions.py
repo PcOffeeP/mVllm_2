@@ -140,6 +140,8 @@ class DevExclusions:
     excluded_source_ids: frozenset[str]
     excluded_candidate_ids: frozenset[str]
     isolated_virtual_ids: frozenset[str]
+    extra_path: str | None = None
+    extra_sha256: str | None = None
 
     def violation_reasons(
         self,
@@ -149,16 +151,16 @@ class DevExclusions:
         source_type: str | None = None,
     ) -> list[str]:
         """Return all DEC-007 exclusion reasons matching the given item."""
+        del source_type  # Never let self-reported source_type bypass isolated_virtual_ids.
         reasons: list[str] = []
         if isinstance(source_id, str) and source_id in self.excluded_source_ids:
             reasons.append(f"excluded_dev_source:{source_id}")
         if isinstance(candidate_id, str) and candidate_id in self.excluded_candidate_ids:
             reasons.append(f"excluded_subvideo_id:{candidate_id}")
-        if source_type == "virtual" or source_type is None:
-            if isinstance(candidate_id, str) and candidate_id in self.isolated_virtual_ids:
-                reasons.append(f"isolated_virtual_video:{candidate_id}")
-            if isinstance(source_id, str) and source_id in self.isolated_virtual_ids:
-                reasons.append(f"isolated_virtual_video:{source_id}")
+        if isinstance(candidate_id, str) and candidate_id in self.isolated_virtual_ids:
+            reasons.append(f"isolated_virtual_video:{candidate_id}")
+        if isinstance(source_id, str) and source_id in self.isolated_virtual_ids:
+            reasons.append(f"isolated_virtual_video:{source_id}")
         return reasons
 
     def is_excluded(
@@ -235,13 +237,17 @@ class DevExclusions:
         return kept, removed
 
     def metadata(self, *, filtered_count: int = 0) -> dict[str, Any]:
-        return {
+        meta: dict[str, Any] = {
             "decision_id": self.decision_id,
             "path": self.path,
             "sha256": self.sha256,
             "excluded_source_ids": sorted(self.excluded_source_ids),
             "filtered_count": filtered_count,
         }
+        if self.extra_path is not None:
+            meta["extra_path"] = self.extra_path
+            meta["extra_sha256"] = self.extra_sha256
+        return meta
 
 
 def _parse_dev_exclusions_file(target: Path, *, require_nonempty: bool = False) -> DevExclusions:
@@ -324,12 +330,14 @@ def load_dev_exclusions(path: Path | str | None = None) -> DevExclusions:
         return official
     extra = _parse_dev_exclusions_file(target, require_nonempty=False)
     return DevExclusions(
-        path=f"{official.path}+{extra.path}",
+        path=official.path,
         sha256=official.sha256,
         decision_id=official.decision_id,
         excluded_source_ids=official.excluded_source_ids | extra.excluded_source_ids,
         excluded_candidate_ids=official.excluded_candidate_ids | extra.excluded_candidate_ids,
         isolated_virtual_ids=official.isolated_virtual_ids | extra.isolated_virtual_ids,
+        extra_path=extra.path,
+        extra_sha256=extra.sha256,
     )
 
 

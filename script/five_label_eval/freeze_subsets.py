@@ -217,7 +217,11 @@ def build_frozen_subsets(
     e_path = exclusions_path or (repo_root / "data/splits/dev-exclusions.json" if repo_root != REPO_ROOT else DEFAULT_EXCLUSIONS_PATH)
 
     manifest_sha = _sha256_file(m_path)
-    reviews_sha = pinned_reviews_file_sha256 if pinned_reviews_file_sha256 is not None else _sha256_file(r_path)
+    reviews_sha = (
+        pinned_reviews_file_sha256
+        if pinned_reviews_file_sha256 is not None
+        else (V1_PINNED_INPUTS["reviews_sha256"] if enforce_v1_pins else _sha256_file(r_path))
+    )
     batches_sha = _sha256_file(b_path)
     splits_manifest_path = s_dir / "manifest.json"
     splits_manifest_sha = _sha256_file(splits_manifest_path)

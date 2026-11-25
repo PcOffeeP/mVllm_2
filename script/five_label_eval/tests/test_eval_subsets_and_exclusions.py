@@ -187,6 +187,23 @@ def test_score_and_infer_reject_manifest_with_excluded_samples() -> None:
     with pytest.raises(InputError, match="DEC-007"):
         infer.plan_predictions([], bad_manifest, "run-1", "prompt-1")
 
+    # Isolated virtual video mislabeled as source_type="real" MUST still be rejected by DEC-007!
+    mislabeled_virtual = {
+        "manifest_version": "bad-virtual-as-real/1",
+        "samples": [
+            {
+                "manifest_sha256": "a" * 64,
+                "candidate_id": "metal_round_ductile_baseline_v1_window_01",
+                "clip_sha256": "b" * 64,
+                "source_id": "metal_round_ductile_baseline_v1",
+                "source_type": "real",
+                "review_id": None,
+            }
+        ],
+    }
+    with pytest.raises(InputError, match="DEC-007"):
+        score.prepare(mislabeled_virtual, [], [])
+
 
 def test_frames_cli_rejects_excluded_candidate_ids_fail_closed(tmp_path: Path) -> None:
     manifest_obj = {
@@ -391,7 +408,13 @@ def test_frozen_v1_verification_survives_appended_b3_reviews(tmp_path: Path) -> 
     extended_reviews = tmp_path / "reviews-with-b3.json"
     extended_reviews.write_text(json.dumps(reviews_obj, ensure_ascii=False), encoding="utf-8")
 
-    # With cutoff enforced, v1 verification still passes with exact 210 / 314 counts.
+    # With cutoff enforced, BOTH rebuild and verification succeed byte-for-byte with exact 210 / 314 counts.
+    rebuilt_dev, rebuilt_test = build_frozen_subsets(
+        reviews_path=extended_reviews,
+        pinned_reviews_path="data/subvideo-review/reviews.json",
+    )
+    assert _serialize(rebuilt_dev).encode("utf-8") == (REPO_ROOT / "data/eval-subsets/eval-dev-v1.json").read_bytes()
+    assert _serialize(rebuilt_test).encode("utf-8") == (REPO_ROOT / "data/eval-subsets/eval-test-v1.json").read_bytes()
     results = verify_frozen_subsets(
         REPO_ROOT / "data/eval-subsets",
         reviews_path=extended_reviews,
