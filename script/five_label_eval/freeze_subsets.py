@@ -37,39 +37,18 @@ from .exclusions import (
     DEFAULT_EXCLUSIONS_PATH,
     EVAL_SUBSET_SCHEMA,
     REPO_ROOT,
+    V1_PINNED_INPUTS,
+    V1_PINNED_MEMBERS,
+    V1_REVIEWS_CUTOFF_CREATED_AT,
     DevExclusions,
+    candidate_ids_sha256,
     load_dev_exclusions,
 )
 from .frames import SIZE_BUCKET_SOURCE, size_bucket
 from .score import InputError, decode_file
 
 FROZEN_DATE = "2026-11-25"
-V1_REVIEWS_CUTOFF_CREATED_AT = "2026-11-25T08:46:05.068136+00:00"
 WIDTH_BUCKETS = ("w_le_200", "w_200_400", "w_gt_400")
-
-# Independent immutable v1 contract pins (never derived from the file under verification).
-V1_PINNED_INPUTS = {
-    "manifest_sha256": "c70686630c8fa0277305cc25a09821bc04ab853f6ce8a6ac3ca795998c08ac0f",
-    "reviews_sha256": "dfe682763c8308c66387642ddb0d0ce67d2c25a2a21c4ac404ac1f7478592f27",
-    "reviews_cutoff_created_at": V1_REVIEWS_CUTOFF_CREATED_AT,
-    "dev_exclusions_sha256": "52d9b04af7924cab58c95451dd48eb1e597a61582e5bd47fc7f603c7844b0758",
-    "splits_manifest_sha256": "1ad84afb9a9eb122d6d7cdc13b78a975567a51667eaeacfabd5748c1055f6ae2",
-    "split_identity_sha256": "efad59978a54e1d570b8191c62985467bbef8d7fc6fbcce0cd1ce90ed41e9d22",
-    "label_rules_sha256": "c7bbb2e505ffebec02131082ab6b5219a9324b7a5044689e2d6a485b7f8355d8",
-    "batches_sha256": "6d5024f4992d9be34a1bad65c6113a6332a10d0114d9291aa2bec0a04a6f87f9",
-}
-V1_PINNED_MEMBERS = {
-    "eval-dev-v1": {
-        "candidate_count": 210,
-        "source_count": 87,
-        "candidate_ids_sha256": "f3116f8a91bdf9d6eea2728eb2b2a5686fe7fd0dbb239d1e775c6beec5edcf44",
-    },
-    "eval-test-v1": {
-        "candidate_count": 314,
-        "source_count": 21,
-        "candidate_ids_sha256": "92f24798fdeaa185f6ff194ddabe212c40602bdd55fc8934e93d0f4564649f5c",
-    },
-}
 
 
 def _sha256_file(path: Path) -> str:
@@ -77,7 +56,7 @@ def _sha256_file(path: Path) -> str:
 
 
 def _candidate_ids_sha256(cids: list[str]) -> str:
-    return hashlib.sha256(json.dumps(cids, separators=(",", ":")).encode("utf-8")).hexdigest()
+    return candidate_ids_sha256(cids)
 
 
 def _rel_path(path: Path, repo_root: Path) -> str:

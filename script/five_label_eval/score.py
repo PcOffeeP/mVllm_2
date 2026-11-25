@@ -24,8 +24,7 @@ STATUS = ("success", "request_failed", "timeout", "unprocessed")
 EVIDENCE = ("sufficient", "insufficient", "unknown")
 
 
-class InputError(ValueError):
-    """Ambiguous or malformed local input identity."""
+from .errors import InputError
 
 
 class Pairs(list):

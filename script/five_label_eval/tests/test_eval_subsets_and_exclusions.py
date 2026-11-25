@@ -514,3 +514,92 @@ def test_manifest_convert_forbids_limit_with_frozen_eval_subset(tmp_path: Path) 
     assert not out.exists()
 
 
+def test_frozen_subset_loader_rejects_member_substitution_with_same_count(tmp_path: Path) -> None:
+    """Round-3 Finding 1 regression: swapping a dev clip for a test clip inside eval-dev-v1 fails closed."""
+    dev_obj = json.loads((REPO_ROOT / "data/eval-subsets/eval-dev-v1.json").read_text(encoding="utf-8"))
+    # Swap one valid dev clip with a sealed test clip (preserving 210 count and manifest_sha256).
+    cids = list(dev_obj["candidate_ids"])
+    assert "video_0001_fracture_02" in cids
+    cids[cids.index("video_0001_fracture_02")] = "video_0010_pre_01"
+    dev_obj["candidate_ids"] = sorted(cids)
+    tampered = tmp_path / "tampered-eval-dev-v1.json"
+    tampered.write_text(json.dumps(dev_obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    with pytest.raises(InputError, match="member fingerprint mismatch"):
+        load_candidate_selection(tampered)
+
+    out = tmp_path / "should-not-write.json"
+    err = io.StringIO()
+    with redirect_stderr(err):
+        rc = manifest_convert.main(
+            [
+                "--input",
+                str(REPO_ROOT / "data/sub_video/manifest.json"),
+                "--candidate-ids",
+                str(tampered),
+                "--manifest-version",
+                "tampered-dev/1",
+                "--output",
+                str(out),
+            ]
+        )
+    assert rc == 2
+    assert "member fingerprint mismatch" in err.getvalue()
+    assert not out.exists()
+
+
+def test_score_module_cli_subprocess_exits_cleanly_on_dec007_violation(tmp_path: Path) -> None:
+    """Round-3 Advisory 1 regression: python -m script.five_label_eval.score catches InputError cleanly."""
+    import subprocess
+    import sys
+
+    bad_manifest = tmp_path / "bad-manifest.json"
+    bad_manifest.write_text(
+        json.dumps(
+            {
+                "manifest_version": "bad-score/1",
+                "samples": [
+                    {
+                        "manifest_sha256": "a" * 64,
+                        "candidate_id": "video_0006_pre_13",
+                        "clip_sha256": "b" * 64,
+                        "source_id": "video_0006",
+                        "source_type": "real",
+                        "review_id": None,
+                    }
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    reviews = tmp_path / "reviews.jsonl"
+    preds = tmp_path / "preds.jsonl"
+    reviews.write_text("", encoding="utf-8")
+    preds.write_text("", encoding="utf-8")
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "script.five_label_eval.score",
+            "--manifest",
+            str(bad_manifest),
+            "--reviews",
+            str(reviews),
+            "--predictions",
+            str(preds),
+            "--output",
+            str(tmp_path / "out"),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 2
+    assert "ERROR:" in proc.stderr
+    assert "DEC-007" in proc.stderr
+    assert "Traceback" not in proc.stderr
+
+
