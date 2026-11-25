@@ -35,9 +35,14 @@ class _ResponseTooLargeError(Exception):
 
 def _resolve_completions_url(endpoint: str) -> str:
     cleaned = endpoint.strip() if isinstance(endpoint, str) else ""
-    parts = urlsplit(cleaned)
-    scheme = parts.scheme.lower()
-    if scheme not in ("http", "https") or not parts.hostname:
+    try:
+        parts = urlsplit(cleaned)
+        scheme = parts.scheme.lower()
+        host = parts.hostname
+        _ = parts.port
+    except ValueError:
+        raise InputError("http endpoint is not a valid http:// or https:// URL") from None
+    if scheme not in ("http", "https") or not host:
         safe_hint = sanitize_base_url(cleaned) if cleaned else "<empty>"
         raise InputError(
             f"http endpoint must be a valid http:// or https:// URL with hostname "
@@ -361,8 +366,15 @@ class HttpBackend:
             )
 
         extra_meta: dict[str, Any] = {}
-        if isinstance(data.get("usage"), dict):
-            extra_meta["usage"] = data["usage"]
+        raw_usage = data.get("usage")
+        if isinstance(raw_usage, dict):
+            safe_usage = {
+                k: v
+                for k, v in raw_usage.items()
+                if isinstance(k, str) and isinstance(v, int) and not isinstance(v, bool)
+            }
+            if safe_usage:
+                extra_meta["usage"] = safe_usage
         if isinstance(choices[0].get("finish_reason"), str):
             extra_meta["finish_reason"] = choices[0]["finish_reason"]
 

@@ -805,6 +805,7 @@ def compute_record_input_id(
         "clip_frame_indices": [f.get("clip_frame_index") for f in ordered_frames],
         "roi_frame_indices": [f.get("roi_frame_index") for f in ordered_frames],
         "original_source_frame_indices": [f.get("original_source_frame_index") for f in ordered_frames],
+        "frame_pts_seconds": [f.get("pts_seconds") for f in ordered_frames],
         "frame_sha256s": resolved_frame_shas,
         "lineage_verification": {
             key: verification.get(key) for key in ("method", "verdict_id", "evidence_sha256")

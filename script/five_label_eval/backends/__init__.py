@@ -52,11 +52,15 @@ class InferenceBackend(Protocol):
 
 def sanitize_base_url(url: str) -> str:
     """Strip credentials, query string, and fragment from a URL for safe metadata logging."""
-    parts = urlsplit(url.strip())
-    host = parts.hostname or ""
+    try:
+        parts = urlsplit(url.strip())
+        host = parts.hostname or ""
+        port = parts.port
+    except ValueError:
+        return "<invalid-url>"
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"
-    netloc = f"{host}:{parts.port}" if parts.port is not None else host
+    netloc = f"{host}:{port}" if port is not None else host
     return urlunsplit((parts.scheme, netloc, parts.path.rstrip("/"), "", ""))
 
 
@@ -70,18 +74,22 @@ def _sanitize_utf8_text(value: str | None) -> str | None:
         return value.encode("utf-8", errors="replace").decode("utf-8")
 
 
-def _sanitize_utf8_obj(value: Any) -> Any:
+def _sanitize_utf8_obj(value: Any, *, _depth: int = 0, _max_depth: int = 16) -> Any:
     if isinstance(value, str):
         return _sanitize_utf8_text(value)
+    if _depth >= _max_depth:
+        return "<max-depth-exceeded>"
     if isinstance(value, dict):
         return {
-            (_sanitize_utf8_text(k) if isinstance(k, str) else k): _sanitize_utf8_obj(v)
+            (_sanitize_utf8_text(k) if isinstance(k, str) else k): _sanitize_utf8_obj(
+                v, _depth=_depth + 1, _max_depth=_max_depth
+            )
             for k, v in value.items()
         }
     if isinstance(value, list):
-        return [_sanitize_utf8_obj(v) for v in value]
+        return [_sanitize_utf8_obj(v, _depth=_depth + 1, _max_depth=_max_depth) for v in value]
     if isinstance(value, tuple):
-        return [_sanitize_utf8_obj(v) for v in value]
+        return [_sanitize_utf8_obj(v, _depth=_depth + 1, _max_depth=_max_depth) for v in value]
     return value
 
 

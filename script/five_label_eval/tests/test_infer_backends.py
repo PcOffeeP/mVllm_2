@@ -1592,3 +1592,90 @@ def test_r7_regression_swapped_frames_input_id_slow_dns_recursion_and_url_redact
     err_msg = str(exc_info.value)
     assert "topsecret" not in err_msg
     assert "leakme" not in err_msg
+
+
+def test_r8_regression_malformed_url_redaction_deep_usage_and_pts_input_id(tmp_path):
+    """Regression tests for R8 Codex blocking findings: malformed URL ValueError redaction, deep nested usage, and PTS in input_id."""
+    # 1. Malformed URL with userinfo + fullwidth slash (triggers urlsplit ValueError) must not leak credentials.
+    with pytest.raises(InputError) as exc_info:
+        HttpBackend(
+            endpoint="http://alice:super_secret_pw@127.0.0.1\uff0f8000/v1",
+            model_id="Qwen3-VL-8B-Instruct@1",
+        )
+    assert "super_secret_pw" not in str(exc_info.value)
+    assert exc_info.value.__cause__ is None
+
+    # 2. HTTP 200 with 600-level nested usage dict must not overflow _sanitize_utf8_obj or abort candidate 2.
+    rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r8_usage", cid="c00")
+    _, entries2 = _write_eight_frames(frames_dir, cid="c01")
+    rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    rec2["input_id"] = compute_record_input_id(rec2)
+    manifest2 = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
+
+    deep_usage_json = (
+        '{"choices":[{"message":{"content":'
+        + json.dumps(LEGAL_JSON)
+        + '}}],"usage":{"prompt_tokens":10,"nested":'
+        + '{"a":' * 400
+        + "1"
+        + "}" * 400
+        + "}}"
+    ).encode("utf-8")
+    call_idx = 0
+
+    def deep_usage_handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal call_idx
+        call_idx += 1
+        if call_idx == 1:
+            return httpx.Response(200, content=deep_usage_json, headers={"Content-Type": "application/json"})
+        return httpx.Response(200, json={"choices": [{"message": {"content": LEGAL_JSON}}]})
+
+    backend = HttpBackend(
+        endpoint="http://127.0.0.1:8000",
+        model_id="Qwen3-VL-8B-Instruct@1",
+        transport=httpx.MockTransport(deep_usage_handler),
+    )
+    try:
+        preds, meta = infer.run_inference(
+            [rec1, rec2],
+            manifest2,
+            backend=backend,
+            run_id="r8-usage",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@1",
+            frames_dir=frames_dir,
+        )
+    finally:
+        backend.close()
+    assert [p["status"] for p in preds] == ["success", "success"]
+    assert meta["requests"][0]["extra_meta"]["usage"] == {"prompt_tokens": 10}
+
+    # 3. Mutating pts_seconds while keeping old input_id must fail closed before inference.
+    rec_pts, m_pts, frames_dir_pts = _build_record_and_manifest(tmp_path / "r8_pts", cid="c00")
+    for f in rec_pts["frames"]:
+        f["pts_seconds"] = round(f["pts_seconds"] + 1.0, 4)
+
+    class FailBackend:
+        backend_name = "transformers"
+
+        def run_identity(self):
+            return {"backend": "transformers"}
+
+        def infer_one(self, request):
+            raise AssertionError("backend must not run when pts_seconds changed without updating input_id")
+
+        def close(self):
+            return None
+
+    with pytest.raises(InputError, match="input_id"):
+        infer.run_inference(
+            [rec_pts],
+            m_pts,
+            backend=FailBackend(),
+            run_id="r8-pts",
+            prompt_id="prompt@sha256:" + "a" * 64,
+            prompt_text="p",
+            model_id="openbmb/MiniCPM-V-4_5@sha256:1",
+            frames_dir=frames_dir_pts,
+        )
