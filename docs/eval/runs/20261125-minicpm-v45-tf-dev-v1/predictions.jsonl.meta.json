@@ -1,0 +1,8254 @@
+{
+  "run_id": "20261125-minicpm-v45-tf-dev-v1",
+  "model_id": "MiniCPM-V-4.5",
+  "prompt_id": "prompt@sha256:cf299d672281e12ea5f3964bb08ffbe2d237e1dfad3503861e7e21a5872cc4cf",
+  "run_status": "completed",
+  "sampling_policy": {
+    "sampling_rule": "evenly_spaced_inclusive",
+    "target_frame_count": 8,
+    "short_clip_policy": "fail_closed",
+    "resize": null
+  },
+  "backend_identity": {
+    "backend": "transformers",
+    "model_id": "MiniCPM-V-4.5",
+    "model_family": "minicpm-v-4.5",
+    "model_path": "/data/models/MiniCPM-V-4.5",
+    "max_pixels": null,
+    "max_pixels_scope": "pre_processor_source_resize",
+    "sampling_policy": {
+      "sampling_rule": "evenly_spaced_inclusive",
+      "target_frame_count": 8,
+      "short_clip_policy": "fail_closed",
+      "resize": null
+    },
+    "temporal_ids_policy": "quantized_0.1s",
+    "temporal_ids_grid_seconds": 0.1,
+    "max_slice_nums": 1,
+    "verified_snapshot_sha256": {
+      "added_tokens.json": "1f41288392d77dd5dd9f235bdef78a3152d41651ff56b15ebdec476e3aa1cb7f",
+      "config.json": "1d6f6eb441da34dcb43db72cf3960254c7045cc2c595a3c836ae71136655ccc8",
+      "configuration.json": "2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0",
+      "configuration_minicpm.py": "bfdb65b291246e0d709831df2e10aaba96b94d2369f670f3ad831711d2f97e45",
+      "generation_config.json": "4009ca3d9e615561897c0f4963bd01c26bccff50eda4b00fcf2c13cf3fcc86db",
+      "image_processing_minicpmv.py": "52888748938f40fec0827d187383b4a8fa857f4cffad5a0939e2e449051950d7",
+      "model.safetensors.index.json": "6336714ff43484b398f021536c5eb39b11b68c439420f570d618e8b8943a6749",
+      "modeling_minicpmv.py": "f385948d8321fc9e30b178f7bb39020c845c7b367eeb0b762a50746368b25d10",
+      "modeling_navit_siglip.py": "c71ca316fe7405325b7097364f98f71c317fff8c9f5c8820f30d3362b1ed5bfa",
+      "preprocessor_config.json": "5c0dbc92920ded2304e2ed6ad4251da56029aa1f3f69427117ac6df9bc68496e",
+      "processing_minicpmv.py": "aeb292555aba3362108eb10827234c48b9fede526398cc15bdbec798ba2c7fdd",
+      "resampler.py": "9258b6e6e0b66fd5d3ce7127372fd82eff3659481602658045c253ae18e8d5be",
+      "special_tokens_map.json": "742d22f66cc33f367b17d45d8dcb5ffde7d777fe94a9b05ee858dc43018c2016",
+      "tokenization_minicpmv_fast.py": "770e4a934f2e74e0e88e85126bceea93e345d84b411d21e99b38c5cfd095f736",
+      "tokenizer.json": "c5a94a2c3913b8aa2175fffb5fd6cf4301958f323d06475bfd91037c13bdd74b",
+      "tokenizer_config.json": "8cbacbea273108831f02441518bbbc73627c15e34ddaa3fec6369e7bd07b720c",
+      "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+    },
+    "cold_load_seconds": 5.124587713973597,
+    "timeout_seconds": 600.0,
+    "decode_config": {
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "seed": null
+    },
+    "output_unwrapping": "none"
+  },
+  "total_requests": 210,
+  "status_counts": {
+    "success": 210,
+    "request_failed": 0,
+    "timeout": 0
+  },
+  "requests": [
+    {
+      "candidate_id": "video_0001_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0001_fracture_02",
+      "input_id": "input@sha256:3414a581fb7817dc43541f5574832fb6f021a652d39760a41e775215a1d9364f",
+      "status": "success",
+      "latency_seconds": 3.013078209012747,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0002_unclamped_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0002_unclamped_01",
+      "input_id": "input@sha256:23f43e4ad76f94d23fe6c663d3420c1ec804d733011341295233b2c2567029fb",
+      "status": "success",
+      "latency_seconds": 2.3602747679688036,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0002_unclamped_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0002_unclamped_02",
+      "input_id": "input@sha256:a6f95596437b3b62e6c93fcb9e644f46ec8be4c8fdcba5cc454613879629ff86",
+      "status": "success",
+      "latency_seconds": 2.4199521897826344,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0002_unclamped_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0002_unclamped_03",
+      "input_id": "input@sha256:e3516e3a8e6bca9e3faa9d8c56c9464a414ee777b4bbbb2c44aa9381223ffa8d",
+      "status": "success",
+      "latency_seconds": 2.376586460042745,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0003_pre_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0003_pre_03",
+      "input_id": "input@sha256:c90edfab6d455be3fc8d903d65d929807038c6ebda98c5db86a08ecde4a90cf4",
+      "status": "success",
+      "latency_seconds": 2.450169345829636,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0004_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0004_fracture_02",
+      "input_id": "input@sha256:7b6d8cab4a6edb407e0a493516ffa41e35ff48f1c06e07eb34fe964218083c77",
+      "status": "success",
+      "latency_seconds": 2.441258506849408,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0004_pre_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0004_pre_05",
+      "input_id": "input@sha256:02447b7ffd7ec1c04802c9d792f771556ea9a2a8f55b62624aa7da623ff69b86",
+      "status": "success",
+      "latency_seconds": 2.4616752369329333,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0007_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0007_fracture_01",
+      "input_id": "input@sha256:a6546590449ddb035d0cff5d44591257f62458f59911c43424bc2db52af78b7b",
+      "status": "success",
+      "latency_seconds": 2.4338393139187247,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            11
+          ],
+          [
+            21
+          ],
+          [
+            32
+          ],
+          [
+            43
+          ],
+          [
+            53
+          ],
+          [
+            64
+          ],
+          [
+            75
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0007_pre_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0007_pre_10",
+      "input_id": "input@sha256:92b366a4433a8dad6cd52877311b3a3839caddf79e366e1bb63bf108c41b4dcf",
+      "status": "success",
+      "latency_seconds": 2.343794170068577,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0009_pre_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0009_pre_04",
+      "input_id": "input@sha256:724a76e85536ec0251d967b7e10dd4b469f5dad1b07c6be5cf0f5e3eb23e4326",
+      "status": "success",
+      "latency_seconds": 2.463102945825085,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0009_pre_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0009_pre_08",
+      "input_id": "input@sha256:94673dfe9be519187c0824804a1feea48877f02ef75c3fcc17ca607f15c50e66",
+      "status": "success",
+      "latency_seconds": 2.4638705640099943,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0011_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0011_fracture_02",
+      "input_id": "input@sha256:31b8d2a2666a49a08a8b3beb9b4fc26bf6a3b3c71ea0b65b6c26f323756c9a6d",
+      "status": "success",
+      "latency_seconds": 2.4206042599398643,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0011_pre_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0011_pre_05",
+      "input_id": "input@sha256:cf470162d6ec459c1a92d58917cb6a3a0e302e3f745d9bca5989a8caa3bd2cbd",
+      "status": "success",
+      "latency_seconds": 2.4168988538440317,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0012_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0012_fracture_01",
+      "input_id": "input@sha256:18a5c48dcb88b0f072e7b39c75b3486ca7c0a6d493c42fc8d78e3acb98d934de",
+      "status": "success",
+      "latency_seconds": 2.408515680814162,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            2
+          ],
+          [
+            4
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            10
+          ],
+          [
+            13
+          ],
+          [
+            15
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0012_pre_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0012_pre_05",
+      "input_id": "input@sha256:a709098ea2b8fc4433299ba784dcd1b585ab0c25e82f03fe889df46119a508aa",
+      "status": "success",
+      "latency_seconds": 2.4557865981478244,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_fracture_01",
+      "input_id": "input@sha256:a6698f63afa06650a16fa1033ebe836a9dee86f827546eac053f2f53f8f91ffd",
+      "status": "success",
+      "latency_seconds": 2.432193126063794,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            9
+          ],
+          [
+            12
+          ],
+          [
+            15
+          ],
+          [
+            18
+          ],
+          [
+            21
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_01",
+      "input_id": "input@sha256:7b60cd7e72b55a94690064175e8897de69c1b0294e08b0e75055de1e5e85ac42",
+      "status": "success",
+      "latency_seconds": 2.495757520198822,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_02",
+      "input_id": "input@sha256:8576097e10b70c01bfc473dea97cd71f482b926fcece56ed1049111de6fd0c9a",
+      "status": "success",
+      "latency_seconds": 2.494935480877757,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_03",
+      "input_id": "input@sha256:cd93865f70a44343ce6439e6d7cc43a12efcd0998f2f5afc5cb2238dda44b642",
+      "status": "success",
+      "latency_seconds": 2.5044909310527146,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_04",
+      "input_id": "input@sha256:8b66d1a8be393f6f11f87e74e664da8ed54a75c5187ab37b1d58f8b631788ba8",
+      "status": "success",
+      "latency_seconds": 2.5033999029546976,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_05",
+      "input_id": "input@sha256:a5ff1195c2fcab3f88fd3d334fe2d8832d59f05dc5851d668dc23e5937b23512",
+      "status": "success",
+      "latency_seconds": 2.3892962171230465,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_06",
+      "input_id": "input@sha256:a728e188e3555174ab8398780266f02c3d596c831b79d08e316b4df8496fc917",
+      "status": "success",
+      "latency_seconds": 2.39284621598199,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_07",
+      "input_id": "input@sha256:3507c0f07f9ec17fa4bdb0adbf79c6e764e11540daddc6306ce0015b4c032d40",
+      "status": "success",
+      "latency_seconds": 2.390590366208926,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_08",
+      "input_id": "input@sha256:8f9128c015dac74622a3046338e974716ece3c2645d19df77ef13b7717eef385",
+      "status": "success",
+      "latency_seconds": 2.494726551929489,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_09",
+      "input_id": "input@sha256:da11d86f3bf5b7c860aec4277404fe64afe5e84cf1bf2f191230daa3298106b2",
+      "status": "success",
+      "latency_seconds": 2.5238448118325323,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_10",
+      "input_id": "input@sha256:b9b772f4ac9e1aa3b0bf203f876f1b93014b8179a22a00febf8128a24bd66e83",
+      "status": "success",
+      "latency_seconds": 2.524604359874502,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_11",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_11",
+      "input_id": "input@sha256:686a8e575786886b635c7da5a74111457b1b8cc5225165a003aaf49493b8372a",
+      "status": "success",
+      "latency_seconds": 2.39020694908686,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_12",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_12",
+      "input_id": "input@sha256:85aad5e4ba186e6a3d5a69ae79020a9d0c17c42be1cbd53c18de453124d9b11c",
+      "status": "success",
+      "latency_seconds": 2.389180829981342,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_13",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_13",
+      "input_id": "input@sha256:e341e57bca8818486305cd006f2fca87c4ac66e5b226a6e8fc09af7353a08199",
+      "status": "success",
+      "latency_seconds": 2.3894493118859828,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_14",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_14",
+      "input_id": "input@sha256:2490abd1e2a4f38c8f92cb79d73f15b753c28848d2506a6d2fe82cd2fa2254d7",
+      "status": "success",
+      "latency_seconds": 2.387217246927321,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0013_pre_15",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0013_pre_15",
+      "input_id": "input@sha256:ebdb37d259af46a09d675b3c21c26461837d03abd67802052fd9d01cdba197ce",
+      "status": "success",
+      "latency_seconds": 2.3881148039363325,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0014_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0014_fracture_01",
+      "input_id": "input@sha256:8bfe187bf63cfa7e3b3994bb6559e6414487df5f732d9400ab7b320e5c297cfb",
+      "status": "success",
+      "latency_seconds": 2.376703816000372,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            15
+          ],
+          [
+            19
+          ],
+          [
+            23
+          ],
+          [
+            26
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0014_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0014_pre_02",
+      "input_id": "input@sha256:73f64bcce7d01404377eda09e08f68b5b67cab239b8836a5f73316aa2ef1ab8a",
+      "status": "success",
+      "latency_seconds": 2.3535674628801644,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0014_pre_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0014_pre_06",
+      "input_id": "input@sha256:a5cd200743d5a0ba3304742143cce1761712f71022a73f551bf08fe81e5d5c06",
+      "status": "success",
+      "latency_seconds": 2.3542400479782373,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0015_coverage_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0015_coverage_01",
+      "input_id": "input@sha256:8cffcad381eefc0b8ceb738e564dffa38d89cd439bccbc7c1261b3073f73123b",
+      "status": "success",
+      "latency_seconds": 2.4341687478590757,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            24
+          ],
+          [
+            47
+          ],
+          [
+            71
+          ],
+          [
+            94
+          ],
+          [
+            118
+          ],
+          [
+            141
+          ],
+          [
+            165
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0016_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0016_fracture_01",
+      "input_id": "input@sha256:27a9262818c5e28726775f3b0ae3a46761b2348929b52d862498f67bf69ab03d",
+      "status": "success",
+      "latency_seconds": 2.3420776890125126,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            7
+          ],
+          [
+            10
+          ],
+          [
+            13
+          ],
+          [
+            16
+          ],
+          [
+            20
+          ],
+          [
+            23
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0017_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0017_fracture_01",
+      "input_id": "input@sha256:8b58dbe1c9f9a19afbf171b331b82bc5edf199034b2bb57142303057658c34d3",
+      "status": "success",
+      "latency_seconds": 2.4641338440123945,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            27
+          ],
+          [
+            54
+          ],
+          [
+            81
+          ],
+          [
+            108
+          ],
+          [
+            135
+          ],
+          [
+            163
+          ],
+          [
+            190
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0017_fracture_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0017_fracture_04",
+      "input_id": "input@sha256:9cdb7ce66ca5acf24ac47eb082afeac40233bac30b9f02bb1d9c9d1d8735656d",
+      "status": "success",
+      "latency_seconds": 2.465723820962012,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0017_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0017_pre_09",
+      "input_id": "input@sha256:8550d52abe5028aead3fb7be062143eee42d8b56ddd4a3d3befa0a08c3ab5dde",
+      "status": "success",
+      "latency_seconds": 2.4638927578926086,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0020_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0020_fracture_02",
+      "input_id": "input@sha256:cf3e2b92036105b5c8d759ee68b4cf071900c49b8d1f6b7e43e65bf10e489b28",
+      "status": "success",
+      "latency_seconds": 2.4234613440930843,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0020_fracture_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0020_fracture_10",
+      "input_id": "input@sha256:064b4223e385f110df3b5ef67d1df90ec7f5fed486b81ff3e385b8992d4a4268",
+      "status": "success",
+      "latency_seconds": 2.4473819620907307,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0021_coverage_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0021_coverage_01",
+      "input_id": "input@sha256:585bd7195464ed6fc09a58f64ab9a2f1ed9144f79673119c871d047a0ecbb201",
+      "status": "success",
+      "latency_seconds": 2.453720493009314,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            9
+          ],
+          [
+            17
+          ],
+          [
+            26
+          ],
+          [
+            34
+          ],
+          [
+            43
+          ],
+          [
+            51
+          ],
+          [
+            60
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0022_post_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0022_post_03",
+      "input_id": "input@sha256:5313f3c5eeddc87d6291dae2759d43fb427f7733656b40e19f82739a2604fd2e",
+      "status": "success",
+      "latency_seconds": 2.4292177900206298,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            2
+          ],
+          [
+            5
+          ],
+          [
+            7
+          ],
+          [
+            10
+          ],
+          [
+            12
+          ],
+          [
+            15
+          ],
+          [
+            17
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0022_pre_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0022_pre_08",
+      "input_id": "input@sha256:a2e0d1cf6d91ed004563928f28caa42522576c49c16d4c5354f4737f286c8a58",
+      "status": "success",
+      "latency_seconds": 2.4273012808989733,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0023_pre_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0023_pre_04",
+      "input_id": "input@sha256:7dc2b489b05b88159a9635ddd0904a4ecfff1240c62a97f4992de7f5638e6b1a",
+      "status": "success",
+      "latency_seconds": 2.434678519843146,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0024_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0024_fracture_01",
+      "input_id": "input@sha256:5d86bafd682035e739170466c1d6257855e77e258cfc6ab65926ccde2b0fed86",
+      "status": "success",
+      "latency_seconds": 2.463008760008961,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0024_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0024_fracture_02",
+      "input_id": "input@sha256:d8dbd5efb91b54c8ff1bd1b53c7ca399f8ec8ea430d2935e9cb43332d72cd9d6",
+      "status": "success",
+      "latency_seconds": 2.50735379406251,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0024_fracture_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0024_fracture_03",
+      "input_id": "input@sha256:4ff6aaea8dc2025a11e4f36c3f8d10f0383ecc4e367128dcf261b1035cbb95b9",
+      "status": "success",
+      "latency_seconds": 2.5072363421786577,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0024_fracture_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0024_fracture_04",
+      "input_id": "input@sha256:94dc534e054009f580135010a5288733392357e6a87a6f6166a3920e50668407",
+      "status": "success",
+      "latency_seconds": 2.464190218830481,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            42
+          ],
+          [
+            49
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0026_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0026_fracture_01",
+      "input_id": "input@sha256:43d02bb829acd2a36f6beca1233f3fd1338766881a8f890703b71ff5fc1f965c",
+      "status": "success",
+      "latency_seconds": 2.4443289088085294,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            17
+          ],
+          [
+            34
+          ],
+          [
+            51
+          ],
+          [
+            68
+          ],
+          [
+            85
+          ],
+          [
+            103
+          ],
+          [
+            120
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0026_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0026_fracture_02",
+      "input_id": "input@sha256:8dd776755cca41b4eac710f35637e078262aa4709a462ca64dfbdab91cdb18d9",
+      "status": "success",
+      "latency_seconds": 2.4419930018484592,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0026_fracture_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0026_fracture_03",
+      "input_id": "input@sha256:8ed178dd8883c4bd9c0b34ba1408f860490131668ab92e2c79b397db6a395f4c",
+      "status": "success",
+      "latency_seconds": 2.446158040082082,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            29
+          ],
+          [
+            36
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0026_pre_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0026_pre_01",
+      "input_id": "input@sha256:95e6af66281ec1bff00c5593250da62a86cf4af0b9f625f775754dbb171082ae",
+      "status": "success",
+      "latency_seconds": 2.4658471159636974,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0026_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0026_pre_02",
+      "input_id": "input@sha256:3ff03fcfb80cbf16d03033f6c564f3c3660ec8cec0d6a0dbe177890ef6496e11",
+      "status": "success",
+      "latency_seconds": 2.445776032982394,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0026_pre_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0026_pre_03",
+      "input_id": "input@sha256:373ed6b8c27d747cacbedf50a7d4eeb3adc2cd060039eba680312f8c6f7c2d74",
+      "status": "success",
+      "latency_seconds": 2.4421872629318386,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0027_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0027_pre_02",
+      "input_id": "input@sha256:7dcdabdb6ba865132ccd1a0843982f28b75bbad4398a20cf435e4a86fdb7db2d",
+      "status": "success",
+      "latency_seconds": 2.421665667090565,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0027_pre_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0027_pre_03",
+      "input_id": "input@sha256:8089a2fcbfd352df26c57437ace2654e54a1a517c7a7c02dbc65938b0be97566",
+      "status": "success",
+      "latency_seconds": 2.464563777903095,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0028_pre_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0028_pre_03",
+      "input_id": "input@sha256:ba2c40064959f43fe5032c166f1f61a4abcdec11d3b53b7b8b25bdce0b5ff716",
+      "status": "success",
+      "latency_seconds": 2.422490447992459,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0028_pre_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0028_pre_06",
+      "input_id": "input@sha256:48cffba00f79e1553a1662a5376cadcc29ad795b75508d1e11fdaec8f4b838c2",
+      "status": "success",
+      "latency_seconds": 2.4444347640965134,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0028_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0028_pre_09",
+      "input_id": "input@sha256:286d25a7b8e2d94d73e776664f872930f63fc10e1ad45b896830dfec12f687f6",
+      "status": "success",
+      "latency_seconds": 2.4438974319491535,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0029_fracture_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0029_fracture_07",
+      "input_id": "input@sha256:b049eee4d6e09a6d78b9db3b7e121ff81728917b2a493db6fab207c365362c45",
+      "status": "success",
+      "latency_seconds": 2.5094742011278868,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            8
+          ],
+          [
+            15
+          ],
+          [
+            23
+          ],
+          [
+            31
+          ],
+          [
+            39
+          ],
+          [
+            46
+          ],
+          [
+            54
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0029_fracture_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0029_fracture_09",
+      "input_id": "input@sha256:eb700bddb96bf41f5e1f65245f5768cad05c5bc3e9655c9bec996cdf052ea4b6",
+      "status": "success",
+      "latency_seconds": 2.4623076878488064,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0030_fracture_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0030_fracture_10",
+      "input_id": "input@sha256:28307052c778da5a283beae74063bdd5a1d996fc6d2608568ebcc83724874d68",
+      "status": "success",
+      "latency_seconds": 2.4641612749546766,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0030_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0030_pre_02",
+      "input_id": "input@sha256:08c2261ea93c1ce6905255f6270dd08c20f98bbec23a3f727e8d079121ee7b4d",
+      "status": "success",
+      "latency_seconds": 2.464172658044845,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0031_fracture_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0031_fracture_07",
+      "input_id": "input@sha256:36025bd0081b36059d4206a445f9f7d7dc648950efe3fa1edebab0987966b907",
+      "status": "success",
+      "latency_seconds": 2.4617516729049385,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0033_fracture_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0033_fracture_06",
+      "input_id": "input@sha256:d0c7f41c426ccbd8f449b1d714e12f47a39638db4159cac03401474f9c5d2f2e",
+      "status": "success",
+      "latency_seconds": 2.445403249002993,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0033_pre_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0033_pre_07",
+      "input_id": "input@sha256:4e1dad37de43849a55a651121543945ec10a80218fa048fd14b692c90e52f4dd",
+      "status": "success",
+      "latency_seconds": 2.4272686010226607,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0034_coverage_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0034_coverage_01",
+      "input_id": "input@sha256:6dd524be4b9eab672f5456159e4b57fb86f40c1056a7c8706e4de5ede7628d6a",
+      "status": "success",
+      "latency_seconds": 2.4630621587857604,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0035_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0035_fracture_01",
+      "input_id": "input@sha256:429a17895305e4a7629701f00481db0cfe5c53a3181d0f01e2e5930bb9099f32",
+      "status": "success",
+      "latency_seconds": 2.350575719960034,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            9
+          ],
+          [
+            12
+          ],
+          [
+            15
+          ],
+          [
+            18
+          ],
+          [
+            21
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0036_coverage_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0036_coverage_03",
+      "input_id": "input@sha256:3646bb4de6b29bc33201f76c6ef1cabfb0cde5a1b55daf557b4100a9e5ceab53",
+      "status": "success",
+      "latency_seconds": 2.442115302896127,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0039_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0039_pre_02",
+      "input_id": "input@sha256:b6b84a8057acc0332a25b4506b457203c343c0ded81ce2c404fcff8d43042f6b",
+      "status": "success",
+      "latency_seconds": 2.5079945330508053,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0039_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0039_pre_09",
+      "input_id": "input@sha256:1017c50cf97f0e387ee21577f0721986f8a830e6ac4923b1e393ac3d41c81921",
+      "status": "success",
+      "latency_seconds": 2.5080038669984788,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_01",
+      "input_id": "input@sha256:a6a4445b4b2bc1dadb0388ccdea007825240345c5e5d13021c3e6ad69431ae42",
+      "status": "success",
+      "latency_seconds": 2.4650730409193784,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_02",
+      "input_id": "input@sha256:a730ec5ca7ea8df2a5bf8cf0dfcd4d31db4987d067ccec8269e723dc2f3984ac",
+      "status": "success",
+      "latency_seconds": 2.46440623793751,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_03",
+      "input_id": "input@sha256:5832e7918ff67f67cc3dab359773dcafdf1f485ba1bd9b41e57019df7e26a08a",
+      "status": "success",
+      "latency_seconds": 2.4614449529908597,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_04",
+      "input_id": "input@sha256:1def07bd0325ace4a414a5a316fdcc1c08114d7a8336451c04d780fa7366b344",
+      "status": "success",
+      "latency_seconds": 2.4632054269313812,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_05",
+      "input_id": "input@sha256:615846c8b42f8bff075dc9e68504eab7993303ec31882ccd44a5d278d0503098",
+      "status": "success",
+      "latency_seconds": 2.463573222979903,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_06",
+      "input_id": "input@sha256:d6cfecb1ffde4c816d11f005a60881820df55318b3a4d8a0a93e476fa86f7f93",
+      "status": "success",
+      "latency_seconds": 2.464436518959701,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_07",
+      "input_id": "input@sha256:d29a046f5f3044f02450adfeb37c84ca084a070cfc7c2b1635b151ab589e20f7",
+      "status": "success",
+      "latency_seconds": 2.4661166470032185,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_08",
+      "input_id": "input@sha256:b7436f748a0e4085a102bf532e30870dd174f6cef25a26cb4ba1a10bd5af26e2",
+      "status": "success",
+      "latency_seconds": 2.4648222650866956,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_09",
+      "input_id": "input@sha256:9c9780ef96d9227eb8d601b51886819110afa11ad6b01129bafe98091a2bd12a",
+      "status": "success",
+      "latency_seconds": 2.5077900839969516,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_10",
+      "input_id": "input@sha256:597474d9d4dcce0bb63cabb73649a012498df4d9136e3a205a1712c95eda2ab3",
+      "status": "success",
+      "latency_seconds": 2.465537072857842,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_11",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_11",
+      "input_id": "input@sha256:b381f02adc034001599b053dd26a2c08022d615f313f5d31deb0017014c286e8",
+      "status": "success",
+      "latency_seconds": 2.4638955739792436,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_12",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_12",
+      "input_id": "input@sha256:79d223a34fe20c296ea0712c829fd6d28043f07abde083c52fe5f8b611dc6f02",
+      "status": "success",
+      "latency_seconds": 2.466106787091121,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_13",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_13",
+      "input_id": "input@sha256:eba9ff9415453609ce691e498b7c8ad2a3420bbb67b5a49c9bb7e5e286fc83cf",
+      "status": "success",
+      "latency_seconds": 2.4629445509053767,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_14",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_14",
+      "input_id": "input@sha256:526113e0fd252e912d7f25386937c09ed04e55f688201911b65779761d0c380a",
+      "status": "success",
+      "latency_seconds": 2.4633279871195555,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0040_pre_15",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0040_pre_15",
+      "input_id": "input@sha256:8084ee7b24ed60d1c33ce405d600c4725d5d23a86e1c7aba3cde688d24cf2222",
+      "status": "success",
+      "latency_seconds": 2.4698011139407754,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0042_coverage_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0042_coverage_03",
+      "input_id": "input@sha256:0cc15636ba3121f755713c664f5915cb530785054f6b2b12d7456d4b5f0a9318",
+      "status": "success",
+      "latency_seconds": 2.3593764030374587,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0043_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0043_fracture_01",
+      "input_id": "input@sha256:8b9689fbd2386099c76ec6152358417bf88ddb3bf4fe7d5cea1664d488df6a83",
+      "status": "success",
+      "latency_seconds": 2.5076511830557138,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0043_post_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0043_post_02",
+      "input_id": "input@sha256:646725558295b23380e8be0f550c41824d90c126a47d2a28d6abcf3233574ea6",
+      "status": "success",
+      "latency_seconds": 2.4410420930944383,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            6
+          ],
+          [
+            12
+          ],
+          [
+            19
+          ],
+          [
+            25
+          ],
+          [
+            31
+          ],
+          [
+            37
+          ],
+          [
+            44
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0044_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0044_fracture_02",
+      "input_id": "input@sha256:e12472df638cd0634732d41dea104fd95f5daf871efbb1e3d011f87b6c29af52",
+      "status": "success",
+      "latency_seconds": 2.4623634731397033,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0044_fracture_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0044_fracture_03",
+      "input_id": "input@sha256:e159e9bea6bec1476a151e8b84e13de33f56f420e89af4b91a7d56814b1c4bb3",
+      "status": "success",
+      "latency_seconds": 2.463686723029241,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0045_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0045_fracture_01",
+      "input_id": "input@sha256:fff1287d2abc4cd422469ee9bdf2a6e6f04d5e35429660a51febd67a22e0b2bc",
+      "status": "success",
+      "latency_seconds": 2.429792304057628,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            17
+          ],
+          [
+            33
+          ],
+          [
+            50
+          ],
+          [
+            66
+          ],
+          [
+            83
+          ],
+          [
+            100
+          ],
+          [
+            116
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0045_pre_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0045_pre_01",
+      "input_id": "input@sha256:20f55ffb91d1b95c303738c1b6e90a4b8849eb2416e19c56692de8717e236f97",
+      "status": "success",
+      "latency_seconds": 2.4536690309178084,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0045_pre_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0045_pre_08",
+      "input_id": "input@sha256:c406e4b290b9716163c13be848a57247e1e26a6ad3c2bbac305291fbe82be38f",
+      "status": "success",
+      "latency_seconds": 2.4499164479784667,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0045_pre_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0045_pre_10",
+      "input_id": "input@sha256:e95013d3b0e109c2224bde8ecfea2cb4d20b0bd3d19553877847175f7718a27d",
+      "status": "success",
+      "latency_seconds": 2.472491854103282,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0046_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0046_pre_02",
+      "input_id": "input@sha256:cabae29f16876e6260c07d613d5c0a528541efb5d43bda93650590aa0c1ef47c",
+      "status": "success",
+      "latency_seconds": 2.359962590970099,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0046_pre_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0046_pre_04",
+      "input_id": "input@sha256:921ac2233968e8d34c8a1e93b2d953e277638d9cb1000d35e80525d285cb8cdc",
+      "status": "success",
+      "latency_seconds": 2.4659614849369973,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0047_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0047_fracture_02",
+      "input_id": "input@sha256:9fd19aa97e541207ca53fe2763ed5ce932d83d7a3fb4fd6aad4fcdd686e88e79",
+      "status": "success",
+      "latency_seconds": 2.4383569099009037,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0047_fracture_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0047_fracture_03",
+      "input_id": "input@sha256:02019ce54c911fa56b2b57652690b04ebf2d4125b5b611e163b078e2472034c6",
+      "status": "success",
+      "latency_seconds": 2.439711815211922,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0048_fracture_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0048_fracture_06",
+      "input_id": "input@sha256:b9fda287471b01faa1bd2b3b5267264805a4da4c4946ed45f6d97512ce19ed05",
+      "status": "success",
+      "latency_seconds": 2.4643131298944354,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0049_coverage_12",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0049_coverage_12",
+      "input_id": "input@sha256:f43521be14fbab0453171a80ef8e3573df3ac809c3b6b3546b1cf457194cd073",
+      "status": "success",
+      "latency_seconds": 2.464253682177514,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0050_coverage_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0050_coverage_01",
+      "input_id": "input@sha256:6de8c80cf60d133aee119fb2e28a71868525368a2c7cded909aa9ee2737e545a",
+      "status": "success",
+      "latency_seconds": 2.4627005332149565,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0050_coverage_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0050_coverage_02",
+      "input_id": "input@sha256:1a54efeca9e704461d30455dfa25c6d92337ac6a119409834ec25de168473e65",
+      "status": "success",
+      "latency_seconds": 2.4646893779281527,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0050_coverage_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0050_coverage_03",
+      "input_id": "input@sha256:7ec602e2f2c7507b95c1b1c25caf40e3733cfe0245f6bbf9267218a6ac256cb6",
+      "status": "success",
+      "latency_seconds": 2.4628628420177847,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0050_coverage_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0050_coverage_04",
+      "input_id": "input@sha256:75a79cee50abbac9aaf01c210624fd1134eac916eeb204abbf6ef8f1382c5fd6",
+      "status": "success",
+      "latency_seconds": 2.4634537340607494,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0051_pre_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0051_pre_04",
+      "input_id": "input@sha256:4e39239611b9fe8e305ec5825bda197f0c0e5556cf01b2aaa0f8780ed278decd",
+      "status": "success",
+      "latency_seconds": 2.4833334570284933,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0052_no_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0052_no_fracture_01",
+      "input_id": "input@sha256:a4678cb48e945d0f90e603ba4ac1d38efdfbe5463d365d3ea07a87e454e81b1b",
+      "status": "success",
+      "latency_seconds": 2.44287739507854,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0052_no_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0052_no_fracture_02",
+      "input_id": "input@sha256:bd9b923747da951152100933be563ac2eac5453aed7a3a0e2c26d77336b793e4",
+      "status": "success",
+      "latency_seconds": 2.4440150992013514,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0052_no_fracture_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0052_no_fracture_03",
+      "input_id": "input@sha256:ea2e3abd71890772e6668777679c029525887582d34f9954b2059c6797f724df",
+      "status": "success",
+      "latency_seconds": 2.4406696890946478,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0052_no_fracture_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0052_no_fracture_04",
+      "input_id": "input@sha256:be3df4acf3876533a26fbc2a38c7555678a3f4fbd7d940311e3597ba592d571b",
+      "status": "success",
+      "latency_seconds": 2.4425948900170624,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0053_fracture_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0053_fracture_08",
+      "input_id": "input@sha256:bddb488b544ef721be35ae3144252d7bd30ac99b7ce443152005f3c4af752d12",
+      "status": "success",
+      "latency_seconds": 2.4351573269814253,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            15
+          ],
+          [
+            22
+          ],
+          [
+            29
+          ],
+          [
+            36
+          ],
+          [
+            44
+          ],
+          [
+            51
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0054_coverage_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0054_coverage_03",
+      "input_id": "input@sha256:b0b98ec7077fef808ce8d18c820d3bc06133b55b6051485a93f0942ddb726cd1",
+      "status": "success",
+      "latency_seconds": 2.5040197449270636,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0055_pre_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0055_pre_06",
+      "input_id": "input@sha256:4cda3e467dfd7ad36f18a913af20ab6e9d8ea7aa7b2f3d6ea680974368b59a67",
+      "status": "success",
+      "latency_seconds": 2.4466081960126758,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0056_coverage_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0056_coverage_01",
+      "input_id": "input@sha256:5c08c08d23ce439c0e0b5ab9b43430736ab8b3d78ffb12b6a2a0990ea2395308",
+      "status": "success",
+      "latency_seconds": 2.4414084809832275,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0057_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0057_pre_09",
+      "input_id": "input@sha256:6453bc4d855d11deb2f845d69c355f744a7cf9e18a9db1920efb338438d4c332",
+      "status": "success",
+      "latency_seconds": 2.4641646300442517,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0057_pre_14",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0057_pre_14",
+      "input_id": "input@sha256:dc5c9399e4ea3b6c5f0097cbe60a07eb0048e132ab9cccb2efe3dd8c087d9736",
+      "status": "success",
+      "latency_seconds": 2.465871511027217,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0058_coverage_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0058_coverage_01",
+      "input_id": "input@sha256:b8b44126ed90e5f916800cff2dd6e860c28d98b88dd13eac7e07732e68b2a693",
+      "status": "success",
+      "latency_seconds": 2.4371809558942914,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            8
+          ],
+          [
+            17
+          ],
+          [
+            25
+          ],
+          [
+            34
+          ],
+          [
+            42
+          ],
+          [
+            50
+          ],
+          [
+            59
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0059_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0059_fracture_02",
+      "input_id": "input@sha256:06920da42ee24bc2c540e640f06c0fecaa06e0892a38d6d53e9afdff88f87d3a",
+      "status": "success",
+      "latency_seconds": 2.4217174160294235,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0059_fracture_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0059_fracture_05",
+      "input_id": "input@sha256:595f81a415499b2e7c465a2ae9cc357833b9e632aab65ede5129fcbab1763e18",
+      "status": "success",
+      "latency_seconds": 2.443413328146562,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0059_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0059_post_01",
+      "input_id": "input@sha256:773bc7f6b296a0a38ab6fdde0e4902c0c7b463541c354a9c25bbe5c79aa4c429",
+      "status": "success",
+      "latency_seconds": 2.4378242718521506,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            2
+          ],
+          [
+            5
+          ],
+          [
+            7
+          ],
+          [
+            9
+          ],
+          [
+            12
+          ],
+          [
+            14
+          ],
+          [
+            16
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0060_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0060_fracture_01",
+      "input_id": "input@sha256:e7b6a4e045b1f3aef40f136c4e5bebf3aeb8c0736329feea195575e9fdb3a1c7",
+      "status": "success",
+      "latency_seconds": 2.466101865982637,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            12
+          ],
+          [
+            25
+          ],
+          [
+            37
+          ],
+          [
+            49
+          ],
+          [
+            62
+          ],
+          [
+            74
+          ],
+          [
+            86
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0060_fracture_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0060_fracture_04",
+      "input_id": "input@sha256:fbea1a187faafac9a8c34753b304dcc38d3a7ea6f89632c89707028f7d42e113",
+      "status": "success",
+      "latency_seconds": 2.3403058908879757,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0061_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0061_fracture_02",
+      "input_id": "input@sha256:afecab52c9a399628a4b482565d1ecab88178d4b59875e1b4b471faae98ebd0d",
+      "status": "success",
+      "latency_seconds": 2.4611739739775658,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0064_coverage_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0064_coverage_03",
+      "input_id": "input@sha256:c9678396989c5463e422597a3e87b101ad6df29b562296b8586f9e7854e2fa67",
+      "status": "success",
+      "latency_seconds": 2.466846789000556,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0065_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0065_fracture_02",
+      "input_id": "input@sha256:7d0ded2dd9a66438d13887b3de5b2e3c09fca389ff88c32346162ee3276380ed",
+      "status": "success",
+      "latency_seconds": 2.3963369629345834,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            7
+          ],
+          [
+            10
+          ],
+          [
+            13
+          ],
+          [
+            16
+          ],
+          [
+            20
+          ],
+          [
+            23
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0066_pre_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0066_pre_10",
+      "input_id": "input@sha256:9a1f4d3d5cad587f00023b131aae819e6b639bf14dff894e3b69d4775bd3f73b",
+      "status": "success",
+      "latency_seconds": 2.422104061115533,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_01",
+      "input_id": "input@sha256:d4214d2fd9780637b637b0bc1d1aa658d21f367ef68d52eb95da93840a960e1b",
+      "status": "success",
+      "latency_seconds": 2.4771774988621473,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_02",
+      "input_id": "input@sha256:87416d9c94b74dbc81f5000becce42346dc872c234427fbce64ad9c7c4dfda28",
+      "status": "success",
+      "latency_seconds": 2.502077367855236,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_03",
+      "input_id": "input@sha256:2539ef697180ab6bf9f95388c4038d4757b394dabbdd67566211d94d8c3fa2fb",
+      "status": "success",
+      "latency_seconds": 2.4790061998646706,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_04",
+      "input_id": "input@sha256:691bae5db897b27527476736dd845cb0a91ac026f150dcc1a805f39d9e3c6d42",
+      "status": "success",
+      "latency_seconds": 2.415028956020251,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_05",
+      "input_id": "input@sha256:fafa3759c7c0646b495b8f803b075a88602ba833ce20acbdb3e520925a50b7e5",
+      "status": "success",
+      "latency_seconds": 2.4164239279925823,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_06",
+      "input_id": "input@sha256:dcdfdefa327e00c28eeffa94690f300f72131479bc041f8f8dfe15c2a0f8b2ec",
+      "status": "success",
+      "latency_seconds": 2.395303674042225,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_07",
+      "input_id": "input@sha256:6fd03358b59a6295422f28505698de23cf5d3cb0e09c024984b382b68811efba",
+      "status": "success",
+      "latency_seconds": 2.4381369568873197,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_08",
+      "input_id": "input@sha256:8b702415cc31308c10b2174834abcfe89648d4da034fa321a3cb51be1636c542",
+      "status": "success",
+      "latency_seconds": 2.437675968045369,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_09",
+      "input_id": "input@sha256:2e94705ac129fbbcf7160b36496932afdfbd800be8e96abe0f16f712cce561d0",
+      "status": "success",
+      "latency_seconds": 2.437425649026409,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0068_pre_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0068_pre_10",
+      "input_id": "input@sha256:e936f61a6aae46981825e3e7a85ec70f9cf3aaa51cf0f60dac7674979c00eaaa",
+      "status": "success",
+      "latency_seconds": 2.4386193531099707,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0069_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0069_fracture_01",
+      "input_id": "input@sha256:6c03813f6f525dae4fe944a6cac9240dce7b95294e0462c432578185578fed94",
+      "status": "success",
+      "latency_seconds": 2.421222486998886,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            6
+          ],
+          [
+            12
+          ],
+          [
+            18
+          ],
+          [
+            24
+          ],
+          [
+            30
+          ],
+          [
+            35
+          ],
+          [
+            41
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0069_pre_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0069_pre_08",
+      "input_id": "input@sha256:f4087d78a4b047c21845b415af6a087a6e0b8836965c758f6fe9e2fb6e2667de",
+      "status": "success",
+      "latency_seconds": 2.42297963402234,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0070_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0070_post_01",
+      "input_id": "input@sha256:92d7059b7d17263e1dd279247cb6b3a69ce952f85d4855ca3abe927b238ecfd0",
+      "status": "success",
+      "latency_seconds": 2.431506970198825,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            7
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            18
+          ],
+          [
+            22
+          ],
+          [
+            25
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0070_pre_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0070_pre_06",
+      "input_id": "input@sha256:717ffa50a27b8bb4d75964b849c719b191d12b93d87e1333e6c602095e17fdbf",
+      "status": "success",
+      "latency_seconds": 2.474648523144424,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0071_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0071_fracture_01",
+      "input_id": "input@sha256:36408c2a4c9f186fca73a91b1a2f4d2eae51c57058312598b2a853fad2338f93",
+      "status": "success",
+      "latency_seconds": 2.384601199068129,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0071_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0071_pre_02",
+      "input_id": "input@sha256:283c15e1ae90bc17ea26ca00d59a25a8d987b8d198e05b8ae85ce6ca9b88480a",
+      "status": "success",
+      "latency_seconds": 2.384629583917558,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0072_fracture_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0072_fracture_07",
+      "input_id": "input@sha256:6415989ecb056658f1c15f279512049d4aced8386ddecf5dfcb601360eb0e1fe",
+      "status": "success",
+      "latency_seconds": 2.4444369468837976,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0072_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0072_post_01",
+      "input_id": "input@sha256:4505cec4d6993ccb06804953e2eaabfe8fdfd4d11052ba076be84fcd324b288c",
+      "status": "success",
+      "latency_seconds": 2.5060408310964704,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            9
+          ],
+          [
+            12
+          ],
+          [
+            15
+          ],
+          [
+            19
+          ],
+          [
+            22
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0073_fracture_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0073_fracture_08",
+      "input_id": "input@sha256:c948a1fe670ef8e2a28192105d44fd695221e77af24cc4962cf44a79033d2547",
+      "status": "success",
+      "latency_seconds": 2.441036567091942,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0073_pre_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0073_pre_10",
+      "input_id": "input@sha256:5f969cba103b1f911f3223f9733acaaf3a1a1705a43191bd3b52bef3874ae1fe",
+      "status": "success",
+      "latency_seconds": 2.4428975679911673,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0074_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0074_fracture_01",
+      "input_id": "input@sha256:80643301d3291140e1a1ce64784aa378fa3f700a1ea4b7d7646c9fe8fd2145f0",
+      "status": "success",
+      "latency_seconds": 2.4583745400886983,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            42
+          ],
+          [
+            55
+          ],
+          [
+            69
+          ],
+          [
+            83
+          ],
+          [
+            97
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0074_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0074_fracture_02",
+      "input_id": "input@sha256:8c604f21c39d6d104a93f8a959d1675942e1c15c2bd6033cb508669fd94b99f0",
+      "status": "success",
+      "latency_seconds": 2.4601473468355834,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0074_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0074_post_01",
+      "input_id": "input@sha256:b33cf51939af54daed43e0ccfe82412b57e9b4bc50fa6ce792061c41c2ce70f8",
+      "status": "success",
+      "latency_seconds": 2.4767830381169915,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0074_post_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0074_post_03",
+      "input_id": "input@sha256:65779f71d53079506ad84193aad1b306cac25d866db8c0b9a91cc409f87a1e29",
+      "status": "success",
+      "latency_seconds": 2.5177462971769273,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            19
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0074_pre_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0074_pre_01",
+      "input_id": "input@sha256:70b83cb84e1688f08692bdbd78528c92feec851fd900b9def4791f652cc4d2ed",
+      "status": "success",
+      "latency_seconds": 2.460245082853362,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0075_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0075_fracture_02",
+      "input_id": "input@sha256:304fdd50ff8fd48c51ac9ca50a44a413cb548b60014fa5d94939a802e43f8f66",
+      "status": "success",
+      "latency_seconds": 2.466226943070069,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0075_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0075_post_01",
+      "input_id": "input@sha256:063b436752c480f7da632ed3530aeefd3abae22f8a175cdc87430274d779d0ec",
+      "status": "success",
+      "latency_seconds": 2.508564748102799,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            7
+          ],
+          [
+            10
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            24
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0076_fracture_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0076_fracture_05",
+      "input_id": "input@sha256:442769d9911db643001d4db6bdb2e7605f2aadd35a00d8cef991dd0ba4c8ff01",
+      "status": "success",
+      "latency_seconds": 2.5068934350274503,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0076_fracture_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0076_fracture_06",
+      "input_id": "input@sha256:23dba0abe9a55ae730c073625f318e3bd5e0156692680ca4f242422a18d6ab97",
+      "status": "success",
+      "latency_seconds": 2.4636593819595873,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0077_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0077_fracture_01",
+      "input_id": "input@sha256:c71486bdda9e2af9e9f6b62f2caf1b4d7b37a7cb010fad9945efd7af18c74d9c",
+      "status": "success",
+      "latency_seconds": 2.5052161521743983,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            12
+          ],
+          [
+            25
+          ],
+          [
+            37
+          ],
+          [
+            49
+          ],
+          [
+            62
+          ],
+          [
+            74
+          ],
+          [
+            86
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0077_fracture_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0077_fracture_05",
+      "input_id": "input@sha256:2430f5076566671ee66a4e6fa09a6ea63e8c36b3f3e0e76c60717e17e51384cc",
+      "status": "success",
+      "latency_seconds": 2.503646707162261,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0080_fracture_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0080_fracture_04",
+      "input_id": "input@sha256:b238d3092c0a4f4dbb832d9b6ed15393dc134e3c58fd2ae3b28356c34d869000",
+      "status": "success",
+      "latency_seconds": 2.478106727823615,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0080_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0080_post_01",
+      "input_id": "input@sha256:3eda9abc7b42be2c6454fe67b6456d7db20a847a4f5272925405477ec4f726c4",
+      "status": "success",
+      "latency_seconds": 2.4780712369829416,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            2
+          ],
+          [
+            4
+          ],
+          [
+            7
+          ],
+          [
+            9
+          ],
+          [
+            11
+          ],
+          [
+            13
+          ],
+          [
+            15
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0080_post_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0080_post_02",
+      "input_id": "input@sha256:5d50e3a0cdbfe782d114b5baf45a9ad39153022deb138cfa1b215559a6d0f99b",
+      "status": "success",
+      "latency_seconds": 2.4787104960996658,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            9
+          ],
+          [
+            13
+          ],
+          [
+            18
+          ],
+          [
+            22
+          ],
+          [
+            27
+          ],
+          [
+            31
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0080_pre_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0080_pre_07",
+      "input_id": "input@sha256:3d28c07092c849701e5c13e1b33ec17e8380e3e0c917bf49b1e2da51bdfba33a",
+      "status": "success",
+      "latency_seconds": 2.4623387430328876,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0081_fracture_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0081_fracture_05",
+      "input_id": "input@sha256:80dc0e54851b09c17e7d410d096ff3e4660de650bf7a39ece50b2a9c4fd0b69b",
+      "status": "success",
+      "latency_seconds": 2.3657305110245943,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0083_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0083_fracture_01",
+      "input_id": "input@sha256:4944c0e3d09092a1843f4c32f3a086c45b7d4c7e940812c4e5d675982c31aa4a",
+      "status": "success",
+      "latency_seconds": 2.4648813530802727,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0083_fracture_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0083_fracture_06",
+      "input_id": "input@sha256:8bd1930ed1d2ac36fa8d1df88343c09e419da020345ad20bd322ea15b74cf5f8",
+      "status": "success",
+      "latency_seconds": 2.4653545648325235,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0083_fracture_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0083_fracture_07",
+      "input_id": "input@sha256:8aee1ef465c1095c1defb773fd01844f5de1490788c2f64c47a527bb86e68d49",
+      "status": "success",
+      "latency_seconds": 2.4664841438643634,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            9
+          ],
+          [
+            18
+          ],
+          [
+            27
+          ],
+          [
+            36
+          ],
+          [
+            45
+          ],
+          [
+            54
+          ],
+          [
+            63
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0084_pre_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0084_pre_05",
+      "input_id": "input@sha256:4779d2efc954405112bc28928d7d5d3cb6338d1730d4b7e9d6c2a42c9112936e",
+      "status": "success",
+      "latency_seconds": 2.434534484986216,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0084_pre_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0084_pre_08",
+      "input_id": "input@sha256:f961ee2f533c8b402249d81470d1353b8a2e4649192c8cf2515c2a381363f3e4",
+      "status": "success",
+      "latency_seconds": 2.4365263448562473,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0085_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0085_fracture_02",
+      "input_id": "input@sha256:9a2b4980a32e8cfbe5c1611f032c204176aa0c198ded0f559dc065a8d4bd1d5f",
+      "status": "success",
+      "latency_seconds": 2.4431908351834863,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0086_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0086_fracture_01",
+      "input_id": "input@sha256:695720d8f63b031b421d89eb715d59f0f6b4558fbb7732fdc60cf931b3291918",
+      "status": "success",
+      "latency_seconds": 2.438089577946812,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            5
+          ],
+          [
+            11
+          ],
+          [
+            16
+          ],
+          [
+            22
+          ],
+          [
+            27
+          ],
+          [
+            33
+          ],
+          [
+            38
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0090_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0090_fracture_01",
+      "input_id": "input@sha256:711a713dc6d86b9fe4b914ea0b0a90dde848c1b316854d9d8b9561d346edbe7d",
+      "status": "success",
+      "latency_seconds": 2.4283989989198744,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            10
+          ],
+          [
+            21
+          ],
+          [
+            31
+          ],
+          [
+            42
+          ],
+          [
+            52
+          ],
+          [
+            63
+          ],
+          [
+            73
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0090_pre_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0090_pre_03",
+      "input_id": "input@sha256:77ac9adb185b4a21112d8ff634d27d443e7c874e664e0ceab0fd95d082195503",
+      "status": "success",
+      "latency_seconds": 2.4518560650758445,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0091_fracture_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0091_fracture_03",
+      "input_id": "input@sha256:bc6a82d0da9011e04c2c21027cbebdf175dab917fddada8dba9571f33387ddac",
+      "status": "success",
+      "latency_seconds": 2.3453744349535555,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0091_fracture_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0091_fracture_04",
+      "input_id": "input@sha256:72bf345495d0106c9008a13515c69b87e1b0dfb7000c284948abf72262259822",
+      "status": "success",
+      "latency_seconds": 2.34550246107392,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0092_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0092_pre_02",
+      "input_id": "input@sha256:a1f3733a4ef43e0a7ca586c34f2b37939b2bdd028156b3423d91caa518f25646",
+      "status": "success",
+      "latency_seconds": 2.4650103140156716,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0096_coverage_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0096_coverage_01",
+      "input_id": "input@sha256:5f32a31407f5047b0bd581cdcf96790bbbb041dfe6f93eb162660a4d69024cc6",
+      "status": "success",
+      "latency_seconds": 2.4482957299333066,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0096_coverage_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0096_coverage_07",
+      "input_id": "input@sha256:e23949efcc341111ada4baecc5def35b7fe9ad77bdc0dcaaef6d653622c6706c",
+      "status": "success",
+      "latency_seconds": 2.4707204489968717,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0097_fracture_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0097_fracture_06",
+      "input_id": "input@sha256:5c4f84c5c36efdbac69a6933276a0a15e4cb31439a39700520a9b2ede71b04cc",
+      "status": "success",
+      "latency_seconds": 2.474677826045081,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0097_pre_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0097_pre_10",
+      "input_id": "input@sha256:545dec46775cd4a89be977d652314d5e655e70fa78a93a38ab8836dda036a2b6",
+      "status": "success",
+      "latency_seconds": 2.475255712866783,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0098_fracture_10",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0098_fracture_10",
+      "input_id": "input@sha256:219560a86e29942ed9346a58dcd9ee2cea54652ec80511ed6978a290aa152de9",
+      "status": "success",
+      "latency_seconds": 2.4398906058631837,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0098_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0098_pre_09",
+      "input_id": "input@sha256:560bec31ec3a4daf8a28ae11c2ff42e4cf4b11120a68f25c51270c9e41fc594b",
+      "status": "success",
+      "latency_seconds": 2.4399142952170223,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0098_pre_14",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0098_pre_14",
+      "input_id": "input@sha256:1835ec0fba03c04f6e7633bfc57e4a7f5e548f89b3142b59a9746fe618d4e5a1",
+      "status": "success",
+      "latency_seconds": 2.4396144070196897,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0099_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0099_fracture_01",
+      "input_id": "input@sha256:27235bb53a9b7e7888efe87ae50e2da5ec1574c04ebda477ed450be96c88a22b",
+      "status": "success",
+      "latency_seconds": 2.464852905133739,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            29
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            143
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0099_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0099_fracture_02",
+      "input_id": "input@sha256:389af7356d1f60f09d56616f12788a4203fc9e54bae1795a82b42b48bf6bd583",
+      "status": "success",
+      "latency_seconds": 2.4667142629623413,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0099_post_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0099_post_02",
+      "input_id": "input@sha256:94a4405a78c8e0cd469e962b228ed26207a522d78b803af355d7a7008b50200e",
+      "status": "success",
+      "latency_seconds": 2.4654332948848605,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            9
+          ],
+          [
+            17
+          ],
+          [
+            26
+          ],
+          [
+            34
+          ],
+          [
+            43
+          ],
+          [
+            51
+          ],
+          [
+            60
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0099_pre_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0099_pre_08",
+      "input_id": "input@sha256:04955dcf11e8046486832506e4bb64e6fd5b042408db43c9dcdf45a25986e636",
+      "status": "success",
+      "latency_seconds": 2.46741377399303,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0100_fracture_08",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0100_fracture_08",
+      "input_id": "input@sha256:c8df743ae4d211d1697c2d346ad157bd5538d57dbfbc66f0207e8e825fdd6b2b",
+      "status": "success",
+      "latency_seconds": 2.48666366096586,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0100_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0100_post_01",
+      "input_id": "input@sha256:d3650105720df1fa858b6d46f115a0fdae92ca0cd16275b0944c6091f9c1f58b",
+      "status": "success",
+      "latency_seconds": 2.4877372249029577,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            7
+          ],
+          [
+            10
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ],
+          [
+            23
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0101_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0101_fracture_01",
+      "input_id": "input@sha256:7824814460f298298b67b458302f9924d21948ba89edbbcb6915f2c8da0fcc1c",
+      "status": "success",
+      "latency_seconds": 2.4792213230393827,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            12
+          ],
+          [
+            23
+          ],
+          [
+            35
+          ],
+          [
+            46
+          ],
+          [
+            58
+          ],
+          [
+            70
+          ],
+          [
+            81
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0101_pre_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0101_pre_02",
+      "input_id": "input@sha256:cb1824dc1b81e71e0376f3295d28afda30b781b83b9af837e9d0ab374741f277",
+      "status": "success",
+      "latency_seconds": 2.4801721291150898,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            43
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0102_fracture_06",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0102_fracture_06",
+      "input_id": "input@sha256:f928e32bdef2ab505431248d82cbf71415311fa05d6bb92da1a5c67c1f147251",
+      "status": "success",
+      "latency_seconds": 2.442160865990445,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            22
+          ],
+          [
+            26
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0102_post_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0102_post_02",
+      "input_id": "input@sha256:5e8d76918674e01f05af952471a3a6dc8ab51c56c0b982e68bdf827e77c1b437",
+      "status": "success",
+      "latency_seconds": 2.44356329087168,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            20
+          ],
+          [
+            28
+          ],
+          [
+            34
+          ],
+          [
+            41
+          ],
+          [
+            48
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0102_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0102_pre_09",
+      "input_id": "input@sha256:bfdf58ca873c5907fb8063466c4f854c437728c4ccbf57a7b13b506b6cdfd02f",
+      "status": "success",
+      "latency_seconds": 2.4449222220573574,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0103_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0103_post_01",
+      "input_id": "input@sha256:c9f1959e15daf472dc5e7868cb5b06098a5dd08fa9cb628256149d2479cf50f7",
+      "status": "success",
+      "latency_seconds": 2.445234399056062,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            10
+          ],
+          [
+            13
+          ],
+          [
+            16
+          ],
+          [
+            19
+          ],
+          [
+            22
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0104_fracture_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0104_fracture_02",
+      "input_id": "input@sha256:b3143ce65a7fc213c9e026d70db0c534b534444bd190aae1bfa422b65c009c95",
+      "status": "success",
+      "latency_seconds": 2.4452045729849488,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0104_pre_03",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0104_pre_03",
+      "input_id": "input@sha256:515958da7f6f95cf0e5bbe6581ead899da9f8dd211bf916205c43ea28591176e",
+      "status": "success",
+      "latency_seconds": 2.443140053888783,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            36
+          ],
+          [
+            42
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0105_post_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0105_post_02",
+      "input_id": "input@sha256:e9990edf391dde518e6fcdb91fc795e719edba59c04cc859c6bdc339f063e6f3",
+      "status": "success",
+      "latency_seconds": 2.443331863032654,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            35
+          ],
+          [
+            42
+          ],
+          [
+            49
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0105_pre_07",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0105_pre_07",
+      "input_id": "input@sha256:9a9ac6a0c7544fd1fb39c6f245ad76e7ba3ad9c0bac9280e1ec58dc9fa3fb0ac",
+      "status": "success",
+      "latency_seconds": 2.445433364948258,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            14
+          ],
+          [
+            28
+          ],
+          [
+            43
+          ],
+          [
+            57
+          ],
+          [
+            71
+          ],
+          [
+            85
+          ],
+          [
+            100
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0106_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0106_fracture_01",
+      "input_id": "input@sha256:5e4b4aee24e0ed4cfcd40b89572c43f9501f7a75851d0c626f43811f870849be",
+      "status": "success",
+      "latency_seconds": 2.449231520993635,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            28
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            142
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0106_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0106_post_01",
+      "input_id": "input@sha256:73401a45f8c2d77d623f62382aaf3e0125e850b194dc1f60e2fcd8d3da6bf166",
+      "status": "success",
+      "latency_seconds": 2.444201742997393,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            9
+          ],
+          [
+            12
+          ],
+          [
+            14
+          ],
+          [
+            18
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0106_post_02",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0106_post_02",
+      "input_id": "input@sha256:b32703b549b898adfb95c7c6315d4d9b38ea2b778e9f373bfd21cf2ff6f2dc0c",
+      "status": "success",
+      "latency_seconds": 2.445675813127309,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            6
+          ],
+          [
+            12
+          ],
+          [
+            18
+          ],
+          [
+            24
+          ],
+          [
+            30
+          ],
+          [
+            35
+          ],
+          [
+            41
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0106_pre_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0106_pre_01",
+      "input_id": "input@sha256:0eb27bfcedc926244fa8c49d196810a6749357576439902faa72506d63683480",
+      "status": "success",
+      "latency_seconds": 2.443518025102094,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            8
+          ],
+          [
+            11
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0106_pre_05",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0106_pre_05",
+      "input_id": "input@sha256:780392c313c32f94c32c501d35dcb77d2c3a59babfbce5268e1fc62561cc5a16",
+      "status": "success",
+      "latency_seconds": 2.4460573580581695,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            28
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            142
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0107_coverage_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0107_coverage_04",
+      "input_id": "input@sha256:018aaefde0944568bb3f06eab51b6998d8eee54c0b050f8a3a8c0bc70a67ded6",
+      "status": "success",
+      "latency_seconds": 2.443944626953453,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            28
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            142
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0108_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0108_post_01",
+      "input_id": "input@sha256:cab0b5ca7b84aeda09e5f685ac9344faa2b493850c8ab24ba5dcbdbfe8491870",
+      "status": "success",
+      "latency_seconds": 2.4442775829229504,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ],
+          [
+            10
+          ],
+          [
+            12
+          ],
+          [
+            16
+          ],
+          [
+            19
+          ],
+          [
+            22
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0108_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0108_pre_09",
+      "input_id": "input@sha256:ef0eb9c25ff09eda19cc7e02bda10b50f59a055f81919dc4c55649e7065277e7",
+      "status": "success",
+      "latency_seconds": 2.4452133420854807,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0109_post_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0109_post_01",
+      "input_id": "input@sha256:a36ae4439336cad52bcded3bdc6283ce302d08c21dcd9f2f7bd7c3e06aa1618a",
+      "status": "success",
+      "latency_seconds": 2.464600712992251,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            3
+          ],
+          [
+            7
+          ],
+          [
+            10
+          ],
+          [
+            14
+          ],
+          [
+            17
+          ],
+          [
+            20
+          ],
+          [
+            24
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0109_pre_09",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0109_pre_09",
+      "input_id": "input@sha256:fb5d539cb85855f1990e805da1d3cf95d3796abbe6f3d1155a24bd9e077e6c35",
+      "status": "success",
+      "latency_seconds": 2.44506902503781,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            4
+          ],
+          [
+            8
+          ],
+          [
+            13
+          ],
+          [
+            17
+          ],
+          [
+            21
+          ],
+          [
+            25
+          ],
+          [
+            30
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0110_fracture_01",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0110_fracture_01",
+      "input_id": "input@sha256:442a06885b63dc15d6701a4d77ac4815a2bb88913caa8d41c55e887acb2fc26a",
+      "status": "success",
+      "latency_seconds": 2.4454872750211507,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            28
+          ],
+          [
+            57
+          ],
+          [
+            86
+          ],
+          [
+            114
+          ],
+          [
+            142
+          ],
+          [
+            171
+          ],
+          [
+            200
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    },
+    {
+      "candidate_id": "video_0110_fracture_04",
+      "request_id": "20261125-minicpm-v45-tf-dev-v1/video_0110_fracture_04",
+      "input_id": "input@sha256:52dc956523133c6ce10be287f29031777f8dd453ddae2e738acc169dac4b3d31",
+      "status": "success",
+      "latency_seconds": 2.443840235006064,
+      "error_detail": null,
+      "reasoning_content": null,
+      "extra_meta": {
+        "temporal_ids": [
+          [
+            0
+          ],
+          [
+            7
+          ],
+          [
+            14
+          ],
+          [
+            21
+          ],
+          [
+            28
+          ],
+          [
+            36
+          ],
+          [
+            42
+          ],
+          [
+            50
+          ]
+        ],
+        "max_slice_nums": 1,
+        "use_image_id": false
+      }
+    }
+  ]
+}
