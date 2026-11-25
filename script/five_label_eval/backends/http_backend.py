@@ -41,10 +41,13 @@ def _resolve_completions_url(endpoint: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc, new_path, "", ""))
 
 
-def _encode_png_data_url(path: Path) -> str:
-    raw = path.read_bytes()
+def _encode_png_bytes_data_url(raw: bytes) -> str:
     b64 = base64.b64encode(raw).decode("ascii")
     return f"data:image/png;base64,{b64}"
+
+
+def _encode_png_data_url(path: Path) -> str:
+    return _encode_png_bytes_data_url(path.read_bytes())
 
 
 class HttpBackend:
@@ -124,9 +127,13 @@ class HttpBackend:
 
     def build_payload(self, request: InferenceRequest) -> dict[str, Any]:
         """Build an OpenAI-compatible multimodal chat payload with zero metadata leakage."""
+        if request.frame_bytes is not None:
+            image_urls = [_encode_png_bytes_data_url(raw) for raw in request.frame_bytes]
+        else:
+            image_urls = [_encode_png_data_url(path) for path in request.frame_paths]
         content: list[dict[str, Any]] = [
-            {"type": "image_url", "image_url": {"url": _encode_png_data_url(path)}}
-            for path in request.frame_paths
+            {"type": "image_url", "image_url": {"url": url}}
+            for url in image_urls
         ]
         # Preserve prompt text verbatim (no strip).
         content.append({"type": "text", "text": request.prompt_text})

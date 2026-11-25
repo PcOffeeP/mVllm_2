@@ -816,3 +816,112 @@ def test_infer_fake_cli_works_without_httpx_installed(tmp_path, monkeypatch):
     ])
     assert rc == 0
     assert output_path.is_file()
+
+
+def test_r2_regression_device_placement_minicpm_max_pixels_processor_config_and_toctou(tmp_path):
+    """Regression tests for Round-2 Codex review findings."""
+    # 1. Qwen3-VL moves BatchFeature inputs onto model.device before generate().
+    moved_devices: list = []
+
+    class FakeDeviceBatch(dict):
+        def to(self, device):
+            moved_devices.append(device)
+            return self
+
+    class FakeCudaProcessor:
+        def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+            return "P"
+
+        def __call__(self, **kwargs):
+            return FakeDeviceBatch({"input_ids": [[1, 2]]})
+
+        def batch_decode(self, sequences, skip_special_tokens=True):
+            return [LEGAL_JSON]
+
+    class FakeCudaModel:
+        device = "cuda:0"
+
+        def generate(self, **kwargs):
+            return [[1, 2, 9]]
+
+    qwen = TransformersBackend(
+        model_id="Qwen/Qwen3-VL-8B-Instruct@sha256:1",
+        model=FakeCudaModel(),
+        processor=FakeCudaProcessor(),
+        image_loader=lambda p: p.name,
+    )
+    assert qwen.infer_one(_make_request(tmp_path / "r2_cuda")).status == "success"
+    assert moved_devices == ["cuda:0"]
+
+    # 2. MiniCPM enforces max_pixels downscale before model.chat().
+    seen_sizes: list[tuple[int, int]] = []
+
+    class FakePILImage:
+        def __init__(self, size):
+            self.size = size
+
+        def resize(self, new_size):
+            return FakePILImage(new_size)
+
+    class FakeMiniCPM:
+        def chat(self, **kwargs):
+            for item in kwargs["msgs"][0]["content"][:8]:
+                seen_sizes.append(item.size)
+            return LEGAL_JSON
+
+    mcpm = TransformersBackend(
+        model_id="openbmb/MiniCPM-V-4_5@sha256:1",
+        max_pixels=10000,
+        model=FakeMiniCPM(),
+        image_loader=lambda _p: FakePILImage((400, 400)),
+    )
+    assert mcpm.infer_one(_make_request(tmp_path / "r2_mcpm")).status == "success"
+    assert all(w * h <= 10000 for w, h in seen_sizes)
+
+    # 3. Trusted snapshot verification covers processor_config.json and rejects external auto_map.
+    mdir = tmp_path / "r2_snap"
+    mdir.mkdir()
+    (mdir / "config.json").write_bytes(b'{"version": "4.5"}')
+    (mdir / "processor_config.json").write_bytes(b'{"auto_map": {"AutoProcessor": "evil/repo--proc.P"}}')
+    cfg_sha = hashlib.sha256((mdir / "config.json").read_bytes()).hexdigest()
+    proc_sha = hashlib.sha256((mdir / "processor_config.json").read_bytes()).hexdigest()
+    with pytest.raises(InputError, match="processor_config.json"):
+        verify_trusted_snapshot_sha256(mdir, {"config.json": cfg_sha})
+    with pytest.raises(InputError, match="external auto_map"):
+        verify_trusted_snapshot_sha256(mdir, {"config.json": cfg_sha, "processor_config.json": proc_sha})
+
+    # 4. TOCTOU protection: mutating candidate 2's PNG during candidate 1's request does not alter sent bytes.
+    rec1, m1, frames_dir = _build_record_and_manifest(tmp_path / "r2_toctou", cid="c00")
+    _, entries2 = _write_eight_frames(frames_dir, cid="c01")
+    rec2 = {**rec1, "candidate_id": "c01", "frames": entries2}
+    manifest = {"manifest_version": "test/1", "samples": [m1["samples"][0], {**m1["samples"][0], "candidate_id": "c01"}]}
+    orig_c01_f0 = (frames_dir / "c01" / entries2[0]["image"]).read_bytes()
+    sent_b64_by_cid: dict[str, str] = {}
+    call_idx = 0
+
+    def toctou_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal call_idx
+        body = json.loads(request.content.decode("utf-8"))
+        first_url = body["messages"][0]["content"][0]["image_url"]["url"]
+        cid_key = "c00" if call_idx == 0 else "c01"
+        sent_b64_by_cid[cid_key] = first_url
+        if call_idx == 0:
+            # Tamper with c01's PNG on disk while c00 is in flight.
+            (frames_dir / "c01" / entries2[0]["image"]).write_bytes(PNG_HEADER + b"TAMPERED")
+        call_idx += 1
+        return httpx.Response(200, json={"choices": [{"message": {"content": LEGAL_JSON}}]})
+
+    http_backend = HttpBackend(
+        endpoint="http://127.0.0.1:8000",
+        model_id="Qwen3-VL-8B-Instruct@sha256:1",
+        transport=httpx.MockTransport(toctou_handler),
+    )
+    try:
+        infer.run_inference(
+            [rec1, rec2], manifest, backend=http_backend, run_id="r-toctou",
+            prompt_id="prompt@sha256:" + "a" * 64, prompt_text="p",
+            model_id="Qwen3-VL-8B-Instruct@sha256:1", frames_dir=frames_dir,
+        )
+    finally:
+        http_backend.close()
+    assert sent_b64_by_cid["c01"] == f"data:image/png;base64,{base64.b64encode(orig_c01_f0).decode('ascii')}"

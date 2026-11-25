@@ -18,6 +18,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from contextlib import contextmanager
 import hashlib
+import io
+import json
 import math
 from pathlib import Path
 import random
@@ -35,7 +37,14 @@ SUPPORTED_MODEL_FAMILIES = ("minicpm-v-4.5", "qwen3-vl", "internvl3", "internvl3
 MINICPM_TEMPORAL_GRID_SECONDS = 0.1
 MINICPM_DEFAULT_MAX_SLICE_NUMS = 1
 SHA256_RE = re.compile(r"[a-f0-9]{64}")
-TRUSTED_REQUIRED_CONFIG_FILES = ("config.json", "preprocessor_config.json", "tokenizer_config.json")
+TRUSTED_REQUIRED_CONFIG_FILES = (
+    "config.json",
+    "processor_config.json",
+    "preprocessor_config.json",
+    "tokenizer_config.json",
+    "generation_config.json",
+    "chat_template.json",
+)
 
 
 class _InferenceTimeoutError(Exception):
@@ -166,7 +175,72 @@ def verify_trusted_snapshot_sha256(
                 f"trusted snapshot SHA-256 mismatch for {rel_norm}: expected {expected}, got {actual}"
             )
         verified[rel_norm] = actual
+
+    # Reject external repo references in auto_map (e.g. "org/repo--module.Class") so
+    # trust_remote_code=True can only execute verified local .py files inside model_path.
+    for cfg_name in ("config.json", "processor_config.json", "preprocessor_config.json"):
+        cfg_file = root / cfg_name
+        if not cfg_file.is_file():
+            continue
+        try:
+            cfg_obj = json.loads(cfg_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise InputError(f"failed to parse trusted config {cfg_name}: {exc}") from exc
+        auto_map = cfg_obj.get("auto_map") if isinstance(cfg_obj, dict) else None
+        if isinstance(auto_map, dict):
+            for key, value in auto_map.items():
+                refs = value if isinstance(value, list) else [value]
+                for ref in refs:
+                    if isinstance(ref, str) and "--" in ref:
+                        raise InputError(
+                            f"external auto_map reference {ref!r} in {cfg_name}[{key!r}] "
+                            "is refused under fail-closed local trust_remote_code verification"
+                        )
     return verified
+
+
+def _resize_image_to_max_pixels(image: Any, max_pixels: int | None) -> Any:
+    """Proportionally downscale (never upscale) a PIL-like image to <= max_pixels."""
+    if max_pixels is None:
+        return image
+    size = getattr(image, "size", None)
+    resize_fn = getattr(image, "resize", None)
+    if (
+        not isinstance(size, tuple)
+        or len(size) != 2
+        or not callable(resize_fn)
+        or not all(isinstance(v, int) and v > 0 for v in size)
+    ):
+        return image
+    width, height = size
+    if width * height <= max_pixels:
+        return image
+    scale = math.sqrt(max_pixels / float(width * height))
+    new_w = max(1, int(width * scale))
+    new_h = max(1, int(height * scale))
+    while new_w * new_h > max_pixels and (new_w > 1 or new_h > 1):
+        if new_w >= new_h and new_w > 1:
+            new_w -= 1
+        elif new_h > 1:
+            new_h -= 1
+    return resize_fn((new_w, new_h))
+
+
+def _move_inputs_to_model_device(inputs: Any, model: Any) -> Any:
+    """Move processor batch tensors onto the model's execution device before generate()."""
+    device = getattr(model, "device", None)
+    if device is None:
+        return inputs
+    to_fn = getattr(inputs, "to", None)
+    if callable(to_fn):
+        return to_fn(device)
+    if isinstance(inputs, Mapping):
+        moved = {}
+        for key, value in inputs.items():
+            val_to = getattr(value, "to", None)
+            moved[key] = val_to(device) if callable(val_to) else value
+        return moved
+    return inputs
 
 
 def _apply_seed(seed: int | None) -> None:
@@ -214,6 +288,14 @@ def _default_image_loader(path: Path) -> Any:
     from PIL import Image
 
     with Image.open(path) as img:
+        return img.convert("RGB")
+
+
+def _default_bytes_image_loader(raw: bytes) -> Any:
+    """Lazy-import PIL only when decoding verified PNG bytes in memory (TOCTOU-safe)."""
+    from PIL import Image
+
+    with Image.open(io.BytesIO(raw)) as img:
         return img.convert("RGB")
 
 
@@ -403,6 +485,9 @@ class TransformersBackend:
             "use_image_id": False,
         }
 
+        if self.max_pixels is not None:
+            images = [_resize_image_to_max_pixels(img, self.max_pixels) for img in images]
+
         if hasattr(self._model, "chat"):
             msgs = [{"role": "user", "content": [*images, request.prompt_text]}]
             chat_kwargs: dict[str, Any] = {
@@ -416,8 +501,6 @@ class TransformersBackend:
             }
             if do_sample:
                 chat_kwargs["temperature"] = temperature
-            if self.max_pixels is not None:
-                chat_kwargs["max_pixels"] = self.max_pixels
             raw_text = self._model.chat(**chat_kwargs)
             return raw_text, meta
 
@@ -431,6 +514,7 @@ class TransformersBackend:
             use_image_id=False,
             return_tensors="pt",
         )
+        inputs = _move_inputs_to_model_device(inputs, self._model)
         gen_kwargs: dict[str, Any] = {"max_new_tokens": max_tokens, "do_sample": do_sample}
         if do_sample:
             gen_kwargs["temperature"] = temperature
@@ -460,6 +544,16 @@ class TransformersBackend:
                     f"{self.model_family} native chat requires processor output containing 'pixel_values'"
                 )
             pixel_values = visual["pixel_values"]
+            device = getattr(self._model, "device", None)
+            dtype = getattr(self._model, "dtype", None)
+            pv_to = getattr(pixel_values, "to", None)
+            if callable(pv_to) and (device is not None or dtype is not None):
+                to_kwargs = {}
+                if device is not None:
+                    to_kwargs["device"] = device
+                if dtype is not None:
+                    to_kwargs["dtype"] = dtype
+                pixel_values = pv_to(**to_kwargs)
             num_patches_list = visual.get("num_patches_list")
             if num_patches_list is None:
                 num_patches_list = [1] * len(images)
@@ -504,6 +598,7 @@ class TransformersBackend:
         if self.max_pixels is not None:
             proc_kwargs["max_pixels"] = self.max_pixels
         inputs = self._processor(**proc_kwargs)
+        inputs = _move_inputs_to_model_device(inputs, self._model)
         gen_kwargs = {"max_new_tokens": max_tokens, "do_sample": do_sample}
         if do_sample:
             gen_kwargs["temperature"] = temperature
@@ -532,7 +627,10 @@ class TransformersBackend:
         started = time.monotonic()
         timeout = float(request.timeout_seconds if request.timeout_seconds is not None else self.timeout_seconds)
         try:
-            images = [self._image_loader(path) for path in request.frame_paths]
+            if request.frame_bytes is not None and self._image_loader is _default_image_loader:
+                images = [_default_bytes_image_loader(raw) for raw in request.frame_bytes]
+            else:
+                images = [self._image_loader(path) for path in request.frame_paths]
         except OSError as exc:
             return InferenceResult(
                 status="request_failed",

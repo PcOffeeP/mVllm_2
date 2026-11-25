@@ -119,7 +119,9 @@ def _record_sampling_policy(record: dict) -> dict[str, Any]:
     return policy
 
 
-def _resolve_record_frames(record: dict, frames_dir: Path) -> tuple[tuple[Path, ...], tuple[float, ...]]:
+def _resolve_record_frames(
+    record: dict, frames_dir: Path
+) -> tuple[tuple[Path, ...], tuple[float, ...], tuple[bytes, ...]]:
     cid = record["candidate_id"]
     _validate_safe_component(cid, "candidate_id")
     raw_frames = record.get("frames")
@@ -145,6 +147,7 @@ def _resolve_record_frames(record: dict, frames_dir: Path) -> tuple[tuple[Path, 
 
     frame_paths: list[Path] = []
     frame_pts: list[float] = []
+    frame_bytes: list[bytes] = []
     for expected_order, entry in enumerate(ordered):
         if not isinstance(entry, dict):
             raise InputError(f"{cid}: frames[{expected_order}] must be object")
@@ -182,10 +185,11 @@ def _resolve_record_frames(record: dict, frames_dir: Path) -> tuple[tuple[Path, 
                 f"expected {expected_sha}, got {actual_sha}"
             )
         frame_paths.append(img_path)
+        frame_bytes.append(raw_bytes)
         pts = entry.get("pts_seconds")
         if isinstance(pts, (int, float)) and not isinstance(pts, bool):
             frame_pts.append(float(pts))
-    return tuple(frame_paths), tuple(frame_pts)
+    return tuple(frame_paths), tuple(frame_pts), tuple(frame_bytes)
 
 
 def plan_predictions(records, manifest, run_id, prompt_id, model_id="fake") -> list[dict]:
@@ -246,7 +250,7 @@ def run_inference(
         raise InputError(f"{backend.backend_name} backend refuses --model-id fake")
 
     samples = _validate_manifest_samples(manifest)
-    prepared: list[tuple[str, dict, tuple[Path, ...], tuple[float, ...]]] = []
+    prepared: list[tuple[str, dict, tuple[Path, ...], tuple[float, ...], tuple[bytes, ...]]] = []
     seen_cids: set[str] = set()
     batch_sampling_policy: dict[str, Any] | None = None
     for record in records:
@@ -260,8 +264,8 @@ def run_inference(
         policy = _record_sampling_policy(record)
         if batch_sampling_policy is None:
             batch_sampling_policy = policy
-        frame_paths, frame_pts = _resolve_record_frames(record, frames_dir)
-        prepared.append((cid, record, frame_paths, frame_pts))
+        frame_paths, frame_pts, frame_bytes = _resolve_record_frames(record, frames_dir)
+        prepared.append((cid, record, frame_paths, frame_pts, frame_bytes))
 
     # Reserve both exclusive output files BEFORE issuing any backend requests.
     stream = None
@@ -281,7 +285,7 @@ def run_inference(
     predictions: list[dict] = []
     request_metas: list[dict[str, Any]] = []
     try:
-        for cid, record, frame_paths, frame_pts in prepared:
+        for cid, record, frame_paths, frame_pts, frame_bytes in prepared:
             req = InferenceRequest(
                 candidate_id=cid,
                 record=record,
@@ -290,6 +294,7 @@ def run_inference(
                 prompt_text=prompt_text,
                 timeout_seconds=timeout_seconds,
                 decode_config=dict(decode_config or {}),
+                frame_bytes=frame_bytes,
             )
             result = normalize_result(backend.infer_one(req))
             row = {

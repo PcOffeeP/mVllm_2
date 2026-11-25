@@ -20,6 +20,7 @@ class InferenceRequest:
     prompt_text: str
     timeout_seconds: float = 600.0
     decode_config: dict[str, Any] = field(default_factory=dict)
+    frame_bytes: tuple[bytes, ...] | None = None
 
 
 @dataclass(frozen=True)
