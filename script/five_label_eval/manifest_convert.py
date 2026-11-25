@@ -14,7 +14,7 @@ from pathlib import Path
 import re
 import sys
 
-from .exclusions import DevExclusions, load_candidate_ids_input, load_dev_exclusions
+from .exclusions import DevExclusions, load_candidate_selection, load_dev_exclusions
 from .score import InputError, decode_file, prepare, require_text
 
 SOURCE_TYPE = "real"
@@ -120,13 +120,17 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     try:
         raw = Path(args.input).read_bytes()
+        raw_sha256 = hashlib.sha256(raw).hexdigest()
         ids = Path(args.candidate_ids) if args.candidate_ids else None
-        candidate_ids = load_candidate_ids_input(ids) if ids else None
+        selection = load_candidate_selection(ids) if ids else None
+        if selection is not None:
+            selection.assert_manifest_sha256(raw_sha256, context="manifest_convert")
+        candidate_ids = selection.candidate_ids if selection is not None else None
         exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
         draft = convert(decode_file(raw.decode("utf-8"), args.input), raw, candidate_ids=candidate_ids,
                         limit=args.limit, manifest_version=args.manifest_version,
                         exclusions=exclusions, enforce_exclusions=not args.allow_excluded)
-        draft["input_files"] = {"source_manifest": {"path": args.input, "sha256": hashlib.sha256(raw).hexdigest()}}
+        draft["input_files"] = {"source_manifest": {"path": args.input, "sha256": raw_sha256}}
         with Path(args.output).open("x", encoding="utf-8") as stream:
             stream.write(json.dumps(draft, ensure_ascii=False, indent=2) + "\n")
         prepare(draft, [], [], exclusions=exclusions, enforce_exclusions=not args.allow_excluded)  # Scorer-side validation of the written draft.

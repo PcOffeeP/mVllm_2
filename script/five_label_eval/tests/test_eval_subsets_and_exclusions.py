@@ -18,9 +18,10 @@ from script.five_label_eval.exclusions import (
     EVAL_SUBSET_SCHEMA,
     REPO_ROOT,
     load_candidate_ids_input,
+    load_candidate_selection,
     load_dev_exclusions,
 )
-from script.five_label_eval.freeze_subsets import _serialize, build_frozen_subsets
+from script.five_label_eval.freeze_subsets import _serialize, build_frozen_subsets, verify_frozen_subsets
 from script.five_label_eval.score import InputError
 
 
@@ -229,9 +230,8 @@ def test_frozen_eval_subsets_match_deterministic_rebuild_and_contract() -> None:
     assert eval_dev_path.is_file(), f"missing {eval_dev_path}"
     assert eval_test_path.is_file(), f"missing {eval_test_path}"
 
-    expected_dev, expected_test = build_frozen_subsets()
-    assert eval_dev_path.read_bytes() == _serialize(expected_dev).encode("utf-8")
-    assert eval_test_path.read_bytes() == _serialize(expected_test).encode("utf-8")
+    verified = verify_frozen_subsets(REPO_ROOT / "data/eval-subsets")
+    assert [count for _path, _digest, count in verified] == [210, 314]
 
     dev_obj = json.loads(eval_dev_path.read_text(encoding="utf-8"))
     test_obj = json.loads(eval_test_path.read_text(encoding="utf-8"))
@@ -308,3 +308,130 @@ def test_manifest_convert_cli_accepts_frozen_eval_subset_directly(tmp_path: Path
     assert len(payload["samples"]) == 210
     assert payload["dev_exclusions"]["decision_id"] == "DEC-007"
     assert payload["dev_exclusions"]["sha256"] == hashlib.sha256(DEFAULT_EXCLUSIONS_PATH.read_bytes()).hexdigest()
+
+
+def test_frozen_subset_rejects_mismatched_manifest_sha256_before_writing(tmp_path: Path) -> None:
+    """Finding 1 regression: frozen eval subsets must bind manifest_sha256 fail-closed."""
+    real_manifest = json.loads((REPO_ROOT / "data/sub_video/manifest.json").read_text(encoding="utf-8"))
+    # Mutate video_0010_pre_01 clip sha256 while preserving candidate IDs -> different manifest_sha256.
+    for row in real_manifest["candidates"]:
+        if row["candidate_id"] == "video_0010_pre_01":
+            row["output"]["sha256"] = "0" * 64
+            break
+    tampered_manifest = tmp_path / "tampered-manifest.json"
+    tampered_manifest.write_text(json.dumps(real_manifest, ensure_ascii=False), encoding="utf-8")
+
+    # manifest_convert must reject before writing output
+    out_manifest = tmp_path / "should-not-exist.json"
+    err = io.StringIO()
+    with redirect_stderr(err):
+        rc = manifest_convert.main(
+            [
+                "--input",
+                str(tampered_manifest),
+                "--candidate-ids",
+                str(REPO_ROOT / "data/eval-subsets/eval-test-v1.json"),
+                "--manifest-version",
+                "tampered-test",
+                "--output",
+                str(out_manifest),
+            ]
+        )
+    assert rc == 2
+    assert "manifest_sha256" in err.getvalue()
+    assert not out_manifest.exists()
+
+    # frames CLI must also reject before touching media
+    err2 = io.StringIO()
+    with redirect_stderr(err2):
+        rc2 = frames.main(
+            [
+                "--manifest",
+                str(tampered_manifest),
+                "--candidate-ids",
+                str(REPO_ROOT / "data/eval-subsets/eval-test-v1.json"),
+                "--output",
+                str(tmp_path / "frames.jsonl"),
+                "--out-dir",
+                str(tmp_path / "frames"),
+            ]
+        )
+    assert rc2 == 2
+    assert "manifest_sha256" in err2.getvalue()
+
+    # load_candidate_selection exposes expected_manifest_sha256 and raises on mismatch
+    sel = load_candidate_selection(REPO_ROOT / "data/eval-subsets/eval-test-v1.json")
+    assert sel.subset_id == "eval-test-v1"
+    with pytest.raises(InputError, match="manifest_sha256"):
+        sel.assert_manifest_sha256("f" * 64, context="unit")
+
+
+def test_frozen_v1_verification_survives_appended_b3_reviews(tmp_path: Path) -> None:
+    """Finding 2 regression: appending later B3 confirmed reviews must not break v1 --verify."""
+    reviews_obj = json.loads((REPO_ROOT / "data/subvideo-review/reviews.json").read_text(encoding="utf-8"))
+    real_manifest_sha = hashlib.sha256((REPO_ROOT / "data/sub_video/manifest.json").read_bytes()).hexdigest()
+    # Append a simulated B3 confirmed review for video_0001_pre_01 after v1 freeze cutoff.
+    reviews_obj["revisions"].append(
+        {
+            "candidate_id": "video_0001_pre_01",
+            "manifest_sha256": real_manifest_sha,
+            "review_id": "simulated-b3-rev-1",
+            "review_status": "confirmed",
+            "created_at": "2026-11-26T00:00:00+00:00",
+            "labels": {"断裂状态": "未断裂"},
+        }
+    )
+    extended_reviews = tmp_path / "reviews-with-b3.json"
+    extended_reviews.write_text(json.dumps(reviews_obj, ensure_ascii=False), encoding="utf-8")
+
+    results = verify_frozen_subsets(
+        REPO_ROOT / "data/eval-subsets",
+        reviews_path=extended_reviews,
+    )
+    assert [count for _path, _digest, count in results] == [210, 314]
+
+
+def test_empty_custom_exclusions_file_cannot_bypass_official_dec007(tmp_path: Path) -> None:
+    """Finding 3 regression: custom --exclusions can only extend official DEC-007, never weaken it."""
+    empty_excl = tmp_path / "empty-dec007.json"
+    empty_excl.write_text(
+        json.dumps(
+            {
+                "schema": "tensile-dev-exclusions/1",
+                "decision_id": "DEC-007",
+                "excluded_dev_sources": [],
+                "isolated_virtual_videos": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    merged = load_dev_exclusions(empty_excl)
+    assert "video_0006" in merged.excluded_source_ids
+    assert "video_0079" in merged.excluded_source_ids
+    assert "video_0006_pre_06" in merged.excluded_candidate_ids
+
+    # Passing empty_excl via CLI must still reject video_0006_pre_06 without --allow-excluded
+    ids_file = tmp_path / "bad-ids.json"
+    ids_file.write_text('["video_0006_pre_06"]\n', encoding="utf-8")
+    out_file = tmp_path / "out.json"
+    err = io.StringIO()
+    with redirect_stderr(err):
+        rc = manifest_convert.main(
+            [
+                "--input",
+                str(REPO_ROOT / "data/sub_video/manifest.json"),
+                "--candidate-ids",
+                str(ids_file),
+                "--exclusions",
+                str(empty_excl),
+                "--manifest-version",
+                "bypass-attempt/1",
+                "--output",
+                str(out_file),
+            ]
+        )
+    assert rc == 2
+    assert "DEC-007" in err.getvalue()
+    assert not out_file.exists()
+

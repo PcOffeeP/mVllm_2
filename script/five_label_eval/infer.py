@@ -18,7 +18,7 @@ import tempfile
 from typing import Any
 
 from . import paths
-from .exclusions import DevExclusions, load_candidate_ids_input, load_dev_exclusions
+from .exclusions import DevExclusions, load_candidate_selection, load_dev_exclusions
 from .backends import InferenceBackend, InferenceRequest, normalize_result
 from .backends.fake_backend import CATEGORY_ORDER, LEGAL, NON_ANSWERS, fake_raw_output
 from .backends.transformers_backend import SUPPORTED_MODEL_FAMILIES, TransformersBackend
@@ -516,8 +516,10 @@ def main(argv=None) -> int:
         prompt_text, prompt_identity = load_prompt(args.prompt_file)
         exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
         records = read_records(input_config)
+        selection = None
         if args.candidate_ids:
-            selected = load_candidate_ids_input(args.candidate_ids)
+            selection = load_candidate_selection(args.candidate_ids)
+            selected = selection.candidate_ids
             if exclusions is not None:
                 exclusions.assert_no_excluded(selected, context="infer candidate_ids")
             by_id: dict[Any, dict] = {}
@@ -535,8 +537,22 @@ def main(argv=None) -> int:
                     else f"candidate_id not found in input records: {missing}"
                 )
             records = [by_id[cid] for cid in selected]
+            for record in records:
+                selection.assert_manifest_sha256(
+                    record.get("manifest_sha256", ""),
+                    context=f"infer record {record.get('candidate_id')}",
+                )
 
         manifest = read_json(args.manifest)
+        if selection is not None:
+            for sample in _validate_manifest_samples(
+                manifest, exclusions=exclusions, enforce_exclusions=not args.allow_excluded
+            ).values():
+                if sample.get("candidate_id") in set(selection.candidate_ids):
+                    selection.assert_manifest_sha256(
+                        sample.get("manifest_sha256", ""),
+                        context=f"infer manifest {sample.get('candidate_id')}",
+                    )
         if args.backend == "fake":
             if args.model_id != "fake":
                 raise InputError("fake backend only accepts --model-id fake")

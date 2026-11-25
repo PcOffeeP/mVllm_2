@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import sys
 
-from .exclusions import DevExclusions, load_candidate_ids_input, load_dev_exclusions
+from .exclusions import DevExclusions, load_candidate_selection, load_dev_exclusions
 from .score import IDENTITY, InputError, decode_file, prepare, require_text, validate_identity
 
 DRAFT_VERSION = "five-label-manifest-draft/1"
@@ -81,10 +81,16 @@ def main(argv=None):
                 if not isinstance(row, dict):
                     raise InputError(f"{args.reviews}:{number}: expected review object")
                 reviews.append(row)
-        candidate_ids = load_candidate_ids_input(args.candidate_ids)
+        selection = load_candidate_selection(args.candidate_ids)
+        candidate_ids = selection.candidate_ids
         exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
         draft = build_draft(reviews, candidate_ids, args.manifest_version,
                             exclusions=exclusions, enforce_exclusions=not args.allow_excluded)
+        for sample in draft["samples"]:
+            selection.assert_manifest_sha256(
+                sample["manifest_sha256"],
+                context=f"build_manifest:{sample['candidate_id']}",
+            )
         draft["input_files"] = {
             "reviews": {"path": args.reviews, "sha256": hashlib.sha256(export_bytes).hexdigest()},
             "candidate_ids": {"path": args.candidate_ids, "sha256": hashlib.sha256(ids_bytes).hexdigest()},

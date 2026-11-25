@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 from pathlib import Path
+import re
 from typing import Any, Iterable
 
 from .score import InputError, decode_file
@@ -18,6 +19,27 @@ EXCLUSIONS_SCHEMA = "tensile-dev-exclusions/1"
 EVAL_SUBSET_SCHEMA = "tensile-eval-subset/1"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_EXCLUSIONS_PATH = REPO_ROOT / "data" / "splits" / "dev-exclusions.json"
+SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+
+
+@dataclass(frozen=True)
+class CandidateSelection:
+    """Candidate IDs plus optional frozen-subset manifest digest binding."""
+
+    candidate_ids: list[str]
+    expected_manifest_sha256: str | None = None
+    subset_id: str | None = None
+
+    def assert_manifest_sha256(self, actual_manifest_sha256: str, *, context: str = "selection") -> None:
+        """Fail closed when a frozen eval subset is applied to a different manifest."""
+        if self.expected_manifest_sha256 is None:
+            return
+        if actual_manifest_sha256 != self.expected_manifest_sha256:
+            label = self.subset_id or EVAL_SUBSET_SCHEMA
+            raise InputError(
+                f"{context}: frozen subset {label!r} requires manifest_sha256="
+                f"{self.expected_manifest_sha256}, got {actual_manifest_sha256!r}"
+            )
 
 
 @dataclass(frozen=True)
@@ -134,9 +156,7 @@ class DevExclusions:
         }
 
 
-def load_dev_exclusions(path: Path | str | None = None) -> DevExclusions:
-    """Load and validate ``data/splits/dev-exclusions.json`` fail-closed."""
-    target = Path(path) if path is not None else DEFAULT_EXCLUSIONS_PATH
+def _parse_dev_exclusions_file(target: Path, *, require_nonempty: bool = False) -> DevExclusions:
     try:
         raw = target.read_bytes()
     except OSError as exc:
@@ -184,6 +204,9 @@ def load_dev_exclusions(path: Path | str | None = None) -> DevExclusions:
             raise InputError(f"{target}: isolated_virtual_videos entry missing virtual_video_id")
         isolated_virtuals.add(vid)
 
+    if require_nonempty and (not excluded_sources or not excluded_candidates):
+        raise InputError(f"{target}: official DEC-007 exclusions file cannot be empty")
+
     try:
         display_path = str(target.resolve().relative_to(REPO_ROOT.resolve()))
     except ValueError:
@@ -199,20 +222,63 @@ def load_dev_exclusions(path: Path | str | None = None) -> DevExclusions:
     )
 
 
-def load_candidate_ids_input(path: Path | str) -> list[str]:
-    """Load candidate IDs from either a JSON array or a frozen eval-subset JSON file."""
+def load_dev_exclusions(path: Path | str | None = None) -> DevExclusions:
+    """Load and validate ``data/splits/dev-exclusions.json`` fail-closed.
+
+    A custom ``path`` can only *extend* the official DEC-007 exclusions (union),
+    never drop or weaken them; bypassing DEC-007 requires explicit ``--allow-excluded``.
+    """
+    official = _parse_dev_exclusions_file(DEFAULT_EXCLUSIONS_PATH, require_nonempty=True)
+    if path is None:
+        return official
+    target = Path(path)
+    if target.resolve() == DEFAULT_EXCLUSIONS_PATH.resolve():
+        return official
+    extra = _parse_dev_exclusions_file(target, require_nonempty=False)
+    return DevExclusions(
+        path=f"{official.path}+{extra.path}",
+        sha256=official.sha256,
+        decision_id=official.decision_id,
+        excluded_source_ids=official.excluded_source_ids | extra.excluded_source_ids,
+        excluded_candidate_ids=official.excluded_candidate_ids | extra.excluded_candidate_ids,
+        isolated_virtual_ids=official.isolated_virtual_ids | extra.isolated_virtual_ids,
+    )
+
+
+def load_candidate_selection(path: Path | str) -> CandidateSelection:
+    """Load candidate IDs and frozen-subset manifest digest binding."""
     target = Path(path)
     obj = decode_file(target.read_text(encoding="utf-8"), str(target))
+    expected_manifest_sha256: str | None = None
+    subset_id: str | None = None
     if isinstance(obj, list):
         ids = obj
     elif isinstance(obj, dict) and obj.get("schema") == EVAL_SUBSET_SCHEMA:
         ids = obj.get("candidate_ids")
         if not isinstance(ids, list):
             raise InputError(f"{target}: frozen eval subset missing candidate_ids array")
+        inputs = obj.get("inputs")
+        manifest_sha = inputs.get("manifest_sha256") if isinstance(inputs, dict) else None
+        if not isinstance(manifest_sha, str) or not SHA256_RE.fullmatch(manifest_sha):
+            raise InputError(
+                f"{target}: frozen eval subset missing valid inputs.manifest_sha256"
+            )
+        expected_manifest_sha256 = manifest_sha
+        raw_sid = obj.get("subset_id")
+        subset_id = raw_sid if isinstance(raw_sid, str) and raw_sid.strip() else None
     else:
         raise InputError(
             f"{target}: candidate IDs must be a JSON array or {EVAL_SUBSET_SCHEMA!r} object"
         )
     if not ids or any(not isinstance(cid, str) or not cid.strip() for cid in ids):
         raise InputError(f"{target}: candidate IDs must be a nonempty array of strings")
-    return ids
+    return CandidateSelection(
+        candidate_ids=ids,
+        expected_manifest_sha256=expected_manifest_sha256,
+        subset_id=subset_id,
+    )
+
+
+def load_candidate_ids_input(path: Path | str) -> list[str]:
+    """Load candidate IDs from either a JSON array or a frozen eval-subset JSON file."""
+    return load_candidate_selection(path).candidate_ids

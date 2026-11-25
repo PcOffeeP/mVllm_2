@@ -31,7 +31,7 @@ import subprocess
 import sys
 
 from . import paths
-from .exclusions import load_candidate_ids_input, load_dev_exclusions
+from .exclusions import load_candidate_selection, load_dev_exclusions
 from .score import InputError, decode_file, require_text
 
 RECORD_SCHEMA = "five-label-input-record/3"
@@ -990,9 +990,12 @@ def main(argv=None) -> int:
         manifest_obj = decode_file((raw := manifest_path.read_bytes()).decode("utf-8"), str(manifest_path))
         by_id = _candidates(manifest_obj)
         exclusions = None if args.allow_excluded else load_dev_exclusions(args.exclusions)
+        manifest_sha256 = hashlib.sha256(raw).hexdigest()
         selected = list(by_id)
         if args.candidate_ids:
-            selected = load_candidate_ids_input(args.candidate_ids)
+            selection = load_candidate_selection(args.candidate_ids)
+            selection.assert_manifest_sha256(manifest_sha256, context="frames")
+            selected = selection.candidate_ids
             if missing := [cid for cid in selected if cid not in by_id]:
                 raise InputError(f"candidate_id not found in source manifest: {missing}")
             if exclusions is not None:
@@ -1000,7 +1003,6 @@ def main(argv=None) -> int:
         elif exclusions is not None:
             kept, _removed = exclusions.filter_candidates([by_id[cid] for cid in selected])
             selected = [row["candidate_id"] for row in kept]
-        manifest_sha256 = hashlib.sha256(raw).hexdigest()
         index = source_evidence_index(manifest_obj)
         if args.coverage_scan:
             # 批级口径：探测全部来源，才能给整批的覆盖率结论。
