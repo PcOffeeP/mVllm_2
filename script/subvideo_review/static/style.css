@@ -172,3 +172,9 @@ input::placeholder, textarea::placeholder { color: #748394; opacity: 1; }
 @media (max-width: 780px) { .filters { grid-template-columns: 1fr; } .workspace.is-collapsed { grid-template-columns: 1fr; } .workspace.is-collapsed .panel-heading { flex-direction: row; } .workspace.is-collapsed #candidate-heading, .workspace.is-collapsed #candidate-count, .workspace.is-collapsed .panel-heading .button { writing-mode: horizontal-tb; } }
 
 #batch-summary { grid-column: 1 / -1; margin: 0; }
+.filter-toggle { grid-column: 1 / -1; display: flex; align-items: center; gap: .45rem; cursor: pointer; }
+.filter-toggle input { width: auto; min-height: 0; margin: 0; flex: 0 0 auto; }
+.dec007-banner { margin: .75rem 1.2rem 0; padding: .7rem .85rem; border: 1px solid #d79c35; border-left: 4px solid var(--warning); border-radius: 5px; color: #613507; background: #fff6e0; font-size: .88rem; font-weight: 600; }
+.dec007-banner[hidden] { display: none; }
+.candidate-item.is-dec007-excluded { background: #fffbf0; }
+.candidate-item__excluded { justify-self: start; padding: .1rem .34rem; border: 1px solid #d79c35; border-radius: 3px; color: #7a4108; background: #fff3d1; font-size: .7rem; font-weight: 700; }

@@ -2979,3 +2979,210 @@ test("S6 a failing batches endpoint keeps bootstrap and saving usable with only 
   assert.match(elements.get("app-message").textContent, /已保存/,
     `保存仍应给出成功提示，实际为「${elements.get("app-message").textContent}」`);
 });
+
+/* ---------------------------------------------------------------------------------------------
+ * 第八轮（DEC-007 排除源筛选与可见性 D1–D6）：
+ *   D1 index.html 声明 #hide-excluded-filter（checkbox，文案含「隐藏 DEC-007 排除源」）与默认 hidden 的 #dec007-banner；
+ *   D2 勾选/取消勾选 #hide-excluded-filter 隐藏/恢复 dec007_excluded 候选并自动离开被隐藏的当前候选；
+ *   D3 URL 查询参数 ?hide_excluded=1 启动时自动勾选并隐藏排除源；
+ *   D4 直接打开排除候选时显示非阻塞 #dec007-banner（含 DEC-007、近重复、无需人工审核），控件不禁用；切回干净候选后隐藏；
+ *   D5 含排除源的批次（如 B3）在 #batch-summary 展示原始总数 + 有效待审 vs 排除待审，确认后实时更新；
+ *   D6 无排除元数据时优雅降级（不显横幅、不标排除徽标）。
+ * ------------------------------------------------------------------------------------------- */
+
+const DEC007_IDS = [...BATCH_IDS, "hide-excluded-filter", "dec007-banner"];
+
+function dec007Candidates() {
+  return [
+    candidate("video_0006_pre_01", {
+      source_id: "video_0006",
+      dec007_excluded: true,
+      dec007_reason: "near_duplicate_of_test_source",
+      dec007_matched_test_source_id: "video_0010",
+      candidate_reference: fullCandidateLabels(),
+    }),
+    candidate("video_0001_pre_01", {
+      source_id: "video_0001",
+      dec007_excluded: false,
+      dec007_reason: null,
+      dec007_matched_test_source_id: null,
+      candidate_reference: fullCandidateLabels(),
+    }),
+    candidate("video_0002_pre_01", {
+      source_id: "video_0002",
+      review_status: "confirmed",
+      dec007_excluded: false,
+      dec007_reason: null,
+      dec007_matched_test_source_id: null,
+    }),
+  ];
+}
+
+function dec007Batches() {
+  const provenance = {source: "docs/TODO.md", section: "6. SUBVIDEO-HUMAN-REVIEW", note: "合成"};
+  return {
+    schema: "subvideo-review-batches/v1",
+    candidate_total: 3,
+    batches: [
+      {
+        batch_id: "B3", name: "开发训练集", description: "含排除源", status: "ready", selectable: true,
+        candidate_count: 3, raw_candidate_count: 3, clean_candidate_count: 2, excluded_candidate_count: 1,
+        clean_unreviewed_count: 1, excluded_unreviewed_count: 1,
+        candidate_ids: ["video_0006_pre_01", "video_0001_pre_01", "video_0002_pre_01"],
+        missing_ids: [], fold_pool_counts: null, provenance,
+      },
+    ],
+  };
+}
+
+async function dec007Harness(overrides = {}) {
+  return createHarness({
+    extraIds: DEC007_IDS,
+    candidates: dec007Candidates(),
+    batches: dec007Batches(),
+    ...overrides,
+  });
+}
+
+test("D1 index.html declares the DEC-007 hide-excluded toggle and hidden warning banner", () => {
+  const toggle = tagContaining('id="hide-excluded-filter"');
+  assert.match(toggle.tag, /type="checkbox"/,
+    `#hide-excluded-filter 应是 checkbox，实际为「${toggle.tag}」`);
+  const labelText = innerTextOf('for="hide-excluded-filter"', "</label>");
+  assert.match(labelText, /隐藏\s*DEC-007\s*排除源/,
+    `#hide-excluded-filter 的 label 应说明「隐藏 DEC-007 排除源」，实际为「${labelText}」`);
+
+  const banner = tagContaining('id="dec007-banner"');
+  assert.match(banner.tag, /\bhidden\b/,
+    `#dec007-banner 应默认 hidden，实际为「${banner.tag}」`);
+});
+
+test("D2 toggling hide-excluded hides DEC-007 excluded candidates and moves to a clean candidate", async () => {
+  const {elements} = await dec007Harness();
+  assert.deepEqual(visibleIds(elements), ["video_0006_pre_01", "video_0001_pre_01", "video_0002_pre_01"]);
+  assert.equal(elements.get("clip-title").textContent, "video_0006_pre_01");
+  assert.equal(elements.get("dec007-banner").hidden, false, "选中排除候选时横幅必须可见");
+
+  elements.get("hide-excluded-filter").checked = true;
+  await fire(elements, "hide-excluded-filter", "change");
+
+  assert.deepEqual(visibleIds(elements), ["video_0001_pre_01", "video_0002_pre_01"],
+    `勾选隐藏 DEC-007 排除源后列表只应保留干净候选，实际为 ${JSON.stringify(visibleIds(elements))}`);
+  assert.equal(elements.get("candidate-count").textContent, "2 / 3");
+  assert.equal(elements.get("clip-title").textContent, "video_0001_pre_01",
+    "当前候选被隐藏且无未保存改动时应平滑切到首个干净候选");
+  assert.equal(elements.get("dec007-banner").hidden, true, "切到干净候选后横幅必须隐藏");
+
+  elements.get("hide-excluded-filter").checked = false;
+  await fire(elements, "hide-excluded-filter", "change");
+  assert.deepEqual(visibleIds(elements), ["video_0006_pre_01", "video_0001_pre_01", "video_0002_pre_01"]);
+});
+
+test("D3 query param hide_excluded=1 enables the toggle on startup", async () => {
+  const candidates = dec007Candidates();
+  const ids = [...HARNESS_IDS, ...DEC007_IDS];
+  const elements = new Map(ids.map((id) => [id, new Element("div")]));
+  elements.get("scope-filter").value = "development";
+  elements.get("fold-filter").value = "all";
+  elements.get("prefill-notice").hidden = false;
+  elements.get("dec007-banner").hidden = true;
+  elements.get("hide-excluded-filter").checked = false;
+  const selects = LABEL_NAMES.map((name) => Object.assign(new Element("select"), {name}));
+  const hints = LABEL_NAMES.map((name) => { const h = new Element("span"); h.dataset.sourceHint = name; return h; });
+  const qsa = (s) => (String(s).includes("source-hint") ? hints : selects);
+  elements.forEach((node) => { node.ownerQuerySelectorAll = qsa; });
+  let ready;
+  const context = {
+    document: {
+      getElementById: (id) => elements.get(id),
+      querySelectorAll: qsa,
+      createElement: (tag) => new Element(tag),
+      addEventListener: (ev, cb) => { if (ev === "DOMContentLoaded") ready = cb; },
+      body: new Element("body"),
+    },
+    window: {
+      addEventListener() {},
+      confirm: () => false,
+      location: {href: "http://127.0.0.1:8765/?hide_excluded=1", search: "?hide_excluded=1"},
+      localStorage: {getItem: () => null, setItem() {}, removeItem() {}},
+    },
+    localStorage: {getItem: () => null, setItem() {}, removeItem() {}},
+    setTimeout: (cb, ...a) => { cb(...a); return 0; },
+    clearTimeout: () => {},
+    URL: {createObjectURL: () => "blob:1", revokeObjectURL() {}},
+    fetch: async (url) => {
+      if (url.startsWith("/api/reviews")) return {ok: true, json: async () => ({latest: null, history: [], isolated_history: []})};
+      if (url === "/api/batches") return {ok: true, json: async () => dec007Batches()};
+      return {ok: true, json: async () => ({audit_current: true, audit_status: "current", audit_message: "ok", audit_issue_candidate_count: 0, token: "t", manifest_sha256: "1".repeat(64), candidates, pending_sources: []})};
+    },
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../static/app.js"), "utf8"), context);
+  await ready();
+
+  assert.equal(elements.get("hide-excluded-filter").checked, true, "?hide_excluded=1 应在启动时勾选隐藏开关");
+  assert.deepEqual(visibleIds(elements), ["video_0001_pre_01", "video_0002_pre_01"]);
+  assert.equal(elements.get("clip-title").textContent, "video_0001_pre_01");
+  assert.equal(elements.get("dec007-banner").hidden, true);
+});
+
+test("D4 opening an excluded candidate directly shows a non-blocking DEC-007 warning banner", async () => {
+  const {elements, selects, requests} = await dec007Harness();
+  const banner = elements.get("dec007-banner");
+
+  assert.equal(elements.get("clip-title").textContent, "video_0006_pre_01");
+  assert.equal(banner.hidden, false, "直接打开排除候选时必须显示 #dec007-banner");
+  assert.match(banner.textContent, /DEC-007/);
+  assert.match(banner.textContent, /video_0006/);
+  assert.match(banner.textContent, /video_0010/);
+  assert.match(banner.textContent, /近重复/);
+  assert.match(banner.textContent, /无需人工审核/);
+
+  /* 非阻塞：所有操作按钮与控件保持可用，可以保存草稿。 */
+  assert.equal(elements.get("save-draft").disabled, false);
+  assert.equal(elements.get("confirm-review").disabled, false);
+  assert.ok(selects.every((node) => !node.disabled));
+  await fire(elements, "save-draft", "click");
+  assert.equal(postRequests(requests).length, 1);
+
+  /* 切换到干净候选后横幅隐藏。 */
+  await fire(elements, "next-candidate", "click");
+  assert.equal(elements.get("clip-title").textContent, "video_0001_pre_01");
+  assert.equal(banner.hidden, true, "切换到干净候选后 #dec007-banner 必须隐藏");
+});
+
+test("D5 batch summary shows raw total alongside clean vs excluded unreviewed counts and updates on confirm", async () => {
+  const {elements} = await dec007Harness();
+  elements.get("batch-filter").value = "B3";
+  await fire(elements, "batch-filter", "change");
+
+  const summary = elements.get("batch-summary");
+  assert.equal(summary.hidden, false);
+  assert.match(summary.textContent, /本批已审 1 \/ 共 3/);
+  assert.match(summary.textContent, /有效待审 1/);
+  assert.match(summary.textContent, /排除待审 1/);
+  assert.match(summary.textContent, /共排除 1/);
+
+  /* 隐藏排除源并确认干净候选后，有效待审实时归零。 */
+  elements.get("hide-excluded-filter").checked = true;
+  await fire(elements, "hide-excluded-filter", "change");
+  assert.equal(elements.get("clip-title").textContent, "video_0001_pre_01");
+  await fire(elements, "confirm-review", "click");
+
+  assert.match(summary.textContent, /本批已审 2 \/ 共 3/);
+  assert.match(summary.textContent, /有效待审 0/);
+  assert.match(summary.textContent, /排除待审 1/);
+});
+
+test("D6 excluded candidates show a visual cue in the list while missing DEC-007 metadata degrades cleanly", async () => {
+  const {elements} = await dec007Harness();
+  const excludedItem = elements.get("candidate-list").children.find((n) => n.dataset.candidateId === "video_0006_pre_01");
+  const cleanItem = elements.get("candidate-list").children.find((n) => n.dataset.candidateId === "video_0001_pre_01");
+  assert.ok(excludedItem.classList.contains("is-dec007-excluded"));
+  assert.match(textOf(excludedItem), /DEC-007 排除/);
+  assert.ok(!cleanItem.classList.contains("is-dec007-excluded"));
+  assert.doesNotMatch(textOf(cleanItem), /DEC-007 排除/);
+
+  const plain = await createHarness({extraIds: DEC007_IDS, candidates: [candidate("plain_clip")]});
+  assert.equal(plain.elements.get("dec007-banner").hidden, true);
+  assert.deepEqual(visibleIds(plain.elements), ["plain_clip"]);
+});

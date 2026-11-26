@@ -680,6 +680,96 @@ class ReviewTests(unittest.TestCase):
             urlopen(base + "/media?candidate_id=../fixed_test")
         self.assertEqual(error.exception.code, 404)
 
+    def write_exclusions(self, payload):
+        path = self.root / "data/splits/dev-exclusions.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        return path
+
+    def test_dec007_exclusions_missing_degrades_gracefully(self):
+        bootstrap = self.app.bootstrap()
+        for row in bootstrap["candidates"]:
+            self.assertFalse(row["dec007_excluded"])
+            self.assertIsNone(row["dec007_reason"])
+            self.assertIsNone(row["dec007_matched_test_source_id"])
+        filtered = self.app.bootstrap(hide_excluded=True)
+        self.assertEqual([c["candidate_id"] for c in filtered["candidates"]], ["a", "b"])
+
+    def test_dec007_exclusions_annotate_filter_and_preserve_identities_and_export(self):
+        before_subjects = {cid: c["review_subject_sha256"] for cid, c in self.app.candidates.items()}
+        before_split_id = self.app.split_identity_sha256
+        before_export = self.app.export()
+        before_bootstrap_keys = set(self.app.bootstrap())
+
+        for key_name in ("excluded_subvideo_ids", "excluded_candidate_ids", "candidate_ids"):
+            with self.subTest(key_name=key_name):
+                self.write_exclusions({
+                    "schema": "tensile-dev-exclusions/1",
+                    "decision_id": "DEC-007",
+                    "excluded_dev_sources": [{
+                        "source_id": "source_a",
+                        "reason": "near_duplicate_of_test_source",
+                        "matched_test_source_id": "fixed_test",
+                        key_name: ["a"],
+                    }],
+                })
+                app = ReviewApp(self.root)
+                self.assertEqual({cid: c["review_subject_sha256"] for cid, c in app.candidates.items()}, before_subjects)
+                self.assertEqual(app.split_identity_sha256, before_split_id)
+                self.assertEqual(app.export(), before_export)
+                self.assertEqual(set(app.bootstrap()), before_bootstrap_keys)
+
+                rows = {c["candidate_id"]: c for c in app.bootstrap()["candidates"]}
+                self.assertTrue(rows["a"]["dec007_excluded"])
+                self.assertEqual(rows["a"]["dec007_reason"], "near_duplicate_of_test_source")
+                self.assertEqual(rows["a"]["dec007_matched_test_source_id"], "fixed_test")
+                self.assertFalse(rows["b"]["dec007_excluded"])
+                self.assertIsNone(rows["b"]["dec007_reason"])
+                self.assertIsNone(rows["b"]["dec007_matched_test_source_id"])
+
+                # Underlying candidate dict & review_subject_sha256 must not contain view-only DEC-007 keys.
+                self.assertNotIn("dec007_excluded", app.candidates["a"])
+                self.assertNotIn("dec007_reason", app.candidates["a"])
+                self.assertEqual(
+                    rows["a"]["review_subject_sha256"],
+                    digest(canonical({key: rows["a"][key] for key in REVIEW_SUBJECT_KEYS})),
+                )
+
+                # HTTP hide_excluded=1 filters bootstrap cleanly while direct review remains non-blocking.
+                server = ThreadingHTTPServer(("127.0.0.1", 0), handler_for(app))
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                try:
+                    base = f"http://127.0.0.1:{server.server_port}"
+                    with urlopen(base + "/api/bootstrap?hide_excluded=1") as resp:
+                        hidden_bs = json.load(resp)
+                    self.assertEqual([c["candidate_id"] for c in hidden_bs["candidates"]], ["b"])
+                    with urlopen(base + "/api/bootstrap") as resp:
+                        full_bs = json.load(resp)
+                    self.assertEqual([c["candidate_id"] for c in full_bs["candidates"]], ["a", "b"])
+                    with urlopen(base + "/api/reviews?candidate_id=a") as resp:
+                        direct_rev = json.load(resp)
+                    self.assertIsNone(direct_rev["latest"])
+                finally:
+                    server.shutdown()
+                    server.server_close()
+
+        # Direct saving on an excluded candidate remains non-blocking and preserves revision schema.
+        app_with_excl = ReviewApp(self.root)
+        saved = app_with_excl.save({**self.payload("draft"), "manifest_sha256": app_with_excl.manifest_sha256})
+        self.assertNotIn("dec007_excluded", saved)
+        self.assertNotIn("dec007_reason", saved)
+        self.assertEqual(saved["review_subject_sha256"], before_subjects["a"])
+        self.assertEqual(saved["split_identity_sha256"], before_split_id)
+
+    def test_dec007_exclusions_malformed_file_raises_review_error(self):
+        self.write_exclusions({"schema": "wrong-schema/99", "excluded_dev_sources": []})
+        with self.assertRaisesRegex(ReviewError, "DEC-007"):
+            ReviewApp(self.root)
+        (self.root / "data/splits/dev-exclusions.json").write_text("{broken json", encoding="utf-8")
+        with self.assertRaisesRegex(ReviewError, "DEC-007"):
+            ReviewApp(self.root)
+
 
 if __name__ == "__main__":
     unittest.main()
