@@ -1,0 +1,27 @@
+{
+  "run_id": "20261126-qwen3-vl-8b-vllm-dev-v1",
+  "model_id": "Qwen3-VL-8B-Instruct",
+  "model_path": "/data/models/Qwen3-VL-8B-Instruct",
+  "eval_subset_id": "eval-dev-v1",
+  "backend": "http",
+  "serving_engine": "vllm 0.34.0 (torch 2.14.0+cu130, python 3.12.16)",
+  "vllm_serve_args": [
+    "--served-model-name", "Qwen3-VL-8B-Instruct",
+    "--host", "127.0.0.1",
+    "--port", "18080",
+    "--dtype", "bfloat16",
+    "--gpu-memory-utilization", "0.88",
+    "--max-model-len", "8192",
+    "--max-num-seqs", "1",
+    "--limit-mm-per-prompt", "{\"image\": 8}"
+  ],
+  "mm_processor_kwargs": null,
+  "trust_remote_code": false,
+  "prompt_file": "script/five_label_eval/prompts/five_label_v2.txt",
+  "decode_config": {
+    "temperature": 0.0,
+    "max_tokens": 512,
+    "seed": null
+  },
+  "gpu": "NVIDIA GeForce RTX 4090 (24564 MiB)"
+}

@@ -1,0 +1,31 @@
+{
+  "run_id": "20261126-internvl3_5-8b-vllm-dev-v1",
+  "model_id": "InternVL3_5-8B",
+  "model_path": "/data/models/InternVL3_5-8B",
+  "verified_at": "2026-11-26T01:24:05+08:00",
+  "verified_host": "dell-Precision-3660 (100.70.83.68)",
+  "snapshot_mtime_utc8": "2026-11-25 22:54",
+  "file_sha256": {
+    "config.json": "e849152d81a9eb158475d493d6c5ba1fc935d35ed01429bbd0182582416bb963",
+    "preprocessor_config.json": "af09ffbe57900d5ae07f93f4c20693559a272e32fa6c5f816132cb71985aac98",
+    "model.safetensors.index.json": "96c2010f8ba2a6b1687753a52fe797667ab8a8de958104e409e7e65439074af5",
+    "tokenizer_config.json": "01fa09d7bd718d09a7d795aec4fb310f2be928b5273fd16faf64037f0e3993d5"
+  },
+  "weight_shards": [
+    {"file": "model-00001-of-00004.safetensors", "bytes": 4982437672, "sha256": "8948bf3bae28444c3a5f9120429acff1121ff3716b5f5e4a5041d511cab0bd12"},
+    {"file": "model-00002-of-00004.safetensors", "bytes": 3848612416, "sha256": "0646e5f2b3a811150998a7cb47bbbd38d5e812b2f2be365a2f6fe52c5c789c13"},
+    {"file": "model-00003-of-00004.safetensors", "bytes": 4999903176, "sha256": "e834ec95e94830b3da4a23df06abc296ba48756589eec359bdbfcc541358721a"},
+    {"file": "model-00004-of-00004.safetensors", "bytes": 3225776168, "sha256": "8c33a67f6ea2cc5c35fd631a763d70b52e4b132e12ca331c1767c0a95326840e"}
+  ],
+  "resolved_visual_processor": {
+    "dynamic_image_size": true,
+    "force_image_size": 448,
+    "min_dynamic_patch": 1,
+    "config_default_max_dynamic_patch": 12,
+    "effective_max_dynamic_patch_via_hf_overrides": 4,
+    "use_thumbnail": true,
+    "max_total_tiles_per_frame_with_thumbnail": 5,
+    "tokens_per_tile": 256,
+    "max_visual_tokens_per_frame": 1280
+  }
+}
