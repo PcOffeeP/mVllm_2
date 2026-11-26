@@ -33,7 +33,7 @@ import time
 from typing import Any, Callable, Sequence
 
 from ..score import InputError
-from . import InferenceRequest, InferenceResult, normalize_result
+from . import InferenceRequest, InferenceResult, MODALITY_TEXT_ONLY, modality_for_no_image, normalize_result
 
 SUPPORTED_MODEL_FAMILIES = ("minicpm-v-4.5", "qwen3-vl", "internvl3", "internvl3.5")
 MINICPM_TEMPORAL_GRID_SECONDS = 0.1
@@ -783,10 +783,12 @@ class TransformersBackend:
         timeout_seconds: float = 600.0,
         temperature: float = 0.0,
         max_tokens: int = 512,
+        top_p: float | None = None,
         seed: int | None = None,
         max_pixels: int | None = None,
         max_slice_nums: int | None = None,
         sampling_policy: dict[str, Any] | None = None,
+        no_image: bool = False,
         trusted_files_sha256: dict[str, str] | None = None,
         model: Any = None,
         processor: Any = None,
@@ -815,6 +817,16 @@ class TransformersBackend:
             raise InputError(f"temperature must be a finite number >= 0, got {temperature!r}")
         if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
             raise InputError(f"max_tokens must be a positive integer, got {max_tokens!r}")
+        if top_p is not None and (
+            isinstance(top_p, bool)
+            or not isinstance(top_p, (int, float))
+            or not math.isfinite(top_p)
+            or top_p <= 0
+            or top_p > 1.0
+        ):
+            raise InputError(f"top_p must be a finite number in (0, 1], got {top_p!r}")
+        if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+            raise InputError(f"seed must be an integer when set, got {seed!r}")
         if max_pixels is not None and (isinstance(max_pixels, bool) or not isinstance(max_pixels, int) or max_pixels <= 0):
             raise InputError(f"max_pixels must be a positive integer when set, got {max_pixels!r}")
         if max_slice_nums is not None and (
@@ -828,9 +840,11 @@ class TransformersBackend:
         self.timeout_seconds = float(timeout_seconds)
         self.temperature = float(temperature)
         self.max_tokens = int(max_tokens)
+        self.top_p = float(top_p) if top_p is not None else None
         self.seed = seed
         self.max_pixels = max_pixels
         self.sampling_policy = dict(sampling_policy) if isinstance(sampling_policy, dict) else None
+        self.no_image = bool(no_image)
         self.use_sigalrm = bool(use_sigalrm)
 
         if self.model_family == "minicpm-v-4.5":
@@ -944,37 +958,97 @@ class TransformersBackend:
             "model_id": self.model_id,
             "model_family": self.model_family,
             "model_path": str(self.model_path) if self.model_path is not None else None,
-            "max_pixels": self.max_pixels,
+            "no_image": self.no_image,
+            "modality": modality_for_no_image(self.no_image),
+            "max_pixels": None if self.no_image else self.max_pixels,
             "max_pixels_scope": (
-                "pre_processor_source_resize"
-                if self.model_family == "minicpm-v-4.5"
+                "not_applicable"
+                if self.no_image
                 else (
-                    "native_tile_and_source_budget"
-                    if self.model_family in ("internvl3", "internvl3.5")
-                    and isinstance(self._processor, InternVLNativeImageProcessor)
+                    "pre_processor_source_resize"
+                    if self.model_family == "minicpm-v-4.5"
                     else (
-                        "pre_processor_source_resize"
+                        "native_tile_and_source_budget"
                         if self.model_family in ("internvl3", "internvl3.5")
-                        else "native_processor_budget"
+                        and isinstance(self._processor, InternVLNativeImageProcessor)
+                        else (
+                            "pre_processor_source_resize"
+                            if self.model_family in ("internvl3", "internvl3.5")
+                            else "native_processor_budget"
+                        )
                     )
                 )
             ),
             "sampling_policy": self.sampling_policy,
-            "temporal_ids_policy": self.temporal_ids_policy,
-            "temporal_ids_grid_seconds": self.temporal_grid_seconds,
-            "max_slice_nums": self.max_slice_nums,
+            "temporal_ids_policy": "not_applicable" if self.no_image else self.temporal_ids_policy,
+            "temporal_ids_grid_seconds": None if self.no_image else self.temporal_grid_seconds,
+            "max_slice_nums": None if self.no_image else self.max_slice_nums,
             "verified_snapshot_sha256": self.verified_snapshot_sha256,
             "cold_load_seconds": self.cold_load_seconds,
             "timeout_seconds": self.timeout_seconds,
             "decode_config": {
                 "temperature": self.temperature,
                 "max_tokens": self.max_tokens,
+                "top_p": self.top_p,
                 "seed": self.seed,
             },
             "output_unwrapping": "none",
         }
 
-    def _run_minicpm(self, images: list[Any], request: InferenceRequest) -> tuple[str, dict[str, Any]]:
+    def _run_minicpm(
+        self,
+        images: list[Any],
+        request: InferenceRequest,
+        *,
+        no_image: bool = False,
+    ) -> tuple[str, dict[str, Any]]:
+        decode = request.decode_config or {}
+        temperature = float(decode["temperature"] if decode.get("temperature") is not None else self.temperature)
+        max_tokens = int(decode["max_tokens"] if decode.get("max_tokens") is not None else self.max_tokens)
+        top_p = decode["top_p"] if decode.get("top_p") is not None else self.top_p
+        seed = decode["seed"] if decode.get("seed") is not None else self.seed
+        _apply_seed(seed)
+        do_sample = temperature > 0.0
+
+        if no_image:
+            meta: dict[str, Any] = {
+                "no_image": True,
+                "modality": MODALITY_TEXT_ONLY,
+                "temporal_ids": None,
+                "max_slice_nums": None,
+                "use_image_id": False,
+            }
+            if hasattr(self._model, "chat"):
+                msgs = [{"role": "user", "content": [request.prompt_text]}]
+                chat_kwargs: dict[str, Any] = {
+                    "msgs": msgs,
+                    "tokenizer": self._tokenizer,
+                    "do_sample": do_sample,
+                    "max_new_tokens": max_tokens,
+                }
+                if do_sample:
+                    chat_kwargs["temperature"] = temperature
+                    if top_p is not None:
+                        chat_kwargs["top_p"] = float(top_p)
+                raw_text = self._model.chat(**chat_kwargs)
+                return raw_text, meta
+
+            if self._processor is not None:
+                inputs = self._processor(text=request.prompt_text, return_tensors="pt")
+            elif self._tokenizer is not None:
+                inputs = self._tokenizer(request.prompt_text, return_tensors="pt")
+            else:
+                raise RuntimeError("MiniCPM-V-4.5 requires model.chat, a processor, or a tokenizer")
+            inputs = _move_inputs_to_model_device(inputs, self._model)
+            gen_kwargs: dict[str, Any] = {"max_new_tokens": max_tokens, "do_sample": do_sample}
+            if do_sample:
+                gen_kwargs["temperature"] = temperature
+                if top_p is not None:
+                    gen_kwargs["top_p"] = float(top_p)
+            output_ids = self._model.generate(**inputs, **gen_kwargs)
+            text = self._decode_generated(output_ids, inputs)
+            return text, meta
+
         raw_frames = [f for f in (request.record.get("frames") or []) if isinstance(f, dict)]
         sorted_frames = sorted(
             raw_frames,
@@ -997,12 +1071,6 @@ class TransformersBackend:
             fps=fps,
             grid_seconds=self.temporal_grid_seconds or MINICPM_TEMPORAL_GRID_SECONDS,
         )
-        decode = request.decode_config or {}
-        temperature = float(decode.get("temperature", self.temperature))
-        max_tokens = int(decode.get("max_tokens", self.max_tokens))
-        seed = decode.get("seed", self.seed)
-        _apply_seed(seed)
-        do_sample = temperature > 0.0
         meta = {
             "temporal_ids": temporal_ids,
             "max_slice_nums": self.max_slice_nums,
@@ -1014,7 +1082,7 @@ class TransformersBackend:
 
         if hasattr(self._model, "chat"):
             msgs = [{"role": "user", "content": [*images, request.prompt_text]}]
-            chat_kwargs: dict[str, Any] = {
+            chat_kwargs = {
                 "msgs": msgs,
                 "tokenizer": self._tokenizer,
                 "temporal_ids": temporal_ids,
@@ -1025,6 +1093,8 @@ class TransformersBackend:
             }
             if do_sample:
                 chat_kwargs["temperature"] = temperature
+                if top_p is not None:
+                    chat_kwargs["top_p"] = float(top_p)
             raw_text = self._model.chat(**chat_kwargs)
             return raw_text, meta
 
@@ -1039,26 +1109,57 @@ class TransformersBackend:
             return_tensors="pt",
         )
         inputs = _move_inputs_to_model_device(inputs, self._model)
-        gen_kwargs: dict[str, Any] = {"max_new_tokens": max_tokens, "do_sample": do_sample}
+        gen_kwargs = {"max_new_tokens": max_tokens, "do_sample": do_sample}
         if do_sample:
             gen_kwargs["temperature"] = temperature
+            if top_p is not None:
+                gen_kwargs["top_p"] = float(top_p)
         output_ids = self._model.generate(**inputs, **gen_kwargs)
         text = self._decode_generated(output_ids, inputs)
         return text, meta
 
-    def _run_generic_vlm(self, images: list[Any], request: InferenceRequest) -> tuple[str, dict[str, Any]]:
+    def _run_generic_vlm(
+        self,
+        images: list[Any],
+        request: InferenceRequest,
+        *,
+        no_image: bool = False,
+    ) -> tuple[str, dict[str, Any]]:
         decode = request.decode_config or {}
-        temperature = float(decode.get("temperature", self.temperature))
-        max_tokens = int(decode.get("max_tokens", self.max_tokens))
-        seed = decode.get("seed", self.seed)
+        temperature = float(decode["temperature"] if decode.get("temperature") is not None else self.temperature)
+        max_tokens = int(decode["max_tokens"] if decode.get("max_tokens") is not None else self.max_tokens)
+        top_p = decode["top_p"] if decode.get("top_p") is not None else self.top_p
+        seed = decode["seed"] if decode.get("seed") is not None else self.seed
         _apply_seed(seed)
         do_sample = temperature > 0.0
-        meta: dict[str, Any] = {"model_family": self.model_family, "max_pixels": self.max_pixels}
-
-        if self._processor is None:
-            raise RuntimeError(f"{self.model_family} requires a processor")
+        meta: dict[str, Any] = {
+            "model_family": self.model_family,
+            "max_pixels": None if no_image else self.max_pixels,
+        }
+        if no_image:
+            meta["no_image"] = True
+            meta["modality"] = MODALITY_TEXT_ONLY
 
         if self.model_family in ("internvl3", "internvl3.5") and hasattr(self._model, "chat"):
+            generation_config: dict[str, Any] = {
+                "max_new_tokens": max_tokens,
+                "do_sample": do_sample,
+            }
+            if do_sample:
+                generation_config["temperature"] = temperature
+                if top_p is not None:
+                    generation_config["top_p"] = float(top_p)
+            if no_image:
+                raw_text = self._model.chat(
+                    self._tokenizer,
+                    None,
+                    request.prompt_text,
+                    generation_config,
+                )
+                return raw_text, meta
+
+            if self._processor is None:
+                raise RuntimeError(f"{self.model_family} requires a processor")
             if self.max_pixels is not None:
                 images = [_resize_image_to_max_pixels(img, self.max_pixels) for img in images]
             proc_kwargs: dict[str, Any] = {"images": images, "return_tensors": "pt"}
@@ -1085,12 +1186,6 @@ class TransformersBackend:
                 num_patches_list = [1] * len(images)
             frame_prefix = "\n".join(f"Frame{i + 1}: <image>" for i in range(len(images)))
             question = f"{frame_prefix}\n{request.prompt_text}"
-            generation_config: dict[str, Any] = {
-                "max_new_tokens": max_tokens,
-                "do_sample": do_sample,
-            }
-            if do_sample:
-                generation_config["temperature"] = temperature
             raw_text = self._model.chat(
                 self._tokenizer,
                 pixel_values,
@@ -1100,18 +1195,29 @@ class TransformersBackend:
             )
             return raw_text, meta
 
-        if self.model_family in ("internvl3", "internvl3.5") and self.max_pixels is not None:
+        if self._processor is None:
+            raise RuntimeError(f"{self.model_family} requires a processor")
+
+        if not no_image and self.model_family in ("internvl3", "internvl3.5") and self.max_pixels is not None:
             images = [_resize_image_to_max_pixels(img, self.max_pixels) for img in images]
 
-        messages = [
-            {
-                "role": "user",
-                "content": (
-                    [{"type": "image"} for _ in images]
-                    + [{"type": "text", "text": request.prompt_text}]
-                ),
-            }
-        ]
+        if no_image:
+            messages = [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": request.prompt_text}],
+                }
+            ]
+        else:
+            messages = [
+                {
+                    "role": "user",
+                    "content": (
+                        [{"type": "image"} for _ in images]
+                        + [{"type": "text", "text": request.prompt_text}]
+                    ),
+                }
+            ]
         if hasattr(self._processor, "apply_chat_template"):
             prompt_for_processor = self._processor.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
@@ -1121,16 +1227,19 @@ class TransformersBackend:
 
         proc_kwargs = {
             "text": prompt_for_processor,
-            "images": images,
             "return_tensors": "pt",
         }
-        if self.max_pixels is not None:
-            proc_kwargs["max_pixels"] = self.max_pixels
+        if not no_image:
+            proc_kwargs["images"] = images
+            if self.max_pixels is not None:
+                proc_kwargs["max_pixels"] = self.max_pixels
         inputs = self._processor(**proc_kwargs)
         inputs = _move_inputs_to_model_device(inputs, self._model)
         gen_kwargs = {"max_new_tokens": max_tokens, "do_sample": do_sample}
         if do_sample:
             gen_kwargs["temperature"] = temperature
+            if top_p is not None:
+                gen_kwargs["top_p"] = float(top_p)
         output_ids = self._model.generate(**inputs, **gen_kwargs)
         return self._decode_generated(output_ids, inputs), meta
 
@@ -1158,24 +1267,28 @@ class TransformersBackend:
         if isinstance(raw_timeout, bool) or not isinstance(raw_timeout, (int, float)) or not math.isfinite(raw_timeout) or raw_timeout <= 0:
             raise InputError(f"request timeout_seconds must be a positive finite number, got {raw_timeout!r}")
         timeout = float(raw_timeout)
+        effective_no_image = bool(self.no_image or request.no_image)
         try:
             with _sigalrm_timeout(timeout, enabled=self.use_sigalrm):
-                try:
-                    if request.frame_bytes is not None and self._image_loader is _default_image_loader:
-                        images = [_default_bytes_image_loader(raw) for raw in request.frame_bytes]
-                    else:
-                        images = [self._image_loader(path) for path in request.frame_paths]
-                except OSError as exc:
-                    return InferenceResult(
-                        status="request_failed",
-                        raw_output=None,
-                        latency_seconds=time.monotonic() - started,
-                        error_detail=f"failed to load L3 frame image: {exc}",
-                    )
-                if self.model_family == "minicpm-v-4.5":
-                    raw_text, meta = self._run_minicpm(images, request)
+                if effective_no_image:
+                    images: list[Any] = []
                 else:
-                    raw_text, meta = self._run_generic_vlm(images, request)
+                    try:
+                        if request.frame_bytes is not None and self._image_loader is _default_image_loader:
+                            images = [_default_bytes_image_loader(raw) for raw in request.frame_bytes]
+                        else:
+                            images = [self._image_loader(path) for path in request.frame_paths]
+                    except OSError as exc:
+                        return InferenceResult(
+                            status="request_failed",
+                            raw_output=None,
+                            latency_seconds=time.monotonic() - started,
+                            error_detail=f"failed to load L3 frame image: {exc}",
+                        )
+                if self.model_family == "minicpm-v-4.5":
+                    raw_text, meta = self._run_minicpm(images, request, no_image=effective_no_image)
+                else:
+                    raw_text, meta = self._run_generic_vlm(images, request, no_image=effective_no_image)
         except _InferenceTimeoutError as exc:
             return InferenceResult(
                 status="timeout",

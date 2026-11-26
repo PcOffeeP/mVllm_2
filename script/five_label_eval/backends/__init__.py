@@ -7,6 +7,13 @@ from typing import Any, Protocol
 from urllib.parse import urlsplit, urlunsplit
 
 VALID_BACKEND_STATUSES = ("success", "request_failed", "timeout")
+MODALITY_VISION_TEXT = "vision_text"
+MODALITY_TEXT_ONLY = "text_only"
+
+
+def modality_for_no_image(no_image: bool) -> str:
+    """Return canonical modality string for Run A (vision_text) vs Run B (text_only)."""
+    return MODALITY_TEXT_ONLY if no_image else MODALITY_VISION_TEXT
 
 
 @dataclass(frozen=True)
@@ -21,6 +28,7 @@ class InferenceRequest:
     timeout_seconds: float = 600.0
     decode_config: dict[str, Any] = field(default_factory=dict)
     frame_bytes: tuple[bytes, ...] | None = None
+    no_image: bool = False
 
 
 @dataclass(frozen=True)
