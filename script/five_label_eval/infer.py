@@ -340,6 +340,34 @@ def plan_predictions(
     return predictions
 
 
+def _validate_decode_config(decode_config: dict[str, Any] | None) -> None:
+    """Validate optional decoding parameters fail-closed before backend dispatch or serialization."""
+    if not isinstance(decode_config, dict):
+        return
+    if "temperature" in decode_config and decode_config["temperature"] is not None:
+        temp_val = decode_config["temperature"]
+        if isinstance(temp_val, bool) or not isinstance(temp_val, (int, float)) or not math.isfinite(temp_val) or temp_val < 0:
+            raise InputError(f"temperature must be a finite number >= 0, got {temp_val!r}")
+    if "max_tokens" in decode_config and decode_config["max_tokens"] is not None:
+        max_tok_val = decode_config["max_tokens"]
+        if isinstance(max_tok_val, bool) or not isinstance(max_tok_val, int) or max_tok_val <= 0:
+            raise InputError(f"max_tokens must be a positive integer, got {max_tok_val!r}")
+    if "top_p" in decode_config and decode_config["top_p"] is not None:
+        top_p_val = decode_config["top_p"]
+        if (
+            isinstance(top_p_val, bool)
+            or not isinstance(top_p_val, (int, float))
+            or not math.isfinite(top_p_val)
+            or top_p_val <= 0
+            or top_p_val > 1.0
+        ):
+            raise InputError(f"top_p must be a finite number in (0, 1], got {top_p_val!r}")
+    if "seed" in decode_config and decode_config["seed"] is not None:
+        seed_val = decode_config["seed"]
+        if isinstance(seed_val, bool) or not isinstance(seed_val, int):
+            raise InputError(f"seed must be an integer when set, got {seed_val!r}")
+
+
 def _extract_sampling_policy(records: list[dict]) -> dict[str, Any] | None:
     if not records:
         return None
@@ -388,29 +416,7 @@ def run_inference(
         or timeout_seconds <= 0
     ):
         raise InputError(f"timeout_seconds must be a positive finite number, got {timeout_seconds!r}")
-    if isinstance(decode_config, dict):
-        if "temperature" in decode_config and decode_config["temperature"] is not None:
-            temp_val = decode_config["temperature"]
-            if isinstance(temp_val, bool) or not isinstance(temp_val, (int, float)) or not math.isfinite(temp_val) or temp_val < 0:
-                raise InputError(f"temperature must be a finite number >= 0, got {temp_val!r}")
-        if "max_tokens" in decode_config and decode_config["max_tokens"] is not None:
-            max_tok_val = decode_config["max_tokens"]
-            if isinstance(max_tok_val, bool) or not isinstance(max_tok_val, int) or max_tok_val <= 0:
-                raise InputError(f"max_tokens must be a positive integer, got {max_tok_val!r}")
-        if "top_p" in decode_config and decode_config["top_p"] is not None:
-            top_p_val = decode_config["top_p"]
-            if (
-                isinstance(top_p_val, bool)
-                or not isinstance(top_p_val, (int, float))
-                or not math.isfinite(top_p_val)
-                or top_p_val <= 0
-                or top_p_val > 1.0
-            ):
-                raise InputError(f"top_p must be a finite number in (0, 1], got {top_p_val!r}")
-        if "seed" in decode_config and decode_config["seed"] is not None:
-            seed_val = decode_config["seed"]
-            if isinstance(seed_val, bool) or not isinstance(seed_val, int):
-                raise InputError(f"seed must be an integer when set, got {seed_val!r}")
+    _validate_decode_config(decode_config)
 
     samples = _validate_manifest_samples(manifest, exclusions=exclusions, enforce_exclusions=enforce_exclusions)
     effective_subset_id = _resolve_and_verify_frozen_subset(
@@ -481,10 +487,8 @@ def run_inference(
             else {}
         )
         merged: dict[str, Any] = {
-            "temperature": raw_decode.get("temperature", backend_decode.get("temperature")),
-            "max_tokens": raw_decode.get("max_tokens", backend_decode.get("max_tokens")),
-            "top_p": raw_decode.get("top_p", backend_decode.get("top_p")),
-            "seed": raw_decode.get("seed", backend_decode.get("seed")),
+            key: raw_decode[key] if raw_decode.get(key) is not None else backend_decode.get(key)
+            for key in ("temperature", "max_tokens", "top_p", "seed")
         }
         for key, value in raw_decode.items():
             if key not in merged:
@@ -497,6 +501,16 @@ def run_inference(
         if no_image and isinstance(backend_identity, dict):
             backend_identity["no_image"] = True
             backend_identity["modality"] = MODALITY_TEXT_ONLY
+            if "max_pixels" in backend_identity:
+                backend_identity["max_pixels"] = None
+            if "max_pixels_scope" in backend_identity:
+                backend_identity["max_pixels_scope"] = "not_applicable"
+            if "temporal_ids_policy" in backend_identity:
+                backend_identity["temporal_ids_policy"] = "not_applicable"
+            if "temporal_ids_grid_seconds" in backend_identity:
+                backend_identity["temporal_ids_grid_seconds"] = None
+            if "max_slice_nums" in backend_identity:
+                backend_identity["max_slice_nums"] = None
         meta: dict[str, Any] = {
             "run_id": run_id,
             "model_id": model_id,
@@ -522,7 +536,7 @@ def run_inference(
         payload = _build_run_meta(run_status)
         if meta_target is not None:
             serialized = (
-                json.dumps(payload, ensure_ascii=False, indent=2)
+                json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False)
                 .encode("utf-8", errors="replace")
                 .decode("utf-8")
                 + "\n"
@@ -734,6 +748,7 @@ def main(argv=None) -> int:
             "top_p": args.top_p,
             "seed": args.seed,
         }
+        _validate_decode_config(decode_config)
         if args.backend == "fake":
             if args.model_id != "fake":
                 raise InputError("fake backend only accepts --model-id fake")
@@ -818,7 +833,7 @@ def main(argv=None) -> int:
                     }
                     if effective_subset_id is not None:
                         meta_payload["eval_subset_id"] = effective_subset_id
-                    meta_stream.write(json.dumps(meta_payload, ensure_ascii=False, indent=2) + "\n")
+                    meta_stream.write(json.dumps(meta_payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
             except Exception:
                 if pred_stream is not None:
                     pred_stream.close()

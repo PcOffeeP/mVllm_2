@@ -845,3 +845,84 @@ def test_no_image_enforces_paired_validation_guards_fail_closed(tmp_path):
     scored = score.score(dev_manifest, [], good_rows)
     assert len(scored["samples"]) == 210
     assert scored["groups"]["real"]["full_clip"]["clips"] == 210
+
+
+# --------------------------------------------------------------------------------------
+# 6. Regression tests for PR #29 review advisories (decode merge, Run-A backend reuse, CLI validation)
+# --------------------------------------------------------------------------------------
+def test_no_image_advisory_regressions_decode_merge_backend_identity_and_fake_cli_nan(tmp_path):
+    records, manifest, _, _ = _build_batch(tmp_path, count=1, write_pngs=False)
+    prompt_id = "prompt@sha256:" + "a" * 64
+
+    # 6a. Passing decode_config={"top_p": None} into run_inference with an HttpBackend(top_p=0.8, max_pixels=65536)
+    #     must record the actual effective top_p=0.8 AND neutralize stale max_pixels in backend_identity when no_image=True.
+    captured_payload: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_payload.update(json.loads(request.content.decode("utf-8")))
+        return httpx.Response(200, json={"choices": [{"message": {"content": LEGAL_JSON}}]})
+
+    runa_constructed_backend = HttpBackend(
+        endpoint="http://127.0.0.1:8000/v1",
+        model_id="Qwen3-VL-8B-Instruct@sha256:1",
+        temperature=0.2,
+        max_tokens=256,
+        top_p=0.8,
+        seed=7,
+        max_pixels=65536,
+        no_image=False,
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        preds, meta = infer.run_inference(
+            records,
+            manifest,
+            backend=runa_constructed_backend,
+            run_id="runb-merge-check",
+            prompt_id=prompt_id,
+            prompt_text="prompt",
+            model_id="Qwen3-VL-8B-Instruct@sha256:1",
+            decode_config={"temperature": None, "max_tokens": None, "top_p": None, "seed": None},
+            no_image=True,
+        )
+    finally:
+        runa_constructed_backend.close()
+
+    assert len(preds) == 1 and preds[0]["status"] == "success"
+    assert captured_payload["top_p"] == 0.8
+    assert captured_payload["temperature"] == 0.2
+    assert captured_payload["max_tokens"] == 256
+    assert captured_payload["seed"] == 7
+    assert "mm_processor_kwargs" not in captured_payload
+    assert meta["decode_config"] == {"temperature": 0.2, "max_tokens": 256, "top_p": 0.8, "seed": 7}
+    assert meta["backend_identity"]["no_image"] is True
+    assert meta["backend_identity"]["modality"] == MODALITY_TEXT_ONLY
+    assert meta["backend_identity"]["max_pixels"] is None
+
+    # 6b. Default fake CLI path must reject --top-p nan fail-closed before writing any output/meta files.
+    rec_path = tmp_path / "recs.jsonl"
+    rec_path.write_text(json.dumps(records[0], ensure_ascii=False) + "\n", encoding="utf-8")
+    man_path = tmp_path / "man.json"
+    man_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+    prompt_path = tmp_path / "prompt.txt"
+    prompt_path.write_text("prompt\n", encoding="utf-8")
+    bad_out = tmp_path / "nan_preds.jsonl"
+    bad_meta = tmp_path / "nan_meta.json"
+    err = io.StringIO()
+    with redirect_stderr(err):
+        rc = infer.main([
+            "--backend", "fake",
+            "--model-id", "fake",
+            "--run-id", "run-nan",
+            "--manifest", str(man_path),
+            "--input-config", str(rec_path),
+            "--prompt-file", str(prompt_path),
+            "--top-p", "nan",
+            "--output", str(bad_out),
+            "--meta-output", str(bad_meta),
+        ])
+    assert rc == 2
+    assert "top_p" in err.getvalue()
+    assert not bad_out.exists()
+    assert not bad_meta.exists()
+
