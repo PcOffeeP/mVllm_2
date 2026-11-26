@@ -11,6 +11,7 @@
 | 核验提示 | `data/sub_video/audit.json`；仅在它记录的清单摘要与当前清单一致时展示，供人工重点检查。摘要不一致时该筛选不可用，需先核对或重算，不得在审查期间临时替换。 |
 | 核验记录的生成 | 由生成入口写入 `data/sub_video/audit.json`：`python3 -m script.subvideo_generation.generate --audit-only --write-audit`。已有记录时须显式加 `--replace-audit` 才覆盖；批次身份或清单校验不通过时拒绝写入，不会改动既有记录。不传 `--write-audit` 时 `--audit-only` 仍只打印、不写盘。 |
 | 批次配置 | `data/subvideo-review/batches.json`；启动时读取，缺失时不提供批次。仅用于筛选，不参与审核身份。 |
+| DEC-007 排除清单 | `data/splits/dev-exclusions.json`；启动时只读加载，缺失时默认为空。仅用于在审核界面标注排除源、提供「隐藏 DEC-007 排除源」筛选（及 `/api/bootstrap?hide_excluded=1`、`/api/batches?hide_excluded=1`）和展示非阻塞提示横幅，不参与审核身份，不改变导出格式。 |
 | 标签规则 | [标签说明](../../docs/label.md)；输入值及组合按当前规则校验。 |
 | 人工审核 | `data/subvideo-review/reviews.json`；首次运行前不存在，之后逐次累积审核修订，并由 Git 跟踪。当前已有 3 个已确认候选的试审记录。审核后需提交记录，视频和本地锁文件不进入 Git。 |
 

@@ -70,6 +70,10 @@
             <option value="attention">标签组合待复核</option>
           </select>
           <p id="audit-info" role="status"></p>
+          <label class="filter-toggle" for="hide-excluded-filter">
+            <input id="hide-excluded-filter" name="hide-excluded-filter" type="checkbox" />
+            <span>隐藏 DEC-007 排除源</span>
+          </label>
           <label for="candidate-search">查找候选</label>
           <input id="candidate-search" type="search" placeholder="名称、编号或来源" autocomplete="off" />
         </div>
@@ -120,6 +124,7 @@
         <div id="app-message" class="app-message" role="status" aria-live="polite" aria-atomic="true">
           <strong>准备就绪</strong><span>选择候选后开始人工审核。</span>
         </div>
+        <div id="dec007-banner" class="dec007-banner" role="note" hidden></div>
 
         <section class="media-and-reference" aria-label="画面和参考信息">
           <div class="media-column">

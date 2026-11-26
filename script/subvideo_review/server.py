@@ -37,6 +37,72 @@ OPTIONS = {
 }
 STATUSES = {"draft", "confirmed", "returned", "question"}
 STORE_SCHEMA = "tensile-subvideo-human-review/2"
+DEC007_EXCLUSIONS_SCHEMA = "tensile-dev-exclusions/1"
+DEC007_CANDIDATE_ID_KEYS = ("excluded_subvideo_ids", "excluded_candidate_ids", "candidate_ids")
+
+
+def load_dev_exclusions(path):
+    """Read-only loader for data/splits/dev-exclusions.json (DEC-007).
+
+    Returns empty lookup maps when the file is absent (e.g. isolated synthetic
+    fixtures). Never enters review_subject_sha256, split_identity_sha256, or export().
+    """
+    empty = {"decision_id": None, "by_source": {}, "by_candidate": {}}
+    target = Path(path)
+    if not target.is_file():
+        return empty
+    try:
+        payload = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ReviewError(f"DEC-007 排除清单不可用：{error}") from error
+    if not isinstance(payload, dict):
+        raise ReviewError("DEC-007 排除清单须为 JSON 对象")
+    schema = payload.get("schema")
+    if schema is not None and schema != DEC007_EXCLUSIONS_SCHEMA:
+        raise ReviewError(f"DEC-007 排除清单 schema 不符：{schema}")
+    entries = payload.get("excluded_dev_sources", [])
+    if not isinstance(entries, list):
+        raise ReviewError("DEC-007 排除清单 excluded_dev_sources 须为列表")
+    raw_decision = payload.get("decision_id")
+    decision_id = raw_decision.strip() if isinstance(raw_decision, str) and raw_decision.strip() else "DEC-007"
+    by_source = {}
+    by_candidate = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ReviewError("DEC-007 排除清单 excluded_dev_sources 条目须为对象")
+        source_id = entry.get("source_id")
+        if source_id is not None and (not isinstance(source_id, str) or not source_id.strip()):
+            raise ReviewError(f"DEC-007 排除清单 source_id 无效：{source_id}")
+        reason = entry.get("reason")
+        if reason is not None and not isinstance(reason, str):
+            raise ReviewError(f"DEC-007 排除清单 reason 无效：{reason}")
+        reason_text = reason.strip() if isinstance(reason, str) and reason.strip() else "excluded_dev_source"
+        matched = entry.get("matched_test_source_id")
+        if matched is not None and not isinstance(matched, str):
+            raise ReviewError(f"DEC-007 排除清单 matched_test_source_id 无效：{matched}")
+        matched_text = matched.strip() if isinstance(matched, str) and matched.strip() else None
+        info = {
+            "decision_id": decision_id,
+            "source_id": source_id.strip() if isinstance(source_id, str) else None,
+            "reason": reason_text,
+            "matched_test_source_id": matched_text,
+        }
+        if info["source_id"]:
+            by_source[info["source_id"]] = info
+        for key in DEC007_CANDIDATE_ID_KEYS:
+            if key not in entry or entry[key] is None:
+                continue
+            ids = entry[key]
+            if not isinstance(ids, list) or not all(isinstance(cid, str) and cid.strip() for cid in ids):
+                raise ReviewError(f"DEC-007 排除清单 {key} 须为非空字符串列表")
+            for cid in ids:
+                by_candidate[cid.strip()] = info
+    return {"decision_id": decision_id, "by_source": by_source, "by_candidate": by_candidate}
+
+
+def _query_flag(query, name):
+    value = (query.get(name, [""])[0] or "").strip().lower()
+    return value in ("1", "true", "yes")
 
 
 def digest(data):
@@ -114,6 +180,8 @@ class ReviewApp:
             self.batch_definitions = batches.load_definitions(self.root / "data/subvideo-review/batches.json")
         except FileNotFoundError:
             self.batch_definitions = []
+        self.exclusions_path = self.root / "data/splits/dev-exclusions.json"
+        self.dec007_exclusions = load_dev_exclusions(self.exclusions_path)
         self.file_signatures = {}
         self.manifest_path = Path(manifest) if manifest else self.root / "data/sub_video/manifest.json"
         if not self.manifest_path.is_absolute():
@@ -434,18 +502,90 @@ class ReviewApp:
         isolated = [r for r in rows if r.get("candidate_id") == candidate["candidate_id"] and not self.matches(r, candidate)]
         return {"latest": history[-1] if history else None, "history": history, "isolated_history": isolated}
 
-    def batch_catalog(self):
+    def dec007_exclusion_for(self, candidate):
+        candidate_id = candidate["candidate_id"]
+        if candidate_id in self.dec007_exclusions["by_candidate"]:
+            return self.dec007_exclusions["by_candidate"][candidate_id]
+        source_id = candidate["source_id"]
+        if source_id in self.dec007_exclusions["by_source"]:
+            return self.dec007_exclusions["by_source"][source_id]
+        return None
+
+    def batch_catalog(self, *, hide_excluded=False):
+        revisions = self.read_store()
+        statuses = {}
+        for candidate_id, candidate in self.candidates.items():
+            latest = self._review(candidate, revisions)["latest"]
+            statuses[candidate_id] = latest["review_status"] if latest else "unreviewed"
+        excluded_all = {
+            candidate_id
+            for candidate_id, candidate in self.candidates.items()
+            if self.dec007_exclusion_for(candidate) is not None
+        }
         rows = []
         for batch in self.batch_definitions:
             row = {key: batch[key] for key in ("batch_id", "name", "description", "status", "provenance")}
-            rows.append({**row, "selectable": batch["status"] == "ready", **batches.select(batch, self.candidates)})
-        return {"schema": batches.SCHEMA, "candidate_total": len(self.candidates), "batches": rows}
+            selected = batches.select(batch, self.candidates)
+            if batch["status"] == "ready":
+                raw_ids = selected["candidate_ids"]
+                excluded_ids = [cid for cid in raw_ids if cid in excluded_all]
+                clean_ids = [cid for cid in raw_ids if cid not in excluded_all]
+                returned_ids = clean_ids if hide_excluded else raw_ids
+                selected = {
+                    **selected,
+                    "candidate_ids": returned_ids,
+                    "candidate_count": len(returned_ids),
+                    "raw_candidate_count": len(raw_ids),
+                    "clean_candidate_count": len(clean_ids),
+                    "excluded_candidate_count": len(excluded_ids),
+                    "excluded_candidate_ids": excluded_ids,
+                    "excluded_sources": sorted({self.candidates[cid]["source_id"] for cid in excluded_ids}),
+                    "excluded_unreviewed_sources": sorted({
+                        self.candidates[cid]["source_id"] for cid in excluded_ids if statuses[cid] == "unreviewed"
+                    }),
+                    "confirmed_count": sum(1 for cid in raw_ids if statuses[cid] == "confirmed"),
+                    "clean_confirmed_count": sum(1 for cid in clean_ids if statuses[cid] == "confirmed"),
+                    "excluded_confirmed_count": sum(1 for cid in excluded_ids if statuses[cid] == "confirmed"),
+                    "unreviewed_count": sum(1 for cid in raw_ids if statuses[cid] == "unreviewed"),
+                    "clean_unreviewed_count": sum(1 for cid in clean_ids if statuses[cid] == "unreviewed"),
+                    "excluded_unreviewed_count": sum(1 for cid in excluded_ids if statuses[cid] == "unreviewed"),
+                }
+            else:
+                selected = {
+                    **selected,
+                    "raw_candidate_count": None,
+                    "clean_candidate_count": None,
+                    "excluded_candidate_count": None,
+                    "excluded_candidate_ids": [],
+                    "excluded_sources": [],
+                    "excluded_unreviewed_sources": [],
+                    "confirmed_count": None,
+                    "clean_confirmed_count": None,
+                    "excluded_confirmed_count": None,
+                    "unreviewed_count": None,
+                    "clean_unreviewed_count": None,
+                    "excluded_unreviewed_count": None,
+                }
+            rows.append({**row, "selectable": batch["status"] == "ready", **selected})
+        raw_total = len(self.candidates)
+        excluded_total = len(excluded_all)
+        return {
+            "schema": batches.SCHEMA,
+            "hide_excluded": bool(hide_excluded),
+            "candidate_total": raw_total - excluded_total if hide_excluded else raw_total,
+            "raw_candidate_total": raw_total,
+            "excluded_candidate_total": excluded_total,
+            "batches": rows,
+        }
 
-    def bootstrap(self):
+    def bootstrap(self, *, hide_excluded=False):
         self.assert_manifest()
         rows = self.read_store()
         candidates = []
         for candidate_id, candidate in self.candidates.items():
+            exclusion = self.dec007_exclusion_for(candidate)
+            if hide_excluded and exclusion is not None:
+                continue
             review = self._review(candidate, rows)
             display = copy.deepcopy(candidate["candidate_reference"])
             mapped = False
@@ -454,7 +594,13 @@ class ReviewApp:
                     display[name] = "无法判断"
                     mapped = True
             candidates.append({**candidate, "candidate_reference_display": display,
-                               "prefill_note": "初值为旧规则固定组合值『无』，已按新规则映射为无法判断" if mapped else None, "review_status": review["latest"]["review_status"] if review["latest"] else "unreviewed", "review_id": review["latest"]["review_id"] if review["latest"] else None, "isolated_revision_count": len(review["isolated_history"])})
+                               "prefill_note": "初值为旧规则固定组合值『无』，已按新规则映射为无法判断" if mapped else None,
+                               "review_status": review["latest"]["review_status"] if review["latest"] else "unreviewed",
+                               "review_id": review["latest"]["review_id"] if review["latest"] else None,
+                               "isolated_revision_count": len(review["isolated_history"]),
+                               "dec007_excluded": exclusion is not None,
+                               "dec007_reason": exclusion["reason"] if exclusion is not None else None,
+                               "dec007_matched_test_source_id": exclusion["matched_test_source_id"] if exclusion is not None else None})
         return {"manifest_sha256": self.manifest_sha256, "token": self.token, "options": OPTIONS, "candidates": candidates,
                 "audit_current": self.audit_current, "audit_status": self.audit_status,
                 "audit_message": self.audit_message,
@@ -615,9 +761,9 @@ def handler_for(app):
                     mime = {"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8"}[name]
                     self.respond(200, (HERE / "static" / name).read_bytes(), mime)
                 elif url.path == "/api/batches":
-                    self.respond(200, canonical(app.batch_catalog()))
+                    self.respond(200, canonical(app.batch_catalog(hide_excluded=_query_flag(query, "hide_excluded"))))
                 elif url.path == "/api/bootstrap":
-                    self.respond(200, canonical(app.bootstrap()))
+                    self.respond(200, canonical(app.bootstrap(hide_excluded=_query_flag(query, "hide_excluded"))))
                 elif url.path == "/api/reviews":
                     self.respond(200, canonical(app.review(candidate_id)))
                 elif url.path == "/api/export":

@@ -352,6 +352,48 @@ class BatchEndpointTests(SyntheticProject):
         self.assertEqual(self.batches_path.read_bytes(), config_bytes, "只读接口不得改写批次配置")
         self.assertFalse(self.records_path.exists(), "只读接口不得创建审核记录")
 
+    def test_api_batches_reports_dec007_counts_and_supports_hide_excluded(self):
+        excl_path = self.root / "data/splits/dev-exclusions.json"
+        excl_path.write_text(json.dumps({
+            "schema": "tensile-dev-exclusions/1",
+            "decision_id": "DEC-007",
+            "excluded_dev_sources": [{
+                "source_id": "dev_2",
+                "reason": "near_duplicate_of_test_source",
+                "matched_test_source_id": "fixed_a",
+                "excluded_subvideo_ids": ["cand_dev_2"],
+            }],
+        }), encoding="utf-8")
+        app = self.configured_app()
+
+        full = self.get_json(app, "/api/batches")
+        self.assertFalse(full["hide_excluded"])
+        self.assertEqual(full["raw_candidate_total"], 6)
+        self.assertEqual(full["candidate_total"], 6)
+        self.assertEqual(full["excluded_candidate_total"], 1)
+        b3 = batch_by_id(full, "B3")
+        self.assertEqual(b3["candidate_count"], 3)
+        self.assertEqual(b3["raw_candidate_count"], 3)
+        self.assertEqual(b3["clean_candidate_count"], 2)
+        self.assertEqual(b3["excluded_candidate_count"], 1)
+        self.assertEqual(b3["clean_unreviewed_count"], 2)
+        self.assertEqual(b3["excluded_unreviewed_count"], 1)
+        self.assertEqual(b3["excluded_candidate_ids"], ["cand_dev_2"])
+        self.assertEqual(b3["excluded_sources"], ["dev_2"])
+        self.assertIn("cand_dev_2", b3["candidate_ids"])
+
+        hidden = self.get_json(app, "/api/batches?hide_excluded=1")
+        self.assertTrue(hidden["hide_excluded"])
+        self.assertEqual(hidden["candidate_total"], 5)
+        self.assertEqual(hidden["raw_candidate_total"], 6)
+        b3_hidden = batch_by_id(hidden, "B3")
+        self.assertEqual(b3_hidden["candidate_count"], 2)
+        self.assertEqual(b3_hidden["raw_candidate_count"], 3)
+        self.assertEqual(b3_hidden["clean_unreviewed_count"], 2)
+        self.assertEqual(b3_hidden["excluded_unreviewed_count"], 1)
+        self.assertNotIn("cand_dev_2", b3_hidden["candidate_ids"])
+        self.assertFalse(self.records_path.exists(), "只读批次接口不得创建审核记录")
+
 
 class ExistingContractGuardTests(SyntheticProject):
     """本功能不得改变既有 bootstrap 契约与审核身份摘要。"""
@@ -378,6 +420,25 @@ class ExistingContractGuardTests(SyntheticProject):
 
         self.assertEqual(after, before, "批次配置不得改变已有审核记录的身份摘要")
         self.assertEqual(len(before), 6)
+
+    def test_dec007_exclusions_preserve_bootstrap_keys_export_and_identity_hashes(self):
+        before_export = self.app.export()
+        before_subjects = {cid: c["review_subject_sha256"] for cid, c in self.app.candidates.items()}
+        before_split_id = self.app.split_identity_sha256
+        (self.root / "data/splits/dev-exclusions.json").write_text(json.dumps({
+            "schema": "tensile-dev-exclusions/1",
+            "decision_id": "DEC-007",
+            "excluded_dev_sources": [{
+                "source_id": "dev_1",
+                "reason": "near_duplicate_of_test_source",
+                "excluded_subvideo_ids": ["cand_dev_1"],
+            }],
+        }), encoding="utf-8")
+        reloaded = ReviewApp(self.root)
+        self.assertEqual(set(reloaded.bootstrap()), BOOTSTRAP_KEYS)
+        self.assertEqual(reloaded.export(), before_export)
+        self.assertEqual({cid: c["review_subject_sha256"] for cid, c in reloaded.candidates.items()}, before_subjects)
+        self.assertEqual(reloaded.split_identity_sha256, before_split_id)
 
 
 def split_ids(name):
@@ -584,6 +645,46 @@ class RealDataGuardTests(unittest.TestCase):
                          "该候选同一实例在三折分别是 val 与 train，是 B2／B3 跨池命中的具体证据")
         self.assertIn(candidate_id, self.select("B3")["candidate_ids"], "fold1／fold2 为 train，应命中 B3")
         self.assertEqual(folds["0"], "val", "fold0 为 val，因此同时计入 B2 的 fold0 池")
+
+    def test_real_dec007_exclusions_b3_counts_and_frozen_subset_integrity(self):
+        app = ReviewApp(REPO_ROOT)
+        bootstrap = app.bootstrap()
+        excluded_rows = [row for row in bootstrap["candidates"] if row["dec007_excluded"]]
+        self.assertEqual(len(bootstrap["candidates"]), 1633)
+        self.assertEqual(len(excluded_rows), 20, "DEC-007 应标记 video_0006 (19) + video_0079 (1) 共 20 条子视频")
+        self.assertEqual({row["source_id"] for row in excluded_rows}, {"video_0006", "video_0079"})
+        for row in excluded_rows:
+            self.assertEqual(row["dec007_reason"], "near_duplicate_of_test_source")
+            self.assertIn(row["dec007_matched_test_source_id"], ("video_0010", "video_0032"))
+
+        hidden_bootstrap = app.bootstrap(hide_excluded=True)
+        self.assertEqual(len(hidden_bootstrap["candidates"]), 1613)
+        self.assertFalse(any(row["dec007_excluded"] for row in hidden_bootstrap["candidates"]))
+
+        catalog = app.batch_catalog()
+        b3 = batch_by_id(catalog, "B3")
+        self.assertEqual(b3["raw_candidate_count"], 1319)
+        self.assertEqual(b3["candidate_count"], 1319)
+        self.assertEqual(b3["clean_candidate_count"], 1299)
+        self.assertEqual(b3["excluded_candidate_count"], 20)
+        self.assertEqual(b3["clean_unreviewed_count"], 1089)
+        self.assertEqual(b3["excluded_unreviewed_count"], 17)
+        self.assertEqual(b3["excluded_unreviewed_sources"], ["video_0006"])
+        self.assertEqual(b3["clean_confirmed_count"], 210)
+        self.assertEqual(b3["excluded_confirmed_count"], 3)
+
+        hidden_catalog = app.batch_catalog(hide_excluded=True)
+        b3_hidden = batch_by_id(hidden_catalog, "B3")
+        self.assertEqual(b3_hidden["candidate_count"], 1299)
+        self.assertEqual(b3_hidden["raw_candidate_count"], 1319)
+        self.assertEqual(b3_hidden["clean_unreviewed_count"], 1089)
+        self.assertEqual(b3_hidden["excluded_unreviewed_count"], 17)
+        self.assertEqual(set(b3_hidden["candidate_ids"]) & set(b3["excluded_candidate_ids"]), set())
+
+        # Verify V1_PINNED_INPUTS & frozen eval subsets remain 100% intact.
+        from script.five_label_eval.freeze_subsets import verify_frozen_subsets
+        verified = verify_frozen_subsets(REPO_ROOT / "data/eval-subsets")
+        self.assertEqual(len(verified), 2)
 
 
 if __name__ == "__main__":

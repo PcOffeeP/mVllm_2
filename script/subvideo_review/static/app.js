@@ -35,6 +35,39 @@
     if (!response.ok) throw new Error(value.error || `请求失败 (${response.status})`);
     return value;
   }
+  function queryFlag(name) {
+    const raw = typeof window.location?.search === "string" && window.location.search
+      ? window.location.search
+      : (typeof window.location?.href === "string" && window.location.href.includes("?")
+        ? window.location.href.slice(window.location.href.indexOf("?")).split("#")[0]
+        : "");
+    const pairs = raw.replace(/^\?/, "").split("&").filter(Boolean);
+    for (const pair of pairs) {
+      const eq = pair.indexOf("=");
+      const key = decodeURIComponent(eq >= 0 ? pair.slice(0, eq) : pair);
+      if (key !== name) continue;
+      const value = decodeURIComponent(eq >= 0 ? pair.slice(eq + 1) : "").trim().toLowerCase();
+      return value === "1" || value === "true" || value === "yes";
+    }
+    return false;
+  }
+  function renderDec007Banner(candidate) {
+    const banner = byId("dec007-banner");
+    if (!banner) return;
+    if (!candidate?.dec007_excluded) {
+      banner.hidden = true;
+      banner.textContent = "";
+      return;
+    }
+    const reasonText = candidate.dec007_reason === "near_duplicate_of_test_source"
+      ? "与测试集来源近重复"
+      : (candidate.dec007_reason || "DEC-007 排除开发源");
+    const matched = candidate.dec007_matched_test_source_id
+      ? `（对应测试源 ${candidate.dec007_matched_test_source_id}）`
+      : "";
+    banner.hidden = false;
+    banner.textContent = `DEC-007 排除源提示：来源 ${candidate.source_id} 已按 DEC-007 排除（${reasonText}${matched}），无需人工审核，不进入训练或评测子集；本提示不阻塞查看。`;
+  }
   function filtered() {
     const scope = byId("scope-filter").value;
     const source = byId("source-filter").value;
@@ -42,9 +75,11 @@
     const [foldId, foldPartition] = (fold || "all").split(":");
     const status = byId("status-filter").value;
     const attention = byId("attention-filter").value;
+    const hideExcluded = Boolean(byId("hide-excluded-filter")?.checked);
     const search = byId("candidate-search").value.trim().toLowerCase();
     return state.data.candidates.filter((c) =>
       (!activeBatch || batchMembers.get(activeBatch).has(c.candidate_id)) &&
+      (!hideExcluded || !c.dec007_excluded) &&
       (!scope || scope === "all" || scope === c.scope) &&
       (!fold || fold === "all" || (c.scope === "development" && c.folds?.[foldId] === foldPartition)) &&
       (!attention || attention === "all" || (attention === "attention" && c.audit_issues?.length)) &&
@@ -67,7 +102,10 @@
     try {
       const catalog = await request("/api/batches");
       for (const batch of catalog.batches) {
-        const suffix = batch.selectable ? "" : `（待定，三折池 ${Object.values(batch.fold_pool_counts).join("/")}）`;
+        const excludedSuffix = batch.selectable && batch.excluded_candidate_count > 0
+          ? `（有效待审 ${batch.clean_unreviewed_count}，DEC-007 排除 ${batch.excluded_candidate_count}）`
+          : "";
+        const suffix = batch.selectable ? excludedSuffix : `（待定，三折池 ${Object.values(batch.fold_pool_counts).join("/")}）`;
         const option = addOption(select, batch.batch_id, `${batch.batch_id} · ${batch.name}${suffix}`);
         option.disabled = !batch.selectable;
         if (batch.selectable) batchMembers.set(batch.batch_id, new Set(batch.candidate_ids));
@@ -110,17 +148,24 @@
       button.dataset.candidateId = candidate.candidate_id;
       button.setAttribute("aria-current", String(candidate.candidate_id === state.selected?.candidate_id));
       if (candidate.review_status === "confirmed") button.classList.add("is-confirmed");
+      if (candidate.dec007_excluded) button.classList.add("is-dec007-excluded");
       const title = document.createElement("span");
       title.className = "candidate-item__title";
       title.textContent = candidate.candidate_id;
       const meta = document.createElement("span");
       meta.className = "candidate-item__meta";
       const status = statusNames[candidate.review_status] || candidate.review_status;
-      meta.textContent = `来源 ${candidate.source_id} · ${status}`;
+      meta.textContent = `来源 ${candidate.source_id} · ${status}${candidate.dec007_excluded ? " · DEC-007 排除" : ""}`;
       const badge = document.createElement("span");
       badge.className = "candidate-item__status";
       badge.textContent = status;
       button.append(title, meta, badge);
+      if (candidate.dec007_excluded) {
+        const excludedBadge = document.createElement("span");
+        excludedBadge.className = "candidate-item__excluded";
+        excludedBadge.textContent = "DEC-007 排除";
+        button.append(excludedBadge);
+      }
       if (candidate.candidate_id === state.selected?.candidate_id && typeof button.scrollIntoView === "function") button.scrollIntoView({block: "nearest"});
       button.addEventListener("click", () => selectCandidate(candidate));
       list.append(button);
@@ -135,8 +180,16 @@
       summary.hidden = !activeBatch;
       if (activeBatch) {
         const ids = batchMembers.get(activeBatch);
-        const confirmed = state.data.candidates.filter(c => ids.has(c.candidate_id) && c.review_status === "confirmed").length;
-        summary.textContent = `本批已审 ${confirmed} / 共 ${ids.size}`;
+        const batchItems = state.data.candidates.filter((c) => ids.has(c.candidate_id));
+        const confirmed = batchItems.filter((c) => c.review_status === "confirmed").length;
+        const excludedItems = batchItems.filter((c) => c.dec007_excluded);
+        if (excludedItems.length > 0) {
+          const cleanUnreviewed = batchItems.filter((c) => !c.dec007_excluded && c.review_status === "unreviewed").length;
+          const excludedUnreviewed = excludedItems.filter((c) => c.review_status === "unreviewed").length;
+          summary.textContent = `本批已审 ${confirmed} / 共 ${ids.size} · 有效待审 ${cleanUnreviewed} / DEC-007 排除待审 ${excludedUnreviewed}（共排除 ${excludedItems.length}）`;
+        } else {
+          summary.textContent = `本批已审 ${confirmed} / 共 ${ids.size}`;
+        }
       }
     }
     const count = byId("candidate-count");
@@ -237,6 +290,7 @@
     state.dirty = false;
     byId("view-source").disabled = true;
     setControls();
+    renderDec007Banner(state.data?.candidates?.find((c) => c.source_id === source.source_id && c.dec007_excluded) || null);
     byId("prefill-notice").hidden = true;
     byId("review-note").value = "";
     byId("decision-reason").value = "";
@@ -298,6 +352,7 @@
   function setBusy(busy) {
     state.loading = busy;
     if (byId("batch-filter")) byId("batch-filter").disabled = busy;
+    if (byId("hide-excluded-filter")) byId("hide-excluded-filter").disabled = busy;
     byId("scope-filter").disabled = busy;
     byId("fold-filter").disabled = busy;
     ["save-draft", "confirm-review", "return-review", "question-review"].forEach((id) => { byId(id).disabled = busy || !state.selected; });
@@ -316,6 +371,7 @@
     setControls();
     const prefill = prefillSource(candidate);
     setControls(prefill);
+    renderDec007Banner(candidate);
 
     byId("prefill-notice").textContent = "已按生成标签预填为草稿；每项下方注明源视频标注，仅供参考。空白表示未判断。" + (candidate.prefill_note ? ` ${candidate.prefill_note}` : "");
     byId("prefill-notice").hidden = !hasAnyPrefill(prefill);
@@ -386,6 +442,7 @@
     state.selected = state.latest = null;
     state.dirty = false;
     setControls();
+    renderDec007Banner(null);
     byId("prefill-notice").hidden = true;
     byId("review-note").value = "";
     byId("decision-reason").value = "";
@@ -520,6 +577,19 @@
     byId("audit-info").textContent = state.data.audit_message || (state.data.audit_current ? "标签组合检查提示已载入；技术核验不替代人工审核。" : "标签组合检查尚未匹配当前清单；不能据此判断没有待复核问题。");
     renderFilters();
     renderPending();
+    const hideExcluded = byId("hide-excluded-filter");
+    if (hideExcluded) {
+      hideExcluded.checked = queryFlag("hide_excluded");
+      hideExcluded.addEventListener("change", async () => {
+        renderList();
+        const visible = filtered();
+        if (state.selected && !visible.some((c) => c.candidate_id === state.selected.candidate_id) && !state.dirty) {
+          await selectFirstFiltered();
+        } else if (!state.selected && visible.length) {
+          await selectFirstFiltered();
+        }
+      });
+    }
     renderList();
     byId("scope-filter").addEventListener("change", changeScope);
     ["fold-filter", "source-filter", "status-filter", "attention-filter"].forEach((id) => byId(id).addEventListener("change", renderList));
