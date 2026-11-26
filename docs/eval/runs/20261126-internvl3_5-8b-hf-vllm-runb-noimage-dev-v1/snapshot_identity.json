@@ -1,0 +1,70 @@
+{
+  "run_id": "20261126-internvl3_5-8b-hf-vllm-dev-v1",
+  "model_id": "InternVL3_5-8B-HF",
+  "model_path": "/data/models/InternVL3_5-8B-HF",
+  "verified_at": "2026-11-26T11:49:13+08:00",
+  "verified_host": "dell-Precision-3660 (100.70.83.68)",
+  "snapshot_mtime_utc8": "2026-11-26 11:46",
+  "file_sha256": {
+    "config.json": "32a9a726c8fd4d2386038bb1eab9fd34c6e04cf89c070e44aab346a41d9454e6",
+    "preprocessor_config.json": "af09ffbe57900d5ae07f93f4c20693559a272e32fa6c5f816132cb71985aac98",
+    "model.safetensors.index.json": "b15fa5f358beeadf2901d180db961be52ec0c1a0f17fcdb064e4e9c304f77d1b",
+    "tokenizer_config.json": "5d109a013cdc2b9b5914dbd9564e8e1ef591b91c4d5d5584a00b1f01f28c0749"
+  },
+  "weight_shards": [
+    {
+      "file": "model-00001-of-00004.safetensors",
+      "bytes": 4906355392,
+      "sha256": "541b630d4a991a0f9502b87b7e7fa3a4a3b03bc0fec4a9057eeb0af35873beae"
+    },
+    {
+      "file": "model-00002-of-00004.safetensors",
+      "bytes": 4915962480,
+      "sha256": "1dd4d7629deff34807654ca198f45166a532fdbc1bbda3fd80e5e69eebdcdcd4"
+    },
+    {
+      "file": "model-00003-of-00004.safetensors",
+      "bytes": 4915962496,
+      "sha256": "595f3b9043d046ae612f2dbf7cbfcd2465a1c001fcb58e93f78dcaf7cc5976e1"
+    },
+    {
+      "file": "model-00004-of-00004.safetensors",
+      "bytes": 2318463688,
+      "sha256": "1935bfbc7774be5e64adf7ecec5cbefc7c18dae24d498ba4609301c3423b21fd"
+    }
+  ],
+  "resolved_visual_processor": {
+    "crop_size": null,
+    "crop_to_patches": false,
+    "data_format": "channels_first",
+    "default_to_square": true,
+    "device": null,
+    "do_center_crop": null,
+    "do_convert_rgb": true,
+    "do_normalize": true,
+    "do_rescale": true,
+    "do_resize": true,
+    "image_mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "image_processor_type": "GotOcr2ImageProcessorFast",
+    "image_std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "input_data_format": null,
+    "max_patches": 12,
+    "min_patches": 1,
+    "processor_class": "InternVLProcessor",
+    "resample": 3,
+    "rescale_factor": 0.00392156862745098,
+    "return_tensors": null,
+    "size": {
+      "height": 448,
+      "width": 448
+    }
+  }
+}

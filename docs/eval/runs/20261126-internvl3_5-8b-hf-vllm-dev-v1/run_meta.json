@@ -1,0 +1,33 @@
+{
+  "run_id": "20261126-internvl3_5-8b-hf-vllm-dev-v1",
+  "model_id": "InternVL3_5-8B-HF",
+  "model_path": "/data/models/InternVL3_5-8B-HF",
+  "eval_subset_id": "eval-dev-v1",
+  "backend": "http",
+  "modality": "multimodal_8frame",
+  "no_image": false,
+  "serving_engine": "vllm 0.34.0 (torch 2.14.0+cu130, python 3.12.16)",
+  "vllm_effective_mode": "mm_processor_max_patches_4",
+  "vllm_serve_args": [
+    "--served-model-name", "InternVL3_5-8B-HF",
+    "--host", "127.0.0.1",
+    "--port", "18080",
+    "--dtype", "bfloat16",
+    "--gpu-memory-utilization", "0.88",
+    "--max-model-len", "12288",
+    "--max-num-seqs", "1",
+    "--limit-mm-per-prompt", "{\"image\": 8}",
+    "--mm-processor-kwargs", "{\"max_patches\": 4}"
+  ],
+  "hf_overrides": null,
+  "mm_processor_kwargs": {"max_patches": 4},
+  "trust_remote_code": false,
+  "prompt_file": "script/five_label_eval/prompts/five_label_v2.txt",
+  "decode_config": {
+    "temperature": 0.0,
+    "max_tokens": 512,
+    "top_p": null,
+    "seed": null
+  },
+  "gpu": "NVIDIA GeForce RTX 4090 (24564 MiB)"
+}

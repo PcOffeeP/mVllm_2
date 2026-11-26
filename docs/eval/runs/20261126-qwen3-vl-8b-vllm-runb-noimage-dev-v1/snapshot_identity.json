@@ -1,0 +1,31 @@
+{
+  "run_id": "20261126-qwen3-vl-8b-vllm-dev-v1",
+  "model_id": "Qwen3-VL-8B-Instruct",
+  "model_path": "/data/models/Qwen3-VL-8B-Instruct",
+  "verified_at": "2026-11-26T01:24:05+08:00",
+  "verified_host": "dell-Precision-3660 (100.70.83.68)",
+  "snapshot_mtime_utc8": "2026-11-25 22:08",
+  "file_sha256": {
+    "config.json": "5cd452860dc1e9c29dd71cc3cef7f39b338b7a40793f7a260655c2d3568f3661",
+    "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+    "model.safetensors.index.json": "520b2e05079402e9468a8701d03d1154d14b2599593afb6effa7fb60c1bff070",
+    "tokenizer_config.json": "c2da771801886ad9ae98181793ffd3dfb7f1af30f6f7c6a4e15d7dbba52e2399"
+  },
+  "weight_shards": [
+    {"file": "model-00001-of-00004.safetensors", "bytes": 4902275944, "sha256": "d5d0aef0eb170fc7453a296c43c0849a56f510555d3588e4fd662bb35490aefa"},
+    {"file": "model-00002-of-00004.safetensors", "bytes": 4915962496, "sha256": "8be88fb5501e4d5719a6d4cc212e6a13480330e74f3e8c77daa1a68f199106b5"},
+    {"file": "model-00003-of-00004.safetensors", "bytes": 4999831048, "sha256": "83de00eafe6e0d57ccd009dbcf71c9974d74df2f016c27afb7e95aafd16b2192"},
+    {"file": "model-00004-of-00004.safetensors", "bytes": 2716270024, "sha256": "0a88b98e9f96270973f567e6a2c103ede6ccdf915ca3075e21c755604d0377a5"}
+  ],
+  "resolved_visual_processor": {
+    "processor_class": "Qwen3VLProcessor",
+    "image_processor_type": "Qwen2VLImageProcessorFast",
+    "shortest_edge_min_pixels": 65536,
+    "longest_edge_max_pixels": 16777216,
+    "patch_size": 16,
+    "merge_size": 2,
+    "temporal_patch_size": 2,
+    "grid_stride_pixels": 32,
+    "mm_processor_kwargs_override": null
+  }
+}

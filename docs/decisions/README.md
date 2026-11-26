@@ -2,7 +2,7 @@
 
 这里帮助读者先看清本项目当前已确认的边界、仍待决定的问题，以及可以追溯的历史事实。完整标签规则见[标签说明](../label.md)，事实编号和证据锚点保留在 [facts.yaml](../facts.yaml)，进度与下一步以 [TODO](../TODO.md) 为准。
 
-**整理日期：2026-11-25（本轮为增量更新）。** 本目录是对现存材料的整理，不重新确认旧方案，也不因登记决定而授权实施。`facts.yaml` 的 `active` 仅表示条目在其适用范围内有效，不能据此把旧契约或历史实验当作当前链路。
+**整理日期：2026-11-26（本轮为增量更新）。** 本目录是对现存材料的整理，不重新确认旧方案，也不因登记决定而授权实施。`facts.yaml` 的 `active` 仅表示条目在其适用范围内有效，不能据此把旧契约或历史实验当作当前链路。
 
 ## 1. 当前已确认的边界
 
@@ -21,6 +21,7 @@
 | 帧对应抽帧取证 | 设计已定、独立 CLI 已落地（PR #21，`script/frame_correspondence/`）、前置条件 1 已拍板（DEC-006）；按次取证、不替代机器证明。 | [DEC-005](0005-frame-correspondence-evidence.md)；DF-051、DF-052。 |
 | 评测抽帧口径与首轮模型名单 | 2026-11-25 确认：固定 8 帧 `evenly_spaced_inclusive`、短片 `< 8` 帧 `fail_closed`、L3 PNG `resize: null`、MiniCPM 首轮用官方风格（0.1 s `temporal_ids` + `max_slice_nums=1`，登记为后续可另起 `run_id` 对照优化项）、首轮锁定第一梯队 3+1 款（MiniCPM-V-4.5 / Qwen3-VL-8B-Instruct / InternVL3-8B / InternVL3.5-8B 标准版不含 ViR）、GLM-4.1V 主榜保留原生格式罚分不预埋解包分支。 | [DEC-006 评测抽帧口径与首轮模型名单](0006-eval-frame-sampling-and-model-lineup.md)；DF-053。 |
 | 跨 dev↔test 近重复排除与虚拟隔离 | 2026-11-25 确认选项 A（最小扰动）：保 `data/splits/three-fold/*.json` 原字节不变（守住 527 条审核身份），通过 `data/splits/dev-exclusions.json` 在训练与开发调参中强制排除 `video_0006`/`video_0079`（有效开发源 89→87，每折 `58/29`，有效开发子视频 1,319→1,299），虚拟视频隔离由 12 升至 15 条（余 50 条纯 dev）。 | [DEC-007 跨 dev↔test 近重复排除](0007-dev-test-dedup-exclusion.md)；DF-054。 |
+| 首轮 SFT 主基座与 4090 QLoRA 配方 | 2026-11-26 确认：锁定首轮 SFT 主基座为 `Qwen3-VL-8B-Instruct`；训练机克隆建立独立 `vlm-sft` 环境（`transformers==4.57.6`、`LlamaFactory@4447137e`，运行 `vlm-eval` vLLM 时严禁 `PATH` 混入 `vlm-sft/bin`）；锁定 RTX 4090 黄金 8 帧全分辨率对齐配方（4-bit QLoRA `bnb` + `image_max_pixels=1,200,000` + `image_min_pixels=65,536` + `paged_adamw_8bit` + `expandable_segments:True`，峰值 22,525 MiB，已验通 `vLLM --enable-lora`）；记录 InternVL-HF 权重切换与 `InternVLPlugin` 硬编码 `max_patches: 12` 限制；重申 SFT 严格三折隔离（严禁在整份 `eval-dev-v1` 上训练，Fold 0 仅在 `eval-dev-v1 ∩ fold_0_val` 69 条上验证，永不触碰 `eval-test-v1`）。 | [DEC-008 首轮微调主基座与 QLoRA 配方](0008-finetune-base-model-and-sft-recipe.md)。 |
 
 ### 实施和验证进展另看什么
 
@@ -41,7 +42,7 @@
 | ROI、子视频与片段标签 | 旧处理是否适合本轮；窗口、采样、时间转换与缺失处理；源标签怎样转成片段建议并复核。 | [当前子视频生成逻辑](../subvideo-current-logic.md)；[facts.yaml](../facts.yaml) DF-045。 |
 | 审查、发布与新契约 | 队列、人工决定、组合校验、自动准入、发布身份、字段和编码如何衔接。 | [模型评价设计第 8 节](../design-test.md#8-训练与测评衔接fi-阶段)；[子视频审核与评价衔接](../subvideo-review-workflow.md)。 |
 | 评价与晋级 | 首轮基座名单已锁定（见 DEC-006）；五类分母补充项、样本充分性、正式阈值、性能条件与晋级接口仍待确认。 | [TODO 的 EVAL-DESIGN 与 EVAL-VERSIONING](../TODO.md)；[评价设计稿](../design-test.md)；[DEC-006](0006-eval-frame-sampling-and-model-lineup.md)。 |
-| 训练与推理输入 | 单请求固定 8 帧（`evenly_spaced_inclusive`、短片 `fail_closed`）、L3 PNG `resize: null`、首轮 3+1 基座名单及 MiniCPM 官方风格首轮参数（后续对照优化项另记）已按 DEC-006 锁定；各模型 processor `max_pixels` 细则与训练配置其余细节仍待确认。 | [DEC-003](0003-five-label-eval-scope.md)；[DEC-006](0006-eval-frame-sampling-and-model-lineup.md)；[facts.yaml](../facts.yaml) DF-044、DF-053。 |
+| 训练与推理输入 | 单请求固定 8 帧（`evenly_spaced_inclusive`、短片 `fail_closed`）、L3 PNG `resize: null`、首轮 3+1 基座名单及 MiniCPM 官方风格首轮参数（后续对照优化项另记）已按 DEC-006 锁定；首轮 SFT 主基座（`Qwen3-VL-8B-Instruct`）、`vlm-sft` 环境、RTX 4090 黄金 8 帧全分辨率对齐 4-bit QLoRA 配方与三折隔离红线已按 DEC-008 锁定；训练数据构造与超参细节仍待确认。 | [DEC-003](0003-five-label-eval-scope.md)；[DEC-006](0006-eval-frame-sampling-and-model-lineup.md)；[DEC-008](0008-finetune-base-model-and-sft-recipe.md)；[facts.yaml](../facts.yaml) DF-044、DF-053。 |
 
 **历史要求及本轮衔接：** DF-015 记录的 post 候选要求是事件之后、保护间隔之外仍有至少 2 秒源素材，不足则不生成；不能把旧代码的最小候选时长当作满足该要求。[当前子视频生成逻辑](../subvideo-current-logic.md)继续保留这项要求；此前候选批次在人工审核和发布前已按用户要求删除，历史生成不表示当前产物可用。
 
