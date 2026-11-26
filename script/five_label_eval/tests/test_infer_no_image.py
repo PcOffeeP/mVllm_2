@@ -926,3 +926,53 @@ def test_no_image_advisory_regressions_decode_merge_backend_identity_and_fake_cl
     assert not bad_out.exists()
     assert not bad_meta.exists()
 
+    # 6c. Non-JSON-serializable extra key (e.g., custom NaN) in decode_config fails closed
+    #     BEFORE creating output_path or meta_output_path (no orphan files left behind).
+    orphan_out = tmp_path / "orphan_preds.jsonl"
+    orphan_meta = tmp_path / "orphan_meta.json"
+    with pytest.raises(InputError, match="JSON-serializable"):
+        infer.run_inference(
+            records,
+            manifest,
+            backend=FakeBackend(no_image=True),
+            run_id="run-custom-nan",
+            prompt_id=prompt_id,
+            prompt_text="prompt",
+            model_id="fake",
+            decode_config={"custom": float("nan")},
+            output_path=orphan_out,
+            meta_output_path=orphan_meta,
+            no_image=True,
+        )
+    assert not orphan_out.exists()
+    assert not orphan_meta.exists()
+
+    # 6d. Non-JSON-serializable backend run_identity fails closed BEFORE creating output files.
+    class BadIdentityBackend:
+        backend_name = "fake"
+
+        def run_identity(self):
+            return {"backend": "fake", "bad": float("nan")}
+
+        def infer_one(self, request):
+            raise AssertionError("backend must not run when initial metadata serialization fails")
+
+        def close(self):
+            return None
+
+    with pytest.raises(ValueError):
+        infer.run_inference(
+            records,
+            manifest,
+            backend=BadIdentityBackend(),
+            run_id="run-bad-id",
+            prompt_id=prompt_id,
+            prompt_text="prompt",
+            model_id="fake",
+            output_path=orphan_out,
+            meta_output_path=orphan_meta,
+            no_image=True,
+        )
+    assert not orphan_out.exists()
+    assert not orphan_meta.exists()
+

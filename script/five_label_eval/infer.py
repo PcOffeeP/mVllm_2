@@ -308,7 +308,6 @@ def plan_predictions(
     exclusions: DevExclusions | None = None,
     enforce_exclusions: bool = True,
     eval_subset_id: str | None = None,
-    no_image: bool = False,
 ) -> list[dict]:
     """Deterministic fake prediction planner (kept pure & backward compatible)."""
     require_text({"run_id": run_id}, "run_id", "run")
@@ -327,7 +326,7 @@ def plan_predictions(
             "run_id": run_id,
             "model_id": model_id,
             "prompt_id": prompt_id,
-            "input_id": _effective_input_id(record, no_image=no_image),
+            "input_id": record["input_id"],
             "request_id": f"{run_id}/{cid}",
             "raw_output": fake_raw_output(category),
             "status": category if category in NON_ANSWERS else "success",
@@ -366,6 +365,10 @@ def _validate_decode_config(decode_config: dict[str, Any] | None) -> None:
         seed_val = decode_config["seed"]
         if isinstance(seed_val, bool) or not isinstance(seed_val, int):
             raise InputError(f"seed must be an integer when set, got {seed_val!r}")
+    try:
+        json.dumps(decode_config, ensure_ascii=False, allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        raise InputError(f"decode_config must be strictly JSON-serializable without NaN/Infinity: {exc}") from exc
 
 
 def _extract_sampling_policy(records: list[dict]) -> dict[str, Any] | None:
@@ -461,21 +464,6 @@ def run_inference(
             # each candidate's 8 PNGs are re-read and digest-verified right before its infer_one().
             prepared.append((cid, record, frame_paths, frame_pts))
 
-    # Reserve both exclusive output files BEFORE issuing any backend requests.
-    stream = None
-    meta_target = Path(meta_output_path) if meta_output_path is not None else None
-    try:
-        if output_path is not None:
-            stream = Path(output_path).open("x", encoding="utf-8")
-        if meta_target is not None:
-            with meta_target.open("x", encoding="utf-8") as init_meta:
-                init_meta.write("{}\n")
-                init_meta.flush()
-    except Exception:
-        if stream is not None:
-            stream.close()
-        raise
-
     predictions: list[dict] = []
     request_metas: list[dict[str, Any]] = []
     raw_decode = dict(decode_config or {})
@@ -532,15 +520,22 @@ def run_inference(
             meta["eval_subset_id"] = effective_subset_id
         return meta
 
+    def _serialize_meta(payload: dict[str, Any]) -> str:
+        return (
+            json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False)
+            .encode("utf-8", errors="replace")
+            .decode("utf-8")
+            + "\n"
+        )
+
+    # Pre-serialize initial metadata BEFORE reserving any exclusive output files so invalid
+    # metadata/backend_identity fails closed without leaving orphan files behind.
+    _serialize_meta(_build_run_meta("running"))
+
     def _checkpoint_meta(run_status: str) -> dict[str, Any]:
         payload = _build_run_meta(run_status)
         if meta_target is not None:
-            serialized = (
-                json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False)
-                .encode("utf-8", errors="replace")
-                .decode("utf-8")
-                + "\n"
-            )
+            serialized = _serialize_meta(payload)
             fd, tmp_name = tempfile.mkstemp(
                 prefix=f".{meta_target.name}.",
                 suffix=".tmp",
@@ -561,8 +556,32 @@ def run_inference(
                 raise
         return payload
 
+    # Reserve both exclusive output files and write initial checkpoint BEFORE issuing any requests.
+    stream = None
+    out_target = Path(output_path) if output_path is not None else None
+    meta_target = Path(meta_output_path) if meta_output_path is not None else None
+    created_output = False
+    created_meta = False
+    try:
+        if out_target is not None:
+            stream = out_target.open("x", encoding="utf-8")
+            created_output = True
+        if meta_target is not None:
+            with meta_target.open("x", encoding="utf-8") as init_meta:
+                created_meta = True
+                init_meta.write("{}\n")
+                init_meta.flush()
+        run_meta = _checkpoint_meta("running")
+    except Exception:
+        if stream is not None:
+            stream.close()
+        if created_output and out_target is not None:
+            out_target.unlink(missing_ok=True)
+        if created_meta and meta_target is not None:
+            meta_target.unlink(missing_ok=True)
+        raise
+
     completed = False
-    run_meta = _checkpoint_meta("running")
     try:
         for cid, record, _preflight_paths, _preflight_pts in prepared:
             if no_image:
