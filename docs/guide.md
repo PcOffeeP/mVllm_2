@@ -40,8 +40,9 @@
 | --- | --- |
 | 整体测评方案 | [整体模型测评方案](design-test.md)：五类离线评价体系、分母口径、失败处理与测试安排。 |
 | 评测输入契约与基座方案 | [评测专题目录](eval/README.md)：含 6 篇输入契约（输出/Prompt/入口/输入记录/[评测子集](eval/eval-subset.md) §6.1 已冻结 `data/eval-subsets/eval-{dev,test}-v1.json`）及 [基座模型测评方案](eval/base-model-eval-plan.md)。 |
-| 正式评测结果总入口 | [正式评测结果总入口](eval/runs/README.md)：归档 `eval-dev-v1` 评测轻量报告与跨模型对照总表（已归档第一梯队全部 4 款基座首轮 Run A：`MiniCPM-V-4.5` 三次历史初步观测及 `Qwen3-VL-8B-Instruct`、`InternVL3-8B`、`InternVL3_5-8B` 三组 `vLLM 0.34.0` Run A，附全 11 叶字段三画幅档明细与微调基座选型参考）。 |
+| 正式评测结果总入口 | [正式评测结果总入口](eval/runs/README.md)：归档 `eval-dev-v1` 评测轻量报告与跨模型对照总表（已归档 11 组正式 Run：含 `MiniCPM-V-4.5` 三次历史初步观测、旧非 HF 版 `InternVL3`/`3.5` Run A、及 2026-11-26 新归档的 `Qwen3-VL-8B-Instruct` 配对 Run B 与 `InternVL3-8B-hf`/`InternVL3_5-8B-HF` 配对 Run A/B，附全 11 叶字段三画幅档明细与 4 模型 4090 QLoRA 冒烟总结）。 |
 | 评测抽帧与首轮模型名单 | [DEC-006 评测抽帧口径与首轮模型名单](decisions/0006-eval-frame-sampling-and-model-lineup.md)：2026-11-25 确认 8 帧 `evenly_spaced_inclusive`、短片 `fail_closed`、L3 `resize: null`、MiniCPM 首轮官方风格（登记后续对照优化项）、首轮 3+1 基座名单及 GLM-4.1V 主榜原生格式罚分。 |
+| 首轮 SFT 主基座与 4090 QLoRA 配方 | [DEC-008 首轮微调主基座与 QLoRA 配方](decisions/0008-finetune-base-model-and-sft-recipe.md)：2026-11-26 确认锁定 `Qwen3-VL-8B-Instruct`、`vlm-sft` 环境与 `PATH` 隔离、RTX 4090 黄金 8 帧全分辨率对齐 4-bit QLoRA 配方（峰值 22,525 MiB）、InternVL-HF 切换与 `InternVLPlugin` `max_patches: 12` 限制及 SFT 三折严格隔离红线。 |
 | 帧对应抽帧取证 | [帧对应抽帧取证](frame-correspondence-evidence.md)：设计已定、独立 CLI 已落地（PR #21，`script/frame_correspondence/`），前置条件 1 已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 拍板。 |
 | 跨仓交接契约 | [虚拟数据集交接契约](virtual-dataset-handoff-contract.md)（`BlenderTensileVideo` → 本仓） · [Agent 视觉与交付契约草案](eval/agent-handoff-contract-draft.md)（本仓 → `TensileAgent`，未冻结）。 |
 
@@ -50,7 +51,7 @@
 | 专题 | 文档及状态 |
 | --- | --- |
 | 检查机制台账 | [检查机制台账](checks.md)：全项目 134 处检查的位置、触发方式与快照状态。 |
-| 专项调研 | [测评数据覆盖与虚拟数据建议](research/evaluation-data-requirements.md) · [MiniCPM 视频加载核查](research/minicpm-video-loading.md) · [65 条虚拟视频溯源](research/virtual-video-provenance.md) · [虚拟视频测试集泄漏审查与 110 条真实源视频去重审计](research/source-video-dedup-audit.md) · [8B/9B 开源视频多模态基座选型](research/vlm-8b-9b-model-comparison.md) · [模型输入 8 帧抽帧口径方案](research/model-input-frame-sampling-options.md) · [训练机前置体检与推理适配器规划](research/eval-preflight-and-adapter-plan.md)。 |
+| 专项调研 | [测评数据覆盖与虚拟数据建议](research/evaluation-data-requirements.md) · [MiniCPM 视频加载核查](research/minicpm-video-loading.md) · [65 条虚拟视频溯源](research/virtual-video-provenance.md) · [虚拟视频测试集泄漏审查与 110 条真实源视频去重审计](research/source-video-dedup-audit.md) · [8B/9B 开源视频多模态基座选型](research/vlm-8b-9b-model-comparison.md) · [模型输入 8 帧抽帧口径方案](research/model-input-frame-sampling-options.md) · [训练机前置体检与推理适配器规划](research/eval-preflight-and-adapter-plan.md) · [独立虚拟补充测评集设计方案](research/virtual-eval-supplement-design.md)。 |
 | 变更窗口声明 | `docs/changes/`：按 `AGENTS.md` 规范留存，自「已完成」记录之日起保留 7 天，期满直接删除。 |
 
 > 注：原 `mVllm_2` 冻结线的架构说明（`ARCHITECTURE.md`）与历史模型清单（`docs/results/model-inventory.md`）未在本 sparse-checkout 工作区检出；追溯历史信息请回原 `mVllm_2` 工作区。

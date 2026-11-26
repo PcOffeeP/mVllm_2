@@ -13,16 +13,16 @@
       "score_output_dir": "/private/tmp/tensile-fake-slice/score"
     },
     "gpu-train": {
-      "note": "训练机路径迁移时填",
-      "source_videos": "TODO_MIGRATION_FILL:source_videos",
-      "roi_videos": "TODO_MIGRATION_FILL:roi_videos",
-      "sub_video_dir": "TODO_MIGRATION_FILL:sub_video_dir",
-      "sub_video_manifest": "TODO_MIGRATION_FILL:sub_video_manifest",
-      "sub_video_videos": "TODO_MIGRATION_FILL:sub_video_videos",
-      "review_store": "TODO_MIGRATION_FILL:review_store",
-      "prompts_dir": "TODO_MIGRATION_FILL:prompts_dir",
-      "output_dir": "TODO_MIGRATION_FILL:output_dir",
-      "score_output_dir": "TODO_MIGRATION_FILL:score_output_dir"
+      "note": "训练机 dell-Precision-3660 评测路径配置",
+      "source_videos": "data/videos",
+      "roi_videos": "data/roi/videos",
+      "sub_video_dir": "data/sub_video",
+      "sub_video_manifest": "data/sub_video/manifest.json",
+      "sub_video_videos": "data/sub_video/videos",
+      "review_store": "data/subvideo-review/reviews.json",
+      "prompts_dir": "script/five_label_eval/prompts",
+      "output_dir": "/home/liuyang/文档/TensileAgent-Finetune/evaluations/eval-dev-v1/frames",
+      "score_output_dir": "/home/liuyang/文档/TensileAgent-Finetune/evaluations/eval-dev-v1/score"
     }
   }
 }
