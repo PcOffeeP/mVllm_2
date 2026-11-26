@@ -9,7 +9,7 @@ import copy
 import json
 from typing import Any
 
-from . import InferenceRequest, InferenceResult
+from . import InferenceRequest, InferenceResult, modality_for_no_image
 
 CATEGORY_ORDER = (
     "complete",
@@ -55,18 +55,22 @@ class FakeBackend:
 
     backend_name = "fake"
 
-    def __init__(self, model_id: str = "fake") -> None:
+    def __init__(self, model_id: str = "fake", *, no_image: bool = False) -> None:
         self.model_id = model_id
+        self.no_image = bool(no_image)
         self._index = 0
 
     def run_identity(self) -> dict[str, Any]:
         return {
             "backend": self.backend_name,
             "model_id": self.model_id,
+            "no_image": self.no_image,
+            "modality": modality_for_no_image(self.no_image),
             "output_unwrapping": "none",
         }
 
     def infer_one(self, request: InferenceRequest) -> InferenceResult:
+        effective_no_image = bool(self.no_image or request.no_image)
         category = CATEGORY_ORDER[self._index % len(CATEGORY_ORDER)]
         self._index += 1
         status = category if category in NON_ANSWERS else "success"
@@ -74,7 +78,11 @@ class FakeBackend:
             status=status,
             raw_output=fake_raw_output(category),
             latency_seconds=0.0,
-            extra_meta={"fake_category": category},
+            extra_meta={
+                "fake_category": category,
+                "no_image": effective_no_image,
+                "modality": modality_for_no_image(effective_no_image),
+            },
         )
 
     def close(self) -> None:

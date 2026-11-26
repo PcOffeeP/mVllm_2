@@ -19,8 +19,14 @@ from typing import Any
 
 from . import paths
 from .exclusions import DevExclusions, load_candidate_selection, load_dev_exclusions, verify_frozen_subset_samples
-from .backends import InferenceBackend, InferenceRequest, normalize_result
-from .backends.fake_backend import CATEGORY_ORDER, LEGAL, NON_ANSWERS, fake_raw_output
+from .backends import (
+    InferenceBackend,
+    InferenceRequest,
+    MODALITY_TEXT_ONLY,
+    modality_for_no_image,
+    normalize_result,
+)
+from .backends.fake_backend import CATEGORY_ORDER, LEGAL, NON_ANSWERS, FakeBackend, fake_raw_output
 from .backends.transformers_backend import SUPPORTED_MODEL_FAMILIES, TransformersBackend
 from .frames import (
     DEFAULT_CLIPS_PER_RECORD,
@@ -151,9 +157,14 @@ def _record_sampling_policy(record: dict) -> dict[str, Any]:
     return policy
 
 
-def _resolve_record_frames(
-    record: dict, frames_dir: Path
-) -> tuple[tuple[Path, ...], tuple[float, ...], tuple[bytes, ...]]:
+def _effective_input_id(record: dict, *, no_image: bool) -> str:
+    """Return canonical prediction input_id: paired record input_id for Run A, prefixed for Run B."""
+    base_id = record["input_id"]
+    return f"no_image:{base_id}" if no_image else base_id
+
+
+def _validate_record_frame_metadata(record: dict) -> list[dict]:
+    """Validate ordered 8-frame record metadata without reading PNG bytes from disk."""
     cid = record["candidate_id"]
     _validate_safe_component(cid, "candidate_id")
     raw_frames = record.get("frames")
@@ -183,19 +194,6 @@ def _resolve_record_frames(
             f"{cid}: clip_frame_index sequence {actual_indices} does not match "
             f"{SAMPLING_RULE} for total_frames={l2_total} (expected {expected_indices})"
         )
-    root_dir = frames_dir.resolve()
-    raw_clip_dir = frames_dir / cid
-    if raw_clip_dir.is_symlink():
-        raise InputError(f"{cid}: candidate frame directory must not be a symlink: {raw_clip_dir}")
-    clip_dir = raw_clip_dir.resolve()
-    try:
-        clip_dir.relative_to(root_dir)
-    except ValueError as exc:
-        raise InputError(f"{cid}: candidate frame directory escapes frames_dir: {clip_dir}") from exc
-
-    frame_paths: list[Path] = []
-    frame_pts: list[float] = []
-    frame_bytes: list[bytes] = []
     seen_images: set[str] = set()
     for expected_order, entry in enumerate(ordered):
         if not isinstance(entry, dict):
@@ -210,6 +208,35 @@ def _resolve_record_frames(
         if image_name in seen_images:
             raise InputError(f"{cid}: duplicate frame image filename across sampled frames: {image_name!r}")
         seen_images.add(image_name)
+        expected_sha = entry.get("sha256")
+        if not isinstance(expected_sha, str) or not SHA256_RE.fullmatch(expected_sha):
+            raise InputError(
+                f"{cid}: frames[{expected_order}].sha256 missing or invalid; "
+                "re-extract records with frames.py so every L3 PNG is digest-pinned"
+            )
+    return ordered
+
+
+def _resolve_record_frames(
+    record: dict, frames_dir: Path
+) -> tuple[tuple[Path, ...], tuple[float, ...], tuple[bytes, ...]]:
+    cid = record["candidate_id"]
+    ordered = _validate_record_frame_metadata(record)
+    root_dir = frames_dir.resolve()
+    raw_clip_dir = frames_dir / cid
+    if raw_clip_dir.is_symlink():
+        raise InputError(f"{cid}: candidate frame directory must not be a symlink: {raw_clip_dir}")
+    clip_dir = raw_clip_dir.resolve()
+    try:
+        clip_dir.relative_to(root_dir)
+    except ValueError as exc:
+        raise InputError(f"{cid}: candidate frame directory escapes frames_dir: {clip_dir}") from exc
+
+    frame_paths: list[Path] = []
+    frame_pts: list[float] = []
+    frame_bytes: list[bytes] = []
+    for entry in ordered:
+        image_name = entry["image"]
         raw_img_path = clip_dir / image_name
         if raw_img_path.is_symlink():
             raise InputError(f"{cid}: L3 frame PNG must not be a symlink: {raw_img_path}")
@@ -221,12 +248,7 @@ def _resolve_record_frames(
         if not img_path.is_file():
             raise InputError(f"{cid}: L3 frame PNG missing on disk: {img_path}")
 
-        expected_sha = entry.get("sha256")
-        if not isinstance(expected_sha, str) or not SHA256_RE.fullmatch(expected_sha):
-            raise InputError(
-                f"{cid}: frames[{expected_order}].sha256 missing or invalid; "
-                "re-extract records with frames.py so every L3 PNG is digest-pinned"
-            )
+        expected_sha = entry["sha256"]
         raw_bytes = img_path.read_bytes()
         if not raw_bytes.startswith(PNG_MAGIC):
             raise InputError(f"{cid}: L3 frame is not a valid PNG file: {img_path}")
@@ -286,6 +308,7 @@ def plan_predictions(
     exclusions: DevExclusions | None = None,
     enforce_exclusions: bool = True,
     eval_subset_id: str | None = None,
+    no_image: bool = False,
 ) -> list[dict]:
     """Deterministic fake prediction planner (kept pure & backward compatible)."""
     require_text({"run_id": run_id}, "run_id", "run")
@@ -304,7 +327,7 @@ def plan_predictions(
             "run_id": run_id,
             "model_id": model_id,
             "prompt_id": prompt_id,
-            "input_id": record["input_id"],
+            "input_id": _effective_input_id(record, no_image=no_image),
             "request_id": f"{run_id}/{cid}",
             "raw_output": fake_raw_output(category),
             "status": category if category in NON_ANSWERS else "success",
@@ -335,7 +358,7 @@ def run_inference(
     prompt_id: str,
     prompt_text: str,
     model_id: str,
-    frames_dir: Path,
+    frames_dir: Path | None = None,
     timeout_seconds: float = 600.0,
     decode_config: dict[str, Any] | None = None,
     output_path: Path | None = None,
@@ -344,11 +367,18 @@ def run_inference(
     exclusions: DevExclusions | None = None,
     enforce_exclusions: bool = True,
     eval_subset_id: str | None = None,
+    no_image: bool = False,
 ) -> tuple[list[dict], dict[str, Any]]:
     """Validate all inputs up-front, reserve outputs exclusively, run backend, and stream predictions."""
     require_text({"run_id": run_id}, "run_id", "run")
     require_text({"prompt_id": prompt_id}, "prompt_id", "run")
     require_text({"model_id": model_id}, "model_id", "run")
+    if not isinstance(no_image, bool):
+        raise InputError(f"no_image must be a boolean, got {no_image!r}")
+    if not no_image and getattr(backend, "no_image", False):
+        raise InputError("backend has no_image=True but run_inference was called with no_image=False")
+    if not no_image and frames_dir is None:
+        raise InputError("frames_dir is required when no_image=False")
     if backend.backend_name != "fake" and model_id.strip() == "fake":
         raise InputError(f"{backend.backend_name} backend refuses --model-id fake")
     if (
@@ -358,16 +388,35 @@ def run_inference(
         or timeout_seconds <= 0
     ):
         raise InputError(f"timeout_seconds must be a positive finite number, got {timeout_seconds!r}")
-    if isinstance(decode_config, dict) and "temperature" in decode_config and decode_config["temperature"] is not None:
-        temp_val = decode_config["temperature"]
-        if isinstance(temp_val, bool) or not isinstance(temp_val, (int, float)) or not math.isfinite(temp_val) or temp_val < 0:
-            raise InputError(f"temperature must be a finite number >= 0, got {temp_val!r}")
+    if isinstance(decode_config, dict):
+        if "temperature" in decode_config and decode_config["temperature"] is not None:
+            temp_val = decode_config["temperature"]
+            if isinstance(temp_val, bool) or not isinstance(temp_val, (int, float)) or not math.isfinite(temp_val) or temp_val < 0:
+                raise InputError(f"temperature must be a finite number >= 0, got {temp_val!r}")
+        if "max_tokens" in decode_config and decode_config["max_tokens"] is not None:
+            max_tok_val = decode_config["max_tokens"]
+            if isinstance(max_tok_val, bool) or not isinstance(max_tok_val, int) or max_tok_val <= 0:
+                raise InputError(f"max_tokens must be a positive integer, got {max_tok_val!r}")
+        if "top_p" in decode_config and decode_config["top_p"] is not None:
+            top_p_val = decode_config["top_p"]
+            if (
+                isinstance(top_p_val, bool)
+                or not isinstance(top_p_val, (int, float))
+                or not math.isfinite(top_p_val)
+                or top_p_val <= 0
+                or top_p_val > 1.0
+            ):
+                raise InputError(f"top_p must be a finite number in (0, 1], got {top_p_val!r}")
+        if "seed" in decode_config and decode_config["seed"] is not None:
+            seed_val = decode_config["seed"]
+            if isinstance(seed_val, bool) or not isinstance(seed_val, int):
+                raise InputError(f"seed must be an integer when set, got {seed_val!r}")
 
     samples = _validate_manifest_samples(manifest, exclusions=exclusions, enforce_exclusions=enforce_exclusions)
     effective_subset_id = _resolve_and_verify_frozen_subset(
         records, samples, manifest, eval_subset_id=eval_subset_id
     )
-    prepared: list[tuple[str, dict, tuple[Path, ...], tuple[float, ...], tuple[bytes, ...]]] = []
+    prepared: list[tuple[str, dict, tuple[Path, ...], tuple[float, ...]]] = []
     seen_cids: set[str] = set()
     batch_sampling_policy: dict[str, Any] | None = None
     for record in records:
@@ -381,17 +430,30 @@ def run_inference(
         policy = _record_sampling_policy(record)
         if batch_sampling_policy is None:
             batch_sampling_policy = policy
-        frame_paths, frame_pts, frame_bytes = _resolve_record_frames(record, frames_dir)
-        actual_frame_shas = [hashlib.sha256(raw).hexdigest() for raw in frame_bytes]
-        expected_input_id = compute_record_input_id(record, frame_sha256s=actual_frame_shas)
-        if record.get("input_id") != expected_input_id:
-            raise InputError(
-                f"{cid}: record input_id does not match verified ordered frame digests "
-                f"(expected {expected_input_id}, got {record.get('input_id')!r})"
-            )
-        # Do not retain raw PNG bytes across the entire batch (prevents OOM on large sets);
-        # each candidate's 8 PNGs are re-read and digest-verified right before its infer_one().
-        prepared.append((cid, record, frame_paths, frame_pts))
+        if no_image:
+            # Strictly pair Run B against the validated 8-frame record metadata and input_id
+            # without reading PNG pixels from disk.
+            _validate_record_frame_metadata(record)
+            expected_input_id = compute_record_input_id(record)
+            if record.get("input_id") != expected_input_id:
+                raise InputError(
+                    f"{cid}: record input_id does not match declared ordered frame metadata "
+                    f"(expected {expected_input_id}, got {record.get('input_id')!r})"
+                )
+            prepared.append((cid, record, (), ()))
+        else:
+            assert frames_dir is not None
+            frame_paths, frame_pts, frame_bytes = _resolve_record_frames(record, frames_dir)
+            actual_frame_shas = [hashlib.sha256(raw).hexdigest() for raw in frame_bytes]
+            expected_input_id = compute_record_input_id(record, frame_sha256s=actual_frame_shas)
+            if record.get("input_id") != expected_input_id:
+                raise InputError(
+                    f"{cid}: record input_id does not match verified ordered frame digests "
+                    f"(expected {expected_input_id}, got {record.get('input_id')!r})"
+                )
+            # Do not retain raw PNG bytes across the entire batch (prevents OOM on large sets);
+            # each candidate's 8 PNGs are re-read and digest-verified right before its infer_one().
+            prepared.append((cid, record, frame_paths, frame_pts))
 
     # Reserve both exclusive output files BEFORE issuing any backend requests.
     stream = None
@@ -410,15 +472,41 @@ def run_inference(
 
     predictions: list[dict] = []
     request_metas: list[dict[str, Any]] = []
+    raw_decode = dict(decode_config or {})
+
+    def _effective_decode_config(backend_id: Any) -> dict[str, Any]:
+        backend_decode = (
+            backend_id.get("decode_config")
+            if isinstance(backend_id, dict) and isinstance(backend_id.get("decode_config"), dict)
+            else {}
+        )
+        merged: dict[str, Any] = {
+            "temperature": raw_decode.get("temperature", backend_decode.get("temperature")),
+            "max_tokens": raw_decode.get("max_tokens", backend_decode.get("max_tokens")),
+            "top_p": raw_decode.get("top_p", backend_decode.get("top_p")),
+            "seed": raw_decode.get("seed", backend_decode.get("seed")),
+        }
+        for key, value in raw_decode.items():
+            if key not in merged:
+                merged[key] = value
+        return merged
 
     def _build_run_meta(run_status: str) -> dict[str, Any]:
-        return {
+        raw_backend_id = backend.run_identity()
+        backend_identity = dict(raw_backend_id) if isinstance(raw_backend_id, dict) else raw_backend_id
+        if no_image and isinstance(backend_identity, dict):
+            backend_identity["no_image"] = True
+            backend_identity["modality"] = MODALITY_TEXT_ONLY
+        meta: dict[str, Any] = {
             "run_id": run_id,
             "model_id": model_id,
             "prompt_id": prompt_id,
             "run_status": run_status,
+            "no_image": no_image,
+            "modality": modality_for_no_image(no_image),
+            "decode_config": _effective_decode_config(backend_identity),
             "sampling_policy": batch_sampling_policy,
-            "backend_identity": backend.run_identity(),
+            "backend_identity": backend_identity,
             "total_requests": len(predictions),
             "status_counts": {
                 status: sum(1 for row in predictions if row["status"] == status)
@@ -426,6 +514,9 @@ def run_inference(
             },
             "requests": request_metas,
         }
+        if effective_subset_id is not None:
+            meta["eval_subset_id"] = effective_subset_id
+        return meta
 
     def _checkpoint_meta(run_status: str) -> dict[str, Any]:
         payload = _build_run_meta(run_status)
@@ -460,7 +551,13 @@ def run_inference(
     run_meta = _checkpoint_meta("running")
     try:
         for cid, record, _preflight_paths, _preflight_pts in prepared:
-            frame_paths, frame_pts, frame_bytes = _resolve_record_frames(record, frames_dir)
+            if no_image:
+                frame_paths: tuple[Path, ...] = ()
+                frame_pts: tuple[float, ...] = ()
+                frame_bytes: tuple[bytes, ...] = ()
+            else:
+                assert frames_dir is not None
+                frame_paths, frame_pts, frame_bytes = _resolve_record_frames(record, frames_dir)
             req = InferenceRequest(
                 candidate_id=cid,
                 record=record,
@@ -468,8 +565,9 @@ def run_inference(
                 frame_pts_seconds=frame_pts,
                 prompt_text=prompt_text,
                 timeout_seconds=timeout_seconds,
-                decode_config=dict(decode_config or {}),
+                decode_config=dict(raw_decode),
                 frame_bytes=frame_bytes,
+                no_image=no_image,
             )
             result = normalize_result(backend.infer_one(req))
             row = {
@@ -478,7 +576,7 @@ def run_inference(
                 "run_id": run_id,
                 "model_id": model_id,
                 "prompt_id": prompt_id,
-                "input_id": record["input_id"],
+                "input_id": _effective_input_id(record, no_image=no_image),
                 "request_id": f"{run_id}/{cid}",
                 "raw_output": result.raw_output,
                 "status": result.status,
@@ -490,7 +588,7 @@ def run_inference(
                 stream.write(_dumps_jsonl_line(row) + "\n")
                 stream.flush()
             predictions.append(row)
-            request_metas.append({
+            req_meta: dict[str, Any] = {
                 "candidate_id": cid,
                 "request_id": row["request_id"],
                 "input_id": row["input_id"],
@@ -499,7 +597,10 @@ def run_inference(
                 "error_detail": result.error_detail,
                 "reasoning_content": result.reasoning_content,
                 "extra_meta": result.extra_meta,
-            })
+            }
+            if no_image:
+                req_meta["paired_record_input_id"] = record["input_id"]
+            request_metas.append(req_meta)
             run_meta = _checkpoint_meta("running")
 
         completed = True
@@ -527,11 +628,17 @@ def main(argv=None) -> int:
     parser.add_argument("--input-config", help="frames records JSONL; defaults to profile output_dir/records.jsonl")
     parser.add_argument("--frames-dir", help="Directory holding <candidate_id>/frame_*.png; defaults to --input-config parent")
     parser.add_argument("--output", required=True, help="New predictions JSONL; never overwrites")
-    parser.add_argument("--meta-output", help="Optional run metadata JSON path (defaults to <output>.meta.json for real backends)")
+    parser.add_argument("--meta-output", help="Optional run metadata JSON path (defaults to <output>.meta.json for real backends or --no-image)")
     parser.add_argument("--backend", default="fake", choices=("fake", "http", "transformers"))
+    parser.add_argument(
+        "--no-image",
+        action="store_true",
+        help="Run B pure-text prior control: keep full paired validation, send zero images to the model",
+    )
     parser.add_argument("--timeout", type=float, default=600.0, help="Per-request timeout in seconds")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=512)
+    parser.add_argument("--top-p", type=float, default=None, help="Optional nucleus sampling top_p in (0, 1]")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--max-pixels", type=int, default=None, help="Processor-side max_pixels recorded in run identity")
     # HTTP backend options
@@ -621,9 +728,44 @@ def main(argv=None) -> int:
                 [sample for sample in manifest_samples.values() if sample.get("candidate_id") in selected_set],
                 context="infer manifest",
             )
+        decode_config = {
+            "temperature": args.temperature,
+            "max_tokens": args.max_tokens,
+            "top_p": args.top_p,
+            "seed": args.seed,
+        }
         if args.backend == "fake":
             if args.model_id != "fake":
                 raise InputError("fake backend only accepts --model-id fake")
+            if args.no_image:
+                meta_output = Path(args.meta_output) if args.meta_output else Path(f"{args.output}.meta.json")
+                fake_backend = FakeBackend(model_id=args.model_id, no_image=True)
+                try:
+                    predictions, _ = run_inference(
+                        records,
+                        manifest,
+                        backend=fake_backend,
+                        run_id=args.run_id,
+                        prompt_id=prompt_identity,
+                        prompt_text=prompt_text,
+                        model_id=args.model_id,
+                        frames_dir=None,
+                        timeout_seconds=args.timeout,
+                        decode_config=decode_config,
+                        output_path=Path(args.output),
+                        meta_output_path=meta_output,
+                        exclusions=exclusions,
+                        enforce_exclusions=not args.allow_excluded,
+                        eval_subset_id=effective_subset_id,
+                        no_image=True,
+                    )
+                finally:
+                    fake_backend.close()
+                print(
+                    f"Wrote {len(predictions)} predictions to {args.output}; backend={args.backend}; "
+                    f"prompt_id={prompt_identity}; meta={meta_output}; modality={MODALITY_TEXT_ONLY}"
+                )
+                return 0
             predictions = plan_predictions(
                 records,
                 manifest,
@@ -634,9 +776,61 @@ def main(argv=None) -> int:
                 enforce_exclusions=not args.allow_excluded,
                 eval_subset_id=effective_subset_id,
             )
-            with Path(args.output).open("x", encoding="utf-8") as stream:
+            out_path = Path(args.output)
+            meta_stream = None
+            pred_stream = None
+            try:
+                pred_stream = out_path.open("x", encoding="utf-8")
+                if args.meta_output:
+                    meta_stream = Path(args.meta_output).open("x", encoding="utf-8")
                 for row in predictions:
-                    stream.write(json.dumps(row, ensure_ascii=False) + "\n")
+                    pred_stream.write(json.dumps(row, ensure_ascii=False) + "\n")
+                if meta_stream is not None:
+                    fake_backend = FakeBackend(model_id=args.model_id, no_image=False)
+                    meta_payload: dict[str, Any] = {
+                        "run_id": args.run_id,
+                        "model_id": args.model_id,
+                        "prompt_id": prompt_identity,
+                        "run_status": "completed",
+                        "no_image": False,
+                        "modality": modality_for_no_image(False),
+                        "decode_config": decode_config,
+                        "sampling_policy": None,
+                        "backend_identity": fake_backend.run_identity(),
+                        "total_requests": len(predictions),
+                        "status_counts": {
+                            status: sum(1 for row in predictions if row["status"] == status)
+                            for status in ("success", "request_failed", "timeout")
+                        },
+                        "requests": [
+                            {
+                                "candidate_id": row["candidate_id"],
+                                "request_id": row["request_id"],
+                                "input_id": row["input_id"],
+                                "status": row["status"],
+                                "latency_seconds": 0.0,
+                                "error_detail": None,
+                                "reasoning_content": None,
+                                "extra_meta": {"fake_category": row["fake_category"]},
+                            }
+                            for row in predictions
+                        ],
+                    }
+                    if effective_subset_id is not None:
+                        meta_payload["eval_subset_id"] = effective_subset_id
+                    meta_stream.write(json.dumps(meta_payload, ensure_ascii=False, indent=2) + "\n")
+            except Exception:
+                if pred_stream is not None:
+                    pred_stream.close()
+                    out_path.unlink(missing_ok=True)
+                if meta_stream is not None:
+                    meta_stream.close()
+                raise
+            else:
+                if pred_stream is not None:
+                    pred_stream.close()
+                if meta_stream is not None:
+                    meta_stream.close()
             print(
                 f"Wrote {len(predictions)} predictions to {args.output}; backend={args.backend}; "
                 f"prompt_id={prompt_identity}"
@@ -646,11 +840,6 @@ def main(argv=None) -> int:
         frames_dir = Path(args.frames_dir) if args.frames_dir else input_config.parent
         meta_output = Path(args.meta_output) if args.meta_output else Path(f"{args.output}.meta.json")
         sampling_policy = _extract_sampling_policy(records)
-        decode_config = {
-            "temperature": args.temperature,
-            "max_tokens": args.max_tokens,
-            "seed": args.seed,
-        }
 
         backend: InferenceBackend
         if args.backend == "http":
@@ -668,9 +857,11 @@ def main(argv=None) -> int:
                 timeout_seconds=args.timeout,
                 temperature=args.temperature,
                 max_tokens=args.max_tokens,
+                top_p=args.top_p,
                 seed=args.seed,
                 max_pixels=args.max_pixels,
                 sampling_policy=sampling_policy,
+                no_image=args.no_image,
             )
         else:
             if not args.model_path:
@@ -683,10 +874,12 @@ def main(argv=None) -> int:
                 timeout_seconds=args.timeout,
                 temperature=args.temperature,
                 max_tokens=args.max_tokens,
+                top_p=args.top_p,
                 seed=args.seed,
                 max_pixels=args.max_pixels,
                 max_slice_nums=args.max_slice_nums,
                 sampling_policy=sampling_policy,
+                no_image=args.no_image,
                 trusted_files_sha256=trusted_sha,
             )
 
@@ -707,12 +900,14 @@ def main(argv=None) -> int:
                 exclusions=exclusions,
                 enforce_exclusions=not args.allow_excluded,
                 eval_subset_id=effective_subset_id,
+                no_image=args.no_image,
             )
         finally:
             backend.close()
+        modality_suffix = f"; modality={MODALITY_TEXT_ONLY}" if args.no_image else ""
         print(
             f"Wrote {len(predictions)} predictions to {args.output}; backend={args.backend}; "
-            f"prompt_id={prompt_identity}; meta={meta_output}"
+            f"prompt_id={prompt_identity}; meta={meta_output}{modality_suffix}"
         )
         return 0
     except (InputError, OSError, UnicodeError, NotImplementedError, paths.EvalPathError, RuntimeError) as exc:

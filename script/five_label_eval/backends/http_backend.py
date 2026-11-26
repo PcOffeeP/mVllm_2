@@ -23,7 +23,7 @@ from urllib.parse import urlsplit, urlunsplit
 import httpx
 
 from ..score import InputError
-from . import InferenceRequest, InferenceResult, normalize_result, sanitize_base_url
+from . import InferenceRequest, InferenceResult, modality_for_no_image, normalize_result, sanitize_base_url
 
 MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 
@@ -130,9 +130,11 @@ class HttpBackend:
         timeout_seconds: float = 600.0,
         temperature: float = 0.0,
         max_tokens: int = 512,
+        top_p: float | None = None,
         seed: int | None = None,
         max_pixels: int | None = None,
         sampling_policy: dict[str, Any] | None = None,
+        no_image: bool = False,
         extra_body: dict[str, Any] | None = None,
         transport: httpx.BaseTransport | None = None,
         client: httpx.Client | None = None,
@@ -157,6 +159,16 @@ class HttpBackend:
             raise InputError(f"temperature must be a finite number >= 0, got {temperature!r}")
         if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
             raise InputError(f"max_tokens must be a positive integer, got {max_tokens!r}")
+        if top_p is not None and (
+            isinstance(top_p, bool)
+            or not isinstance(top_p, (int, float))
+            or not math.isfinite(top_p)
+            or top_p <= 0
+            or top_p > 1.0
+        ):
+            raise InputError(f"top_p must be a finite number in (0, 1], got {top_p!r}")
+        if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+            raise InputError(f"seed must be an integer when set, got {seed!r}")
         if max_pixels is not None and (isinstance(max_pixels, bool) or not isinstance(max_pixels, int) or max_pixels <= 0):
             raise InputError(f"max_pixels must be a positive integer when set, got {max_pixels!r}")
 
@@ -186,9 +198,11 @@ class HttpBackend:
         self.timeout_seconds = float(timeout_seconds)
         self.temperature = float(temperature)
         self.max_tokens = int(max_tokens)
+        self.top_p = float(top_p) if top_p is not None else None
         self.seed = seed
         self.max_pixels = max_pixels
         self.sampling_policy = dict(sampling_policy) if isinstance(sampling_policy, dict) else None
+        self.no_image = bool(no_image)
         self.extra_body = dict(extra_body) if isinstance(extra_body, dict) else None
 
         self._transport = transport
@@ -202,20 +216,26 @@ class HttpBackend:
             "base_url": sanitize_base_url(self.endpoint),
             "completions_url": sanitize_base_url(self.completions_url),
             "api_key_env": self.api_key_env,
-            "max_pixels": self.max_pixels,
+            "no_image": self.no_image,
+            "modality": modality_for_no_image(self.no_image),
+            "max_pixels": None if self.no_image else self.max_pixels,
             "sampling_policy": self.sampling_policy,
             "timeout_seconds": self.timeout_seconds,
             "decode_config": {
                 "temperature": self.temperature,
                 "max_tokens": self.max_tokens,
+                "top_p": self.top_p,
                 "seed": self.seed,
             },
             "output_unwrapping": "none",
         }
 
     def build_payload(self, request: InferenceRequest) -> dict[str, Any]:
-        """Build an OpenAI-compatible multimodal chat payload with zero metadata leakage."""
-        if request.frame_bytes is not None:
+        """Build an OpenAI-compatible chat payload (multimodal or text-only) with zero metadata leakage."""
+        effective_no_image = bool(self.no_image or request.no_image)
+        if effective_no_image:
+            image_urls: list[str] = []
+        elif request.frame_bytes is not None:
             image_urls = [_encode_png_bytes_data_url(raw) for raw in request.frame_bytes]
         else:
             image_urls = [_encode_png_data_url(path) for path in request.frame_paths]
@@ -227,16 +247,21 @@ class HttpBackend:
         content.append({"type": "text", "text": request.prompt_text})
 
         decode = request.decode_config or {}
+        temperature = decode["temperature"] if decode.get("temperature") is not None else self.temperature
+        max_tokens = decode["max_tokens"] if decode.get("max_tokens") is not None else self.max_tokens
         payload: dict[str, Any] = {
             "model": self.api_model_name,
             "messages": [{"role": "user", "content": content}],
-            "temperature": decode.get("temperature", self.temperature),
-            "max_tokens": decode.get("max_tokens", self.max_tokens),
+            "temperature": temperature,
+            "max_tokens": max_tokens,
         }
-        seed = decode.get("seed", self.seed)
+        top_p = decode["top_p"] if decode.get("top_p") is not None else self.top_p
+        if top_p is not None:
+            payload["top_p"] = top_p
+        seed = decode["seed"] if decode.get("seed") is not None else self.seed
         if seed is not None:
             payload["seed"] = seed
-        if self.max_pixels is not None:
+        if self.max_pixels is not None and not effective_no_image:
             # Forward max_pixels to OpenAI-compatible vLLM/SGLang servers so the
             # recorded run_identity pixel budget is actively sent in the request.
             payload["mm_processor_kwargs"] = {"max_pixels": self.max_pixels}
