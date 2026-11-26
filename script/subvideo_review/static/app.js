@@ -44,9 +44,14 @@
     const pairs = raw.replace(/^\?/, "").split("&").filter(Boolean);
     for (const pair of pairs) {
       const eq = pair.indexOf("=");
-      const key = decodeURIComponent(eq >= 0 ? pair.slice(0, eq) : pair);
+      let key, value;
+      try {
+        key = decodeURIComponent(eq >= 0 ? pair.slice(0, eq) : pair);
+        value = decodeURIComponent(eq >= 0 ? pair.slice(eq + 1) : "").trim().toLowerCase();
+      } catch {
+        continue;
+      }
       if (key !== name) continue;
-      const value = decodeURIComponent(eq >= 0 ? pair.slice(eq + 1) : "").trim().toLowerCase();
       return value === "1" || value === "true" || value === "yes";
     }
     return false;

@@ -647,8 +647,12 @@ class RealDataGuardTests(unittest.TestCase):
         self.assertEqual(folds["0"], "val", "fold0 为 val，因此同时计入 B2 的 fold0 池")
 
     def test_real_dec007_exclusions_b3_counts_and_frozen_subset_integrity(self):
+        from script.five_label_eval.exclusions import V1_REVIEWS_CUTOFF_CREATED_AT
+        from script.five_label_eval.freeze_subsets import verify_frozen_subsets
+
         app = ReviewApp(REPO_ROOT)
         bootstrap = app.bootstrap()
+        by_cid = {row["candidate_id"]: row for row in bootstrap["candidates"]}
         excluded_rows = [row for row in bootstrap["candidates"] if row["dec007_excluded"]]
         self.assertEqual(len(bootstrap["candidates"]), 1633)
         self.assertEqual(len(excluded_rows), 20, "DEC-007 应标记 video_0006 (19) + video_0079 (1) 共 20 条子视频")
@@ -661,28 +665,54 @@ class RealDataGuardTests(unittest.TestCase):
         self.assertEqual(len(hidden_bootstrap["candidates"]), 1613)
         self.assertFalse(any(row["dec007_excluded"] for row in hidden_bootstrap["candidates"]))
 
+        # Immutable membership counts + dynamic live-review status invariants (stays green as B3 reviews grow).
         catalog = app.batch_catalog()
         b3 = batch_by_id(catalog, "B3")
         self.assertEqual(b3["raw_candidate_count"], 1319)
         self.assertEqual(b3["candidate_count"], 1319)
         self.assertEqual(b3["clean_candidate_count"], 1299)
         self.assertEqual(b3["excluded_candidate_count"], 20)
-        self.assertEqual(b3["clean_unreviewed_count"], 1089)
-        self.assertEqual(b3["excluded_unreviewed_count"], 17)
-        self.assertEqual(b3["excluded_unreviewed_sources"], ["video_0006"])
-        self.assertEqual(b3["clean_confirmed_count"], 210)
-        self.assertEqual(b3["excluded_confirmed_count"], 3)
+        b3_ids = b3["candidate_ids"]
+        expected_clean_unrev = sum(1 for cid in b3_ids if not by_cid[cid]["dec007_excluded"] and by_cid[cid]["review_status"] == "unreviewed")
+        expected_excl_unrev = sum(1 for cid in b3_ids if by_cid[cid]["dec007_excluded"] and by_cid[cid]["review_status"] == "unreviewed")
+        expected_clean_conf = sum(1 for cid in b3_ids if not by_cid[cid]["dec007_excluded"] and by_cid[cid]["review_status"] == "confirmed")
+        expected_excl_conf = sum(1 for cid in b3_ids if by_cid[cid]["dec007_excluded"] and by_cid[cid]["review_status"] == "confirmed")
+        self.assertEqual(b3["clean_unreviewed_count"], expected_clean_unrev)
+        self.assertEqual(b3["excluded_unreviewed_count"], expected_excl_unrev)
+        self.assertEqual(b3["clean_confirmed_count"], expected_clean_conf)
+        self.assertEqual(b3["excluded_confirmed_count"], expected_excl_conf)
+        self.assertEqual(b3["clean_unreviewed_count"] + b3["excluded_unreviewed_count"], b3["unreviewed_count"])
+        self.assertEqual(b3["clean_confirmed_count"] + b3["excluded_confirmed_count"], b3["confirmed_count"])
 
         hidden_catalog = app.batch_catalog(hide_excluded=True)
         b3_hidden = batch_by_id(hidden_catalog, "B3")
         self.assertEqual(b3_hidden["candidate_count"], 1299)
         self.assertEqual(b3_hidden["raw_candidate_count"], 1319)
-        self.assertEqual(b3_hidden["clean_unreviewed_count"], 1089)
-        self.assertEqual(b3_hidden["excluded_unreviewed_count"], 17)
+        self.assertEqual(b3_hidden["clean_unreviewed_count"], expected_clean_unrev)
+        self.assertEqual(b3_hidden["excluded_unreviewed_count"], expected_excl_unrev)
         self.assertEqual(set(b3_hidden["candidate_ids"]) & set(b3["excluded_candidate_ids"]), set())
 
+        # Deterministic v1-cutoff snapshot check: pins exact 1,089 clean vs 17 excluded unreviewed at V1 cutoff.
+        reviews_raw = json.loads((REPO_ROOT / "data/subvideo-review/reviews.json").read_text(encoding="utf-8"))
+        cutoff_store = {
+            "schema": reviews_raw["schema"],
+            "revisions": [r for r in reviews_raw["revisions"] if r.get("created_at", "") <= V1_REVIEWS_CUTOFF_CREATED_AT],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cutoff_path = Path(tmpdir) / "reviews-v1-cutoff.json"
+            cutoff_path.write_text(json.dumps(cutoff_store, ensure_ascii=False), encoding="utf-8")
+            cutoff_app = ReviewApp(REPO_ROOT, records=cutoff_path)
+            b3_cutoff = batch_by_id(cutoff_app.batch_catalog(), "B3")
+            self.assertEqual(b3_cutoff["raw_candidate_count"], 1319)
+            self.assertEqual(b3_cutoff["clean_candidate_count"], 1299)
+            self.assertEqual(b3_cutoff["excluded_candidate_count"], 20)
+            self.assertEqual(b3_cutoff["clean_unreviewed_count"], 1089)
+            self.assertEqual(b3_cutoff["excluded_unreviewed_count"], 17)
+            self.assertEqual(b3_cutoff["excluded_unreviewed_sources"], ["video_0006"])
+            self.assertEqual(b3_cutoff["clean_confirmed_count"], 210)
+            self.assertEqual(b3_cutoff["excluded_confirmed_count"], 3)
+
         # Verify V1_PINNED_INPUTS & frozen eval subsets remain 100% intact.
-        from script.five_label_eval.freeze_subsets import verify_frozen_subsets
         verified = verify_frozen_subsets(REPO_ROOT / "data/eval-subsets")
         self.assertEqual(len(verified), 2)
 
