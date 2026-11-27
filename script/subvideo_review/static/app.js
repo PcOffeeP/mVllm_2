@@ -6,6 +6,7 @@
   const statusNames = {unreviewed: "未审核", draft: "草稿", confirmed: "已确认", returned: "已退回", question: "有疑问"};
   const state = {data: null, selected: null, latest: null, dirty: false, loading: false, sequence: 0, activeScope: "", exporting: false, lastSaveAt: 0};
   const batchMembers = new Map();
+  const batchCatalog = new Map();
   let activeBatch = "";
   const controls = new Map();
   /* 历史标注/旧清单里的旧词只在显示层统一为「无法判断」；已存记录与源标注字节均不改写。 */
@@ -99,21 +100,46 @@
     select.append(option);
     return option;
   }
+  function formatBatchOptionLabel(batch, {useLive = false} = {}) {
+    if (!batch.selectable) {
+      return `${batch.batch_id} · ${batch.name}（待定，三折池 ${Object.values(batch.fold_pool_counts).join("/")}）`;
+    }
+    if (!useLive && batch.excluded_candidate_count > 0 && Number.isInteger(batch.clean_unreviewed_count)) {
+      return `${batch.batch_id} · ${batch.name}（有效待审 ${batch.clean_unreviewed_count}，DEC-007 排除 ${batch.excluded_candidate_count}）`;
+    }
+    const ids = batchMembers.get(batch.batch_id);
+    const batchItems = state.data?.candidates && ids
+      ? state.data.candidates.filter((c) => ids.has(c.candidate_id))
+      : [];
+    const excludedItems = batchItems.filter((c) => c.dec007_excluded);
+    if (excludedItems.length > 0) {
+      const cleanUnreviewed = batchItems.filter((c) => !c.dec007_excluded && c.review_status === "unreviewed").length;
+      return `${batch.batch_id} · ${batch.name}（有效待审 ${cleanUnreviewed}，DEC-007 排除 ${excludedItems.length}）`;
+    }
+    if (batch.excluded_candidate_count > 0) {
+      return `${batch.batch_id} · ${batch.name}（有效待审 ${batch.clean_unreviewed_count}，DEC-007 排除 ${batch.excluded_candidate_count}）`;
+    }
+    return `${batch.batch_id} · ${batch.name}`;
+  }
+  function updateBatchFilterOptions() {
+    for (const {batch, option} of batchCatalog.values()) {
+      option.textContent = formatBatchOptionLabel(batch, {useLive: true});
+    }
+  }
   async function loadBatches() {
     const select = byId("batch-filter");
     if (!select) return;
     select.replaceChildren();
+    batchMembers.clear();
+    batchCatalog.clear();
     addOption(select, "", "不按批次筛选");
     try {
       const catalog = await request("/api/batches");
       for (const batch of catalog.batches) {
-        const excludedSuffix = batch.selectable && batch.excluded_candidate_count > 0
-          ? `（有效待审 ${batch.clean_unreviewed_count}，DEC-007 排除 ${batch.excluded_candidate_count}）`
-          : "";
-        const suffix = batch.selectable ? excludedSuffix : `（待定，三折池 ${Object.values(batch.fold_pool_counts).join("/")}）`;
-        const option = addOption(select, batch.batch_id, `${batch.batch_id} · ${batch.name}${suffix}`);
-        option.disabled = !batch.selectable;
         if (batch.selectable) batchMembers.set(batch.batch_id, new Set(batch.candidate_ids));
+        const option = addOption(select, batch.batch_id, formatBatchOptionLabel(batch));
+        option.disabled = !batch.selectable;
+        batchCatalog.set(batch.batch_id, {batch, option});
       }
     } catch (error) {
       message(`批次加载失败：${error.message}。仍可按原方式审核。`, true);
@@ -499,6 +525,7 @@
         historyFailed = true;
       }
       renderList();
+      updateBatchFilterOptions();
       state.lastSaveAt = Date.now();
       message(`已保存${statusNames[row.review_status]}；新修订 ${row.review_id}。${historyFailed ? "历史记录未能刷新，可重载页面核对。" : "这不是数据发布。"}`);
       return {historyFailed};

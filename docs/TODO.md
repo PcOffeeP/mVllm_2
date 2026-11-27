@@ -1,21 +1,21 @@
 # Project TODO
 
-本项目唯一任务台账（最新核对日期：**2026-11-26**，对应主线 `feat/tensileagent-finetune`）。设计与代码事实见 [facts.yaml](facts.yaml)，重要已确认决定见 [决策总览](decisions/README.md)，专题文档入口见 [项目导航](guide.md)。
+本项目唯一任务台账（最新核对日期：**2026-11-27**，对应主线 `feat/tensileagent-finetune`）。设计与代码事实见 [facts.yaml](facts.yaml)，重要已确认决定见 [决策总览](decisions/README.md)，专题文档入口见 [项目导航](guide.md)。
 
-## 项目现状总览（2026-11-26 实测）
+## 项目现状总览（2026-11-27 实测）
 
 - **源级输入**：110 个真实源视频（89 开发三折 + 21 固定 test；2026-11-25 [去重审计](research/source-video-dedup-audit.md)与 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 按选项 A 在 `data/splits/dev-exclusions.json` 中强制排除与 test 近重复的 `video_0006`/`video_0079`，原 `data/splits/three-fold/*.json` 逐字节不动，有效开发源 **87**、每折 `58/29`，虚拟视频隔离由 12 升至 **15**），当前源标注表 [data/annotation-table-full.csv](../data/annotation-table-full.csv)（SHA-256 `c928bea3…c1ec354c`）与 ROI 清单 [data/roi/manifest.json](../data/roi/manifest.json)（110/110 `success`，2026-11-20 重扫）已就位。
 - **候选子视频批次**：第 2 批（`basic` 档）已于 2026-11-20 在训练机生成并回传，共 **1,633 条**候选（开发集 1,319、固定 test 314；扣除选项 A 排除的 `video_0006` 19 条与 `video_0079` 1 条后有效开发候选 1,299 条），三份清单（`manifest.json`、`summary.json`、`audit.json`）已入库，本机媒体逐条 SHA-256 核对 `1,633/1,633` 一致。
 - **人工审核进度**（以 [reviews.json](../data/subvideo-review/reviews.json) 实测为准，最新时间戳 `2026-11-25T08:46:05.068136+00:00`）：本批次身份有效确认 **527 / 1,633**（B0 校准批 `32/32`、B1 固定 test 批 `314/314`、B2 三折 val 抽样批 `180/180`、清单外试审 `1` 条 = `video_0050_coverage_02`），未审核 **1,106** 条，草稿／疑问／退回均为 0。**B0、B1、B2 已全部审完**，下一批次为 B3（开发集其余未审候选）。
 - **评测与微调前准备进展（2026-11-26）**：
-  - **11 组正式评测归档就位**：在 [正式评测结果总入口](eval/runs/README.md) 与 [三画幅档完整必报项分档报告](eval/runs/width-band-breakdown.md) 归档 `eval-dev-v1`（210 条 / 87 源）全部 11 组 Run（既有 6 组 + 2026-11-26 新增 5 组：PR #29 `--no-image` 严格配对的 `Qwen3-VL-8B-Instruct` Run B，以及替换为 HF 兼容权重后的 `InternVL3-8B-hf` 与 `InternVL3_5-8B-HF` 配对 Run A/B）；`config/eval_paths.json` 已同步训练机 `gpu-train` 真实路径；`MiniCPM-V-4.5` 两组视觉 Run 因尚未核实 processor 实际逐帧像素上限，仍标为历史初步观测。
+  - **共归档 11 组 Run 就位**：在 [正式评测结果总入口](eval/runs/README.md) 与 [三画幅档完整必报项分档报告](eval/runs/width-band-breakdown.md) 共归档 `eval-dev-v1`（210 条 / 87 源）11 组 Run（既有 6 组 + 2026-11-26 新增 5 组：PR #29 `--no-image` 严格配对的 `Qwen3-VL-8B-Instruct` Run B，以及替换为 HF 兼容权重后的 `InternVL3-8B-hf` 与 `InternVL3_5-8B-HF` 配对 Run A/B）；`config/eval_paths.json` 已同步训练机 `gpu-train` 真实路径；其中 `MiniCPM-V-4.5` 两组视觉 Run 因尚未核实 processor 实际逐帧像素上限，仍标为历史初步观测、暂未纳入跨模型正式主榜。
   - **首轮 SFT 主基座与 4090 QLoRA 配方已锁定（[DEC-008](decisions/0008-finetune-base-model-and-sft-recipe.md)）**：用户已锁定首轮微调主基座为 **`Qwen3-VL-8B-Instruct`**；训练机已完成独立 `vlm-sft` 环境（`transformers==4.57.6`、`LlamaFactory@4447137e`）搭建、4 款第一梯队基座 10 样本 8 帧 QLoRA 冒烟及黄金全分辨率对齐配方（`4-bit bnb` + `image_max_pixels=1,200,000` + `paged_adamw_8bit` + `expandable_segments:True`，峰值 `22,525 MiB`）+ `vLLM --enable-lora` 回环验真。
   - **独立虚拟补充测评设计已落盘**：[独立虚拟补充测评集设计方案](research/virtual-eval-supplement-design.md) 已归档，正式虚拟测评视频制作交回 Codex（配合 Blender MCP），Antigravity Phase 0 的 6 条 EEVEE PBR 对照试片归档于 `BlenderTensileVideo/review/phase0-eval-comparison-20261126/` 作视觉对照参考。
 - **尚未启动项**：正式三折 SFT 训练（须严守 `DEC-008` 三折隔离红线，不在整份 `eval-dev-v1` 上训练，Fold 0 仅在 `eval-dev-v1 ∩ fold_0_val` 69 条上验证）、`MiniCPM-V-4.5` 正式主榜准入（补齐 processor 实际像素上限运行身份）、固定封存测试集 `eval-test-v1` 终测、数据发布与旧 `versioning` 晋级接入均**未执行**；源标注表发现的疑似错标已登记在 `§8 SOURCE-RELABEL`（9 源 12 字段），当前暂不改表。
 
 | 编号与代号 | 任务名称 | 当前状态 | 当前关键进展／下一步 |
 | --- | --- | --- | --- |
-| [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径、6 篇输入契约、PR #20 三篇调研、PR #21 独立取证 CLI、[DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)、PR #23 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)、[DEC-007](decisions/0007-dev-test-dedup-exclusion.md)、PR #29 `--no-image` 配对 Run B、**11 组 `eval-dev-v1` 正式 Run 归档**（见 [正式评测结果总入口](eval/runs/README.md)）、[DEC-008](decisions/0008-finetune-base-model-and-sft-recipe.md)（锁定 `Qwen3-VL-8B-Instruct` 主基座与 4090 QLoRA 黄金配方）及 [独立虚拟补充测评集设计方案](research/virtual-eval-supplement-design.md) 均已就位；待推进 B3 人工审核、`MiniCPM-V-4.5` 正式主榜准入（如需）、样本充分性与正式阈值 |
+| [2. EVAL-DESIGN](#2-eval-design--设计并确认评价体系) | 设计并确认评价体系 | 进行中 | 五类评价口径、6 篇输入契约、PR #20 三篇调研、PR #21 独立取证 CLI、[DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)、PR #23 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)（2026-11-27 补完 32 条复材簇 496 对全量核查与训练机仓外暴露核查）、[DEC-007](decisions/0007-dev-test-dedup-exclusion.md)、PR #29 `--no-image` 配对 Run B、**共归档 11 组 `eval-dev-v1` Run**（其中 `MiniCPM-V-4.5` 两组视觉 Run 暂标历史初步观测、未入跨模型正式主榜；见 [正式评测结果总入口](eval/runs/README.md)）、[DEC-008](decisions/0008-finetune-base-model-and-sft-recipe.md)（锁定 `Qwen3-VL-8B-Instruct` 主基座与 4090 QLoRA 黄金配方）及 [独立虚拟补充测评集设计方案](research/virtual-eval-supplement-design.md) 均已就位；待推进 B3 人工审核、`MiniCPM-V-4.5` 正式主榜准入（如需）、样本充分性与正式阈值 |
 | [3. EVAL-VERSIONING](#3-eval-versioning--按新评价设计更新-versioning-评价与晋级门槛) | 更新 `versioning` 评价与晋级门槛 | 待处理 | 依赖 `EVAL-DESIGN` 定稿与真实测评证据 |
 | [4. DATA-HANDOFF](#4-data-handoff--梳理新标注到数据生成的衔接方案) | 梳理新标注到数据生成的衔接方案 | 进行中 | 1,633 条新批次已回传核验；审核进度移交 `§6`，选项 A 排除清单 `data/splits/dev-exclusions.json` 已落地，待定虚拟视频切分策略与发布衔接 |
 | [5. EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集) | 构建测评候选子集 | 已冻结（2026-11-25） | 已按方案 A 冻结 [`data/eval-subsets/eval-dev-v1.json`](../data/eval-subsets/eval-dev-v1.json)（210 条 / 87 源，严格排除 `DEC-007` 近重复源）与 [`data/eval-subsets/eval-test-v1.json`](../data/eval-subsets/eval-test-v1.json)（314 条 / 21 源，封存终测），并在 `script/five_label_eval/` 落地 `DEC-007` 代码防漏网守卫；登记见 [eval-subset.md](eval/eval-subset.md) §6.1 |
@@ -28,7 +28,7 @@
 
 ## 2. EVAL-DESIGN — 设计并确认评价体系
 
-**状态：** 进行中。本轮五类评价口径已按 [DEC-003](decisions/0003-five-label-eval-scope.md)（2026-11-14）确认，片段层删除「无」与分层评分已按 [DEC-004](decisions/0004-fragment-label-no-value-removal.md)（2026-11-16）确认，帧对应抽帧取证设计已按 [DEC-005](decisions/0005-frame-correspondence-evidence.md)（2026-11-23）确认且独立取证 CLI 已于 PR #21（2026-11-24）落地于 `script/frame_correspondence/`，PR #20（2026-11-24）三篇多模型评测调研已合入，首轮 8 帧抽帧口径与第一梯队 3+1 基座名单已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（2026-11-25）确认；测评子集 `eval-dev-v1` / `eval-test-v1` 已冻结（PR #26，见 [§5 EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集)）；2026-11-26 已合入 PR #29（`--no-image` 配对 Run B）、归档 `eval-dev-v1` 全部 11 组正式 Run（含 `Qwen3-VL-8B-Instruct` 配对 Run B 及 HF 版 `InternVL3-8B-hf` / `InternVL3_5-8B-HF` 配对 Run A/B，见 [正式评测结果总入口](eval/runs/README.md)）、落盘 [DEC-008](decisions/0008-finetune-base-model-and-sft-recipe.md)（锁定 `Qwen3-VL-8B-Instruct` 主基座与 4090 QLoRA 黄金配方）与 [独立虚拟补充测评集设计方案](research/virtual-eval-supplement-design.md)，并同步 `config/eval_paths.json` 训练机真实路径；`MiniCPM-V-4.5` 正式主榜准入（补齐 processor 实际像素上限运行身份）、样本充分性与正式阈值尚未落地。
+**状态：** 进行中。本轮五类评价口径已按 [DEC-003](decisions/0003-five-label-eval-scope.md)（2026-11-14）确认，片段层删除「无」与分层评分已按 [DEC-004](decisions/0004-fragment-label-no-value-removal.md)（2026-11-16）确认，帧对应抽帧取证设计已按 [DEC-005](decisions/0005-frame-correspondence-evidence.md)（2026-11-23）确认且独立取证 CLI 已于 PR #21（2026-11-24）落地于 `script/frame_correspondence/`，PR #20（2026-11-24）三篇多模型评测调研已合入，首轮 8 帧抽帧口径与第一梯队 3+1 基座名单已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md)（2026-11-25）确认；测评子集 `eval-dev-v1` / `eval-test-v1` 已冻结（PR #26，见 [§5 EVAL-SUBSET](#5-eval-subset--从新批次候选子视频构建测评候选子集)）；2026-11-26 已合入 PR #29（`--no-image` 配对 Run B）、在 [正式评测结果总入口](eval/runs/README.md) 共归档 `eval-dev-v1` 11 组 Run（含 `Qwen3-VL-8B-Instruct` 配对 Run B 及 HF 版 `InternVL3-8B-hf` / `InternVL3_5-8B-HF` 配对 Run A/B；其中 `MiniCPM-V-4.5` 两组视觉 Run 因尚未核实 processor 实际像素上限，仍标为历史初步观测、暂未纳入跨模型正式主榜）、落盘 [DEC-008](decisions/0008-finetune-base-model-and-sft-recipe.md)（锁定 `Qwen3-VL-8B-Instruct` 主基座与 4090 QLoRA 黄金配方）与 [独立虚拟补充测评集设计方案](research/virtual-eval-supplement-design.md)，并同步 `config/eval_paths.json` 训练机真实路径；`MiniCPM-V-4.5` 正式主榜准入（补齐 processor 实际像素上限运行身份）、样本充分性与正式阈值尚未落地。
 
 ### 目标
 
@@ -50,7 +50,7 @@
   6. `GLM-4.1V` `<answer>...</answer>` 处置：主榜采用方案 1（原生格式罚分），不预埋解包分支（未来若测试须另起独立 `run_id` 对照）。
 - **第一梯队基座 `eval-dev-v1` 配对 Run A / Run B 评测归档与 4090 QLoRA 冒烟完成（2026-11-25 ~ 2026-11-26）**：
   - 2026-11-25 已归档 `MiniCPM-V-4.5` 在冻结开发集 `eval-dev-v1`（210 条 / 87 源）的三次运行（Run A `transformers` DEC-006 方向、`vLLM` 对照、Run B 描述性纯文本先验对照）；因两个视觉 Run 尚未核实模型 processor 实际生效的像素上限，当前标为历史初步观测（补齐运行身份前不入正式跨模型主榜）。
-  - 2026-11-26 已合入 PR #29（`infer.py --no-image`），在训练机将非 HF InternVL 权重替换为 LlamaFactory 兼容 HF 版（`InternVL3-8B-hf` / `InternVL3_5-8B-HF`），完成并原样归档共 **11 组**正式 Run（新增 `Qwen3-VL-8B-Instruct` 严格配对 Run B 及两款 InternVL-HF 配对 Run A/B，均 210/210 请求成功、0 组合冲突、完整 `run_meta.json` 与 `snapshot_identity.json` 落盘），汇总于 [正式评测结果总入口](eval/runs/README.md) 与 [三画幅档完整必报项分档报告](eval/runs/width-band-breakdown.md)；并同步 `config/eval_paths.json` 训练机 `gpu-train` 真实路径。
+  - 2026-11-26 已合入 PR #29（`infer.py --no-image`），在训练机将非 HF InternVL 权重替换为 LlamaFactory 兼容 HF 版（`InternVL3-8B-hf` / `InternVL3_5-8B-HF`），完成并原样归档共 **11 组** Run（含既有 6 组及新增 `Qwen3-VL-8B-Instruct` 严格配对 Run B 与两款 InternVL-HF 配对 Run A/B，新增 Run 均 210/210 请求成功、0 组合冲突、完整 `run_meta.json` 与 `snapshot_identity.json` 落盘；其中 `MiniCPM-V-4.5` 两组视觉 Run 仍标为历史初步观测、暂未纳入跨模型正式主榜），汇总于 [正式评测结果总入口](eval/runs/README.md) 与 [三画幅档完整必报项分档报告](eval/runs/width-band-breakdown.md)；并同步 `config/eval_paths.json` 训练机 `gpu-train` 真实路径。
   - **首轮 SFT 主基座与配方锁定（[DEC-008](decisions/0008-finetune-base-model-and-sft-recipe.md)）**：基于配对 Run A/B（`Qwen3-VL-8B-Instruct` 盲测 100% 诚实 `无法判断` 且高画幅 `w_gt_400` `伸长` `+50.00 pp` vs `InternVL3-8B-hf` 盲测 210/210 恒定幻觉 `发生断裂`）与 4 款模型 4090 `vlm-sft` QLoRA 冒烟（含 `InternVLPlugin` `max_patches: 12` 硬编码限制实证），锁定 **`Qwen3-VL-8B-Instruct`** 黄金 8 帧全分辨率对齐 4-bit QLoRA 配方（峰值 `22,525 MiB`、已验通 `vLLM --enable-lora`）及严格三折隔离红线。
   - **独立虚拟补充测评设计已落盘**：[独立虚拟补充测评集设计方案](research/virtual-eval-supplement-design.md) 已归档，正式虚拟测评视频生成交回 Codex（配合 Blender MCP），Antigravity Phase 0 6 条 EEVEE PBR 对照试片留档于 `BlenderTensileVideo/review/phase0-eval-comparison-20261126/`。
 - **未落地项**：训练／业务契约、`MiniCPM-V-4.5` 正式主榜准入（补齐 processor 实际像素上限运行身份）、正式三折 SFT 训练、正式通过阈值与晋级衔接尚未落地。
@@ -77,8 +77,8 @@
 
 - [x] 位置视觉规则典型样例校准：已按 [DEC-003](decisions/0003-five-label-eval-scope.md) 第 7 条收敛至 [样例集](label-calibration/README.md) 9 例与 `docs/label.md` 第 5 节。
 - [x] 评分工具合成验证：已用人工构造小例核验多选未知、缺字段、失败、组合冲突与已确认分母（仅合成数据，不代表真实测评）。
-- [ ] 补齐源视频近似素材去重核查及新增虚拟视频来源核查：2026-11-25 已完成 110 源全量 5,995 对去重审计与 65 条虚拟视频泄漏审查（PR #23，见 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)）并按 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 落地选项 A 排除清单 [`data/splits/dev-exclusions.json`](../data/splits/dev-exclusions.json)（排除 `video_0006`/`video_0079` 及其 20 条子视频，隔离 15 条虚拟视频）；余下未决项为 32 条 `1280×720` 复材固定机位簇其余未复核配对（含 5 条 test）及训练机仓外历史暴露核查。
-- [x] 完成多模型输入及训练机资源适配调研：已完成 [MiniCPM 视频加载核查](research/minicpm-video-loading.md) 与 PR #20 三篇专项调研（[8B/9B 模型选型](research/vlm-8b-9b-model-comparison.md)、[8 帧抽帧口径](research/model-input-frame-sampling-options.md)、[训练机前置体检与适配器规划](research/eval-preflight-and-adapter-plan.md)），6 项核心边界已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 拍板；待执行训练机只读体检与推理适配器落地。
+- [x] 补齐源视频近似素材去重核查及新增虚拟视频来源核查：2026-11-25 已完成 110 源全量 5,995 对去重审计与 65 条虚拟视频泄漏审查（PR #23，见 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)）并按 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 落地选项 A 排除清单 [`data/splits/dev-exclusions.json`](../data/splits/dev-exclusions.json)（排除 `video_0006`/`video_0079` 及其 20 条子视频，隔离 15 条虚拟视频）；2026-11-27 已补完余下两项核查并关闭本条：① 32 条 `1280×720` 复材固定机位簇全部 496 对（135 `dev↔test` + 10 `test↔test` + 351 `dev↔dev`）全量定量筛查，并对 23 对多指标并集 Top 可疑对拼图及补充低 MAE / 涉 `test` 配对做多帧目视与 6× 像素差分复核，确认 **0 新增重复或近重复源**，全量 110 源维持既定 2 对，`DEC-007` 排除清单无需增补；② 训练机仓外历史暴露只读核查确认：**在已核查的训练机目录与日志中未发现 `video-V1` 及 15 条隔离项的暴露记录（0 hits）**，本仓 `evaluations/` 全部 11 组 Run 与 8 个冒烟目录零混入 `test`/排除源/虚拟视频，旧 `mVllm_2` 历史微调为旧版 `MiniCPM-V-4.5` v4.1 LoRA、与本仓干净基座 `Qwen3-VL-8B-Instruct` 无权重污染链。
+- [x] 完成多模型输入及训练机资源适配调研：已完成 [MiniCPM 视频加载核查](research/minicpm-video-loading.md) 与 PR #20 三篇专项调研（[8B/9B 模型选型](research/vlm-8b-9b-model-comparison.md)、[8 帧抽帧口径](research/model-input-frame-sampling-options.md)、[训练机前置体检与适配器规划](research/eval-preflight-and-adapter-plan.md)），6 项核心边界已按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 拍板；训练机只读体检、推理适配器（含 PR #29 `--no-image` 配对 Run B）与 `vlm-sft` 4090 QLoRA 冒烟均已于 2026-11-25 ~ 2026-11-26 落地完成（见 [DEC-008](decisions/0008-finetune-base-model-and-sft-recipe.md)）。
 - [ ] 核对实际待测模型权重、微调结果、数据、输入及评分规则的完整身份。
 - [ ] （后续优化/对照项，首轮基线后）`MiniCPM-V-4.5` 时序与切片参数对照：首轮按 [DEC-006](decisions/0006-eval-frame-sampling-and-model-lineup.md) 采用官方风格（`0.1 s` 量化 `temporal_ids` + `max_slice_nums=1`），后续可另起独立 `run_id` 与旧链路配置（`temporal_ids=None`、`max_slice_nums=2`、`max_pixels=65,536` 规整）做同口径对照优化。
 
@@ -135,7 +135,7 @@
 
 ### 当前进展
 
-- **上游标注、划分与 ROI 就位**：110 条源标注（含材料类型补全）见 [§1 LABEL-ANNOTATION](#1-label-annotation--确认标签基准并进行人工标注) 与 [整体标签分布](label-distribution.md)。用户确认 110 个源视频各来自独立试验（近似素材仍待核查）；固定 21 条 `test.json`，89 条开发三折已于 2026-11-08 精简至 `data/splits/three-fold/`（仅保留 7 份成员 JSON 与 `manifest.json`），并于 2026-11-19 重标注定稿后重跑开发三折为 train／val `59/30`、`59/30`、`60/29`。2026-11-20 已重扫 ROI 清单（`data/roi/manifest.json`，SHA-256 `24b2dfa3019462dbef27fc00314901d30ad308802a458b31d95a90e4dc6948b3`），7/7 划分摘要、110/110 折归属与 110/110 标签均与当前输入一致，详见 [本轮划分结果](split/data-split-result.md) 与 [ROI 工具说明](../script/roi/README.md)。
+- **上游标注、划分与 ROI 就位**：110 条源标注（含材料类型补全）见 [§1 LABEL-ANNOTATION](#1-label-annotation--确认标签基准并进行人工标注) 与 [整体标签分布](label-distribution.md)。用户确认 110 个源视频各来自独立试验（2026-11-25 及 2026-11-27 已完成全量 110 源含 32 条复材簇 496 对去重核查，确认仅 `video_0006↔0010`、`video_0032↔0079` 2 对跨划附近重复并已按 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 排除）；固定 21 条 `test.json`，89 条开发三折已于 2026-11-08 精简至 `data/splits/three-fold/`（仅保留 7 份成员 JSON 与 `manifest.json`），并于 2026-11-19 重标注定稿后重跑开发三折为 train／val `59/30`、`59/30`、`60/29`。2026-11-20 已重扫 ROI 清单（`data/roi/manifest.json`，SHA-256 `24b2dfa3019462dbef27fc00314901d30ad308802a458b31d95a90e4dc6948b3`），7/7 划分摘要、110/110 折归属与 110/110 标签均与当前输入一致，详见 [本轮划分结果](split/data-split-result.md) 与 [ROI 工具说明](../script/roi/README.md)。
 - **时间标注与选窗规则已落地**：用户于 2026-11-07 澄清：断裂时间类标注可用于子视频生成；当前不为时间预测任务构建训练集，也不评价模型对时间类标签的预测表现（DF-019）。现行 [子视频生成与审核规则](subvideo-current-logic.md) 已实现精确帧不扩范围、时间范围两端各留 0.5 秒保护间隔、断后保护间隔外至少 2 秒源素材（DF-015）、`coverage` 数据判据（无断裂锚点且状态不可判或视频异常=是，DF-045）及片段标签按画面独立审核；数据与测评总链路见 [模型评价设计第 8 节](design-test.md#8-训练测评与交付衔接fj-阶段)。
 - **双机分工与跨机同步已落地（2026-11-14 确认，DF-046／DEC-003 第 10、11 条）**：
   - 子视频生成在训练机执行（入口 `ssh liuyang@100.70.83.68`，主机名 `dell-Precision-3660`，训练机落点 `~/文档/TensileAgent-Finetune`）；媒体产物默认留在训练机，需在本机审查时按 [跨机审查运行手册](training-machine-review-runbook.md) §5.1 单向同步（训练机→本机、逐文件 `rsync` 禁 `--delete`、按 `output.sha256` 全量核对，DF-048）。
@@ -152,7 +152,7 @@
 
 ### 下一步
 
-- [x] 按视频 ID 核对新标注与既有划分对应、字段覆盖及使用边界（近似素材与模拟来源核查仍在 `EVAL-DESIGN` 后续前置工作跟踪）。
+- [x] 按视频 ID 核对新标注与既有划分对应、字段覆盖及使用边界（近似素材全量去重、模拟来源与训练机仓外暴露核查均已于 2026-11-25 ~ 2026-11-27 在 `EVAL-DESIGN` 后续前置工作中关闭，见 [源视频去重与虚拟泄漏审计](research/source-video-dedup-audit.md)）。
 - [x] 完成旧规则加严初裁、两段严格重放核验及事件后保护间隔外 2 秒素材检查（DF-015）。
 - [x] 在训练机重生成第 2 批子视频（`basic` 档，1,633 候选 / 191,625,749 B）并回传本机逐条哈希核对（`1,633/1,633` 一致）。
 - [x] 重生成后按新批次身份完成 B0 校准批（32/32，2026-11-23）与 B1 固定 test 批（314/314，2026-11-24）；旧批次 37 条修订按历史保留、不改写不删除。
@@ -265,7 +265,7 @@
   - `video_0106`：`video_0106_fracture_01`、`video_0106_post_01`、`video_0106_post_02`
 - [x] B1 固定 test 批已审完并入库（314/314 已确认，2026-11-24，PR #16）：test 划分内未审核 0 条，草稿／疑问／退回均为 0；审核中发现的疑似源表错标已登记至 [§8 SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正)。
 - [x] B2 三折 val 抽样批已审完并入库（180/180 已确认，2026-11-25）：规则以 `explicit_ids` 写入 `data/subvideo-review/batches.json`（`seed=20261124`，不含已审 33 条，全收 37 条未审待关注，详见 [subvideo-eval-subset-draft.md](subvideo-eval-subset-draft.md) §4）；已确认项全部归档于 `reviews.json`，审核中补充确认的开发集源表待改项已登记至 [§8 SOURCE-RELABEL](#8-source-relabel--源标注待改清单与集中修正)。
-- [ ] B3 开发集三折 train 全量（`batches.json` 返回全部 1,319 条开发候选，审核时在页面按状态筛选跳过已确认项，并按 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 跳过已排除源 `video_0006`/`video_0079` 的未审候选）：在 B2 之后推进，每批完成后同步进度与遗留问题。
+- [ ] B3 开发集三折 train 全量（`batches.json` 原始返回全部 1,319 条开发候选；PR #31 已在审核页落地一键「隐藏 DEC-007 排除源」筛选视图与实时有效待审计数，可按 [DEC-007](decisions/0007-dev-test-dedup-exclusion.md) 直接隐藏已排除源 `video_0006`/`video_0079` 的 20 条子视频，当前未审中有效干净待审 **1,089** 条、排除源待审 **17** 条，审核时配合状态筛选跳过已确认项）：在 B2 之后推进，每批完成后同步进度与遗留问题。
 - [ ] 建立防漂移抽检记录（抽检片段、复看结论与差异处理）。
 
 ### 完成标准
@@ -378,7 +378,7 @@
 
 1. 源层（按整片判）与片段层（按窗口判）两层各自独立的口径是否维持不变。
 2. `video_0025`（`异常_视频异常`）与 `video_0041`（`现象_断后脱夹`）两项与已确认片段相左，以源表为准、以片段为准还是仅记差异。
-3. 集中改表时点：建议待 B2／B3 全部审完、进入正式测评或训练冻结前一次性改表（B2 期间仅追加清单、不动源表），待用户确认。
+3. 集中改表时点：B2 已完成，建议待 B3 全部审完、进入正式微调或训练冻结前一次性改表（B3 期间仅追加清单、不动源表），待用户确认。
 
 ### 限制与关联
 
