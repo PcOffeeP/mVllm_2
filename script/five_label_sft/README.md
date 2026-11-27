@@ -30,7 +30,8 @@
 2. **DEC-007 排除守卫**：强制加载 `data/splits/dev-exclusions.json`，排除 `video_0006`、`video_0079` 及其 20 条子视频和 15 条隔离虚拟视频。
 3. **零交集断言**：仅从 `fold_{k}_train.json` 扣除 `DEC-007` 后的 **58 个干净开发源**取样，并显式断言导出集与 `fold_{k}_val.json`、`test.json`、`eval-dev-v1 ∩ fold_{k}_val`、`eval-test-v1.json`、`dev-exclusions.json` 交集全为 `∅`。
 4. **目标输出严格单 JSON 核验**：每条 `assistant` 目标串经 `script.five_label_eval.score.extract()` 实时校验，要求 100% `strict_format_valid == True`、`issues == []`、`conflicts == []`。
-5. **L3 帧完整度与长度预检**：校验 `total_frames >= num_frames`（`fail_closed`，且 `video` 通道要求偶数帧）、L3 PNG 存在性与 SHA-256（除非显式 `--allow-missing-frames-dry-run` 离线审计），并按 `Qwen3-VL` 精确 `smart_resize` 拦截超过 `cutoff_len` 的样本。
+5. **L3 帧血缘与写保护（全 fail-closed）**：非 dry-run 正式导出**强制要求提供 `frames.py` 生成的 `--frames-manifest`（`records*.jsonl`）**，逐帧核验 `manifest_sha256`、`clip_sha256`、采样序与 PNG SHA-256；校验 `total_frames >= num_frames`（`fail_closed`，且 `video` 通道要求偶数帧）与 `cutoff_len` / 4090 单帧面积守卫；所有写盘操作均拒绝符号链接目标、拒绝保留产物撞名、拒绝写入受保护目录，覆写使用同目录临时文件原子替换。
+6. **配置与数据包跨折互校**：`render_config.py` 默认强制校验 `--dataset-dir` 下的 `build_summary.json`、`dataset_info.json` 与数据集 JSON SHA-256，确认折号、通道、帧数与 `dataset_name` 完全一致且非 dry-run 产物，杜绝跨折配置错配（仅在跨机渲染远端路径模板时才可显式传 `--allow-remote-dataset-dir`）。
 
 ---
 

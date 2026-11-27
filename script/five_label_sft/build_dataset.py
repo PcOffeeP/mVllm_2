@@ -36,7 +36,9 @@ from .data_guards import (
     FoldIsolationContext,
     SelectedTrainSample,
     assert_no_fold_leakage,
+    assert_no_symlink_components,
     load_fold_isolation_context,
+    safe_write_bytes,
     select_confirmed_fold_train_samples,
     sha256_bytes,
     sha256_file,
@@ -46,6 +48,7 @@ from .preflight import run_preflight_on_samples
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+RESERVED_DATASET_NAMES = frozenset({"dataset_info", "build_summary", "preflight_report"})
 _NATURAL_TOKEN_RE = re.compile(r"(\d+)")
 
 
@@ -455,8 +458,21 @@ def build_fold_sft_dataset(
     validate_safe_output_path(output_dir, label="output_dir")
     root = Path(repo_root).resolve()
     out_dir = Path(output_dir)
+    if out_dir.is_symlink():
+        raise InputError(f"output_dir must not be a symlink: {out_dir}")
     ds_name = dataset_name or f"tensile_five_label_fold{fold}_{modality}_{num_frames}f"
     _validate_safe_component(ds_name, "dataset_name")
+    if ds_name in RESERVED_DATASET_NAMES:
+        raise InputError(
+            f"dataset_name {ds_name!r} collides with reserved bundle artifact name; "
+            f"reserved names: {sorted(RESERVED_DATASET_NAMES)}"
+        )
+    if frames_manifest is None and not allow_missing_frames_dry_run:
+        raise InputError(
+            "non-dry-run export requires --frames-manifest (records*.jsonl from frames.py) "
+            "to cryptographically bind L3 PNG frames to manifest_sha256, clip_sha256, sampling order, "
+            "and per-frame sha256; pass --allow-missing-frames-dry-run only for offline dry-run audits"
+        )
 
     p_path = Path(prompt_path) if prompt_path is not None else root / DEFAULT_PROMPT_REL
     if not p_path.is_file():
@@ -565,8 +581,10 @@ def build_fold_sft_dataset(
             "manifest_sha256": ctx.manifest_sha256,
             "reviews_path": _rel_or_abs(ctx.reviews_path, root),
             "reviews_sha256": ctx.reviews_sha256,
-            "dev_exclusions_path": _rel_or_abs(ctx.exclusions_path, root),
+            "dev_exclusions_path": ctx.exclusions.path or _rel_or_abs(ctx.exclusions_path, root),
             "dev_exclusions_sha256": ctx.exclusions.sha256,
+            "dev_exclusions_extra_path": ctx.exclusions.extra_path,
+            "dev_exclusions_extra_sha256": ctx.exclusions.extra_sha256,
             "fold_train_path": _rel_or_abs(ctx.fold_train_path, root),
             "fold_train_sha256": ctx.fold_train_sha256,
             "fold_val_path": _rel_or_abs(ctx.fold_val_path, root),
@@ -613,19 +631,25 @@ def build_fold_sft_dataset(
     summary_bytes = (json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
 
     targets = [
-        (out_dir / dataset_file_name, dataset_bytes),
-        (out_dir / "dataset_info.json", dataset_info_bytes),
-        (out_dir / "build_summary.json", summary_bytes),
-        (out_dir / "preflight_report.json", preflight_bytes),
+        (out_dir / dataset_file_name, dataset_bytes, "dataset_json"),
+        (out_dir / "dataset_info.json", dataset_info_bytes, "dataset_info"),
+        (out_dir / "build_summary.json", summary_bytes, "build_summary"),
+        (out_dir / "preflight_report.json", preflight_bytes, "preflight_report"),
     ]
+    resolved_targets = [p.resolve() for p, _, _ in targets]
+    if len(set(resolved_targets)) != len(targets):
+        raise InputError(f"output artifact paths collide: {[str(p) for p, _, _ in targets]}")
+    for path, _, label in targets:
+        validate_safe_output_path(path, label=label)
+        assert_no_symlink_components(path, label=label)
     if not overwrite:
-        existing = [str(p) for p, _ in targets if p.exists()]
+        existing = [str(p) for p, _, _ in targets if p.exists()]
         if existing:
             raise InputError(f"refusing to overwrite existing output files (pass --overwrite to force): {existing}")
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    for path, content in targets:
-        path.write_bytes(content)
+    for path, content, label in targets:
+        safe_write_bytes(path, content, overwrite=overwrite, label=label)
 
     return summary
 

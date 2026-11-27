@@ -12,8 +12,10 @@ from typing import Any
 import yaml
 
 from script.five_label_eval.errors import InputError
+from script.five_label_eval.score import decode_file
 
 from .constants import (
+    BUILD_SUMMARY_SCHEMA,
     CONFIG_MANIFEST_SCHEMA,
     CUDA_ALLOC_CONF,
     DEFAULT_BASE_MODEL_PATH,
@@ -27,7 +29,13 @@ from .constants import (
     VLM_SFT_LLAMAFACTORY_CLI,
     get_channel_preset,
 )
-from .data_guards import validate_fold, validate_safe_output_path
+from .data_guards import (
+    assert_no_symlink_components,
+    safe_write_bytes,
+    sha256_file,
+    validate_fold,
+    validate_safe_output_path,
+)
 
 
 def _require_pos_int(value: Any, name: str) -> int:
@@ -44,6 +52,121 @@ def _require_pos_float(value: Any, name: str) -> float:
 
 def _validate_train_output_dir(output_dir: str) -> str:
     return validate_safe_output_path(output_dir, label="train_output_dir")
+
+
+def verify_dataset_bundle(
+    *,
+    dataset_dir: Path | str,
+    fold: int,
+    modality: str,
+    num_frames: int,
+    dataset_name: str,
+    cutoff_len: int,
+) -> dict[str, Any]:
+    """Fail-closed cross-check of ``build_summary.json``, ``dataset_info.json``, and dataset JSON.
+
+    Prevents cross-fold leakage (e.g., training Fold 1 config on Fold 0 dataset), modality/frame
+    mismatch, tampered dataset bytes, or accidentally launching training on a dry-run bundle.
+    """
+    bundle_dir = Path(dataset_dir)
+    if bundle_dir.is_symlink() or not bundle_dir.is_dir():
+        raise InputError(
+            f"dataset_dir does not exist or is not a regular directory: {bundle_dir}; "
+            "export a verified dataset bundle with build_dataset.py first (or pass --allow-remote-dataset-dir "
+            "only when rendering a template for a remote host path)"
+        )
+
+    summary_path = bundle_dir / "build_summary.json"
+    info_path = bundle_dir / "dataset_info.json"
+    for label, p in (("build_summary.json", summary_path), ("dataset_info.json", info_path)):
+        if p.is_symlink() or not p.is_file():
+            raise InputError(f"dataset bundle missing required non-symlink {label}: {p}")
+
+    summary = decode_file(summary_path.read_text(encoding="utf-8"), str(summary_path))
+    info = decode_file(info_path.read_text(encoding="utf-8"), str(info_path))
+    if not isinstance(summary, dict) or summary.get("schema") != BUILD_SUMMARY_SCHEMA:
+        raise InputError(f"{summary_path}: invalid build_summary schema {summary.get('schema') if isinstance(summary, dict) else None!r}")
+    if summary.get("dry_run_missing_frames") is not False:
+        raise InputError(
+            f"{summary_path}: refusing to render runnable training config for dry-run dataset "
+            "(dry_run_missing_frames=true)"
+        )
+    if summary.get("strict_target_json_verified") is not True:
+        raise InputError(f"{summary_path}: dataset bundle missing strict_target_json_verified=true")
+
+    for field, expected in (
+        ("fold", fold),
+        ("modality", modality),
+        ("num_frames", num_frames),
+        ("dataset_name", dataset_name),
+    ):
+        actual = summary.get(field)
+        if actual != expected:
+            raise InputError(
+                f"dataset bundle mismatch in {summary_path}: {field}={actual!r} != requested {expected!r}"
+            )
+
+    isolation = summary.get("isolation_checks")
+    if not isinstance(isolation, dict):
+        raise InputError(f"{summary_path}: missing isolation_checks")
+    for overlap_key in (
+        "fold_val_source_overlap",
+        "test_source_overlap",
+        "eval_test_v1_source_overlap",
+        "eval_test_v1_candidate_overlap",
+        "eval_dev_v1_fold_val_candidate_overlap",
+        "dec007_excluded_overlap",
+    ):
+        if isolation.get(overlap_key) != 0:
+            raise InputError(f"{summary_path}: isolation_checks.{overlap_key} != 0 ({isolation.get(overlap_key)!r})")
+
+    if not isinstance(info, dict) or dataset_name not in info or not isinstance(info[dataset_name], dict):
+        raise InputError(f"{info_path}: dataset_name {dataset_name!r} not registered in dataset_info.json")
+    entry = info[dataset_name]
+    if entry.get("formatting") != "sharegpt":
+        raise InputError(f"{info_path}: expected formatting='sharegpt', got {entry.get('formatting')!r}")
+    expected_media_col = "images" if modality == "images" else "videos"
+    cols = entry.get("columns")
+    if not isinstance(cols, dict) or cols.get("messages") != "messages" or cols.get(expected_media_col) != expected_media_col:
+        raise InputError(f"{info_path}: columns mismatch for modality={modality!r}: {cols!r}")
+    dataset_file = summary.get("dataset_file")
+    if not isinstance(dataset_file, str) or entry.get("file_name") != dataset_file:
+        raise InputError(
+            f"{info_path}: file_name {entry.get('file_name')!r} != build_summary dataset_file {dataset_file!r}"
+        )
+
+    fingerprints = summary.get("fingerprints")
+    if not isinstance(fingerprints, dict):
+        raise InputError(f"{summary_path}: missing fingerprints")
+    actual_info_sha = sha256_file(info_path)
+    if fingerprints.get("dataset_info_sha256") != actual_info_sha:
+        raise InputError(
+            f"{info_path}: sha256 mismatch (expected {fingerprints.get('dataset_info_sha256')!r}, got {actual_info_sha!r})"
+        )
+    dataset_path = bundle_dir / dataset_file
+    if dataset_path.is_symlink() or not dataset_path.is_file():
+        raise InputError(f"dataset bundle missing required non-symlink dataset file: {dataset_path}")
+    actual_ds_sha = sha256_file(dataset_path)
+    if fingerprints.get("dataset_sha256") != actual_ds_sha:
+        raise InputError(
+            f"{dataset_path}: sha256 mismatch (expected {fingerprints.get('dataset_sha256')!r}, got {actual_ds_sha!r})"
+        )
+
+    preflight_summary = summary.get("preflight_summary")
+    if isinstance(preflight_summary, dict):
+        est = preflight_summary.get("estimated_total_tokens")
+        if isinstance(est, dict) and isinstance(est.get("max"), int) and cutoff_len < est["max"]:
+            raise InputError(
+                f"cutoff_len ({cutoff_len}) is smaller than dataset max estimated tokens ({est['max']})"
+            )
+
+    return {
+        "verified": True,
+        "dataset_sha256": actual_ds_sha,
+        "dataset_info_sha256": actual_info_sha,
+        "exported_candidate_count": isolation.get("exported_candidate_count"),
+        "exported_source_count": isolation.get("exported_source_count"),
+    }
 
 
 def build_qlora_config(
@@ -299,6 +422,7 @@ def render_config_bundle(
     num_train_epochs: float = 3.0,
     gradient_accumulation_steps: int = 8,
     port: int = 18080,
+    allow_remote_dataset_dir: bool = False,
     overwrite: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Write LlamaFactory YAML and companion runtime command JSON."""
@@ -322,10 +446,28 @@ def render_config_bundle(
         num_train_epochs=num_train_epochs,
         gradient_accumulation_steps=gradient_accumulation_steps,
     )
+    if not allow_remote_dataset_dir:
+        bundle_verification = verify_dataset_bundle(
+            dataset_dir=dataset_dir,
+            fold=fold,
+            modality=modality,
+            num_frames=num_frames,
+            dataset_name=dataset_name,
+            cutoff_len=cfg["cutoff_len"],
+        )
+    else:
+        bundle_verification = {
+            "verified": False,
+            "warning": "allow_remote_dataset_dir=True: dataset_dir was NOT locally cross-checked against build_summary.json",
+        }
+
     yaml_path = Path(output_yaml)
     commands_path = yaml_path.with_suffix(".commands.json")
-    validate_safe_output_path(yaml_path, label="output_yaml")
-    validate_safe_output_path(commands_path, label="commands_json")
+    if yaml_path.resolve() == commands_path.resolve():
+        raise InputError(f"output_yaml collides with companion commands path: {yaml_path}")
+    for label, p in (("output_yaml", yaml_path), ("commands_json", commands_path)):
+        validate_safe_output_path(p, label=label)
+        assert_no_symlink_components(p, label=label)
 
     commands = build_runtime_commands(
         fold=fold,
@@ -339,13 +481,12 @@ def render_config_bundle(
         vllm_max_model_len=vllm_max_model_len,
         video_fps=video_fps,
     )
+    commands["dataset_bundle_verification"] = bundle_verification
 
     if not overwrite:
         existing = [str(p) for p in (yaml_path, commands_path) if p.exists()]
         if existing:
             raise InputError(f"refusing to overwrite existing config files (pass --overwrite): {existing}")
-
-    yaml_path.parent.mkdir(parents=True, exist_ok=True)
 
     header = (
         f"# Auto-generated by script/five_label_sft/render_config.py (fold={fold}, modality={modality}, {num_frames}f)\n"
@@ -353,8 +494,9 @@ def render_config_bundle(
         f"# DEC-008 §5: Train strictly on clean fold_{fold}_train; evaluate only on eval-dev-v1 ∩ fold_{fold}_val.\n"
     )
     yaml_text = header + yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True)
-    yaml_path.write_text(yaml_text, encoding="utf-8")
-    commands_path.write_text(json.dumps(commands, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    commands_text = json.dumps(commands, ensure_ascii=False, indent=2) + "\n"
+    safe_write_bytes(yaml_path, yaml_text.encode("utf-8"), overwrite=overwrite, label="output_yaml")
+    safe_write_bytes(commands_path, commands_text.encode("utf-8"), overwrite=overwrite, label="commands_json")
     return cfg, commands
 
 
@@ -381,6 +523,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--num-train-epochs", type=float, default=3.0, help="Epochs (default 3.0)")
     parser.add_argument("--gradient-accumulation-steps", type=int, default=8, help="Grad accumulation steps (default 8)")
     parser.add_argument("--port", type=int, default=18080, help="Loopback vLLM serving port (default 18080)")
+    parser.add_argument("--allow-remote-dataset-dir", action="store_true",
+                        help="Skip local build_summary.json/dataset_info.json verification when rendering for a remote host path")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing output files")
     args = parser.parse_args(argv)
 
@@ -408,6 +552,7 @@ def main(argv: list[str] | None = None) -> int:
             num_train_epochs=args.num_train_epochs,
             gradient_accumulation_steps=args.gradient_accumulation_steps,
             port=args.port,
+            allow_remote_dataset_dir=args.allow_remote_dataset_dir,
             overwrite=args.overwrite,
         )
         print(

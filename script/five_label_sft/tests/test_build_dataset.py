@@ -391,7 +391,7 @@ def test_custom_mismatched_splits_dir_fails_closed(tmp_path: Path) -> None:
         load_fold_isolation_context(0, repo_root=fx["root"], splits_dir=other_splits)
 
 
-def test_build_dataset_refuses_protected_output_dirs_and_natural_sorts_frames(tmp_path: Path) -> None:
+def test_build_dataset_refuses_protected_output_dirs_reserved_names_and_symlink_targets(tmp_path: Path) -> None:
     fx = _create_synthetic_repo(tmp_path)
     root = fx["root"]
     for bad_out in (
@@ -410,7 +410,38 @@ def test_build_dataset_refuses_protected_output_dirs_and_natural_sorts_frames(tm
                 repo_root=root,
             )
 
-    # Natural numeric sorting of frame_1.png .. frame_10.png (non-zero-padded)
+    # Reserved artifact names must be rejected so dataset JSON never overwrites dataset_info/build_summary/preflight
+    for reserved in ("dataset_info", "build_summary", "preflight_report"):
+        with pytest.raises(InputError, match="reserved bundle artifact"):
+            build_fold_sft_dataset(
+                fold=0,
+                modality="images",
+                num_frames=8,
+                output_dir=tmp_path / f"reserved_{reserved}",
+                dataset_name=reserved,
+                allow_missing_frames_dry_run=True,
+                repo_root=root,
+            )
+
+    # Symlink target inside normal output_dir pointing to protected test.json MUST fail even with overwrite=True
+    test_split_path = root / "data/splits/three-fold/test.json"
+    original_test_bytes = test_split_path.read_bytes()
+    sym_out = tmp_path / "normal_out_with_symlink"
+    sym_out.mkdir()
+    (sym_out / "dataset_info.json").symlink_to(test_split_path)
+    with pytest.raises(InputError, match="protected path|symlink"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="images",
+            num_frames=8,
+            output_dir=sym_out,
+            allow_missing_frames_dry_run=True,
+            repo_root=root,
+            overwrite=True,
+        )
+    assert test_split_path.read_bytes() == original_test_bytes
+
+    # Natural numeric sorting of frame_1.png .. frame_10.png under explicit dry-run frames_dir
     ctx = load_fold_isolation_context(0, repo_root=root)
     samples, _ = select_confirmed_fold_train_samples(ctx)
     fdir = tmp_path / "nat_frames"
@@ -426,6 +457,7 @@ def test_build_dataset_refuses_protected_output_dirs_and_natural_sorts_frames(tm
         num_frames=8,
         output_dir=out_dir,
         frames_dir=fdir,
+        allow_missing_frames_dry_run=True,
         repo_root=root,
     )
     ds = json.loads((out_dir / f"{summary['dataset_name']}.json").read_text(encoding="utf-8"))
@@ -442,7 +474,7 @@ def test_symlink_frame_rejected_fail_closed(tmp_path: Path) -> None:
         {"candidate_id": s.candidate_id, "clip_sha256": s.clip_sha256, "total_frames": s.total_frames}
         for s in samples
     ]
-    fdir8, _ = _write_fake_frames_and_manifest(tmp_path / "sym", ctx.manifest_sha256, sample_meta, 8)
+    fdir8, rec8 = _write_fake_frames_and_manifest(tmp_path / "sym", ctx.manifest_sha256, sample_meta, 8)
     real_outside = tmp_path / "outside.png"
     real_outside.write_bytes(PNG_MAGIC + b"outside")
     target = fdir8 / samples[0].candidate_id / "frame_00.png"
@@ -455,6 +487,7 @@ def test_symlink_frame_rejected_fail_closed(tmp_path: Path) -> None:
             modality="images",
             num_frames=8,
             output_dir=tmp_path / "out_sym",
+            frames_manifest=rec8,
             frames_dir=fdir8,
             repo_root=root,
         )
@@ -499,8 +532,8 @@ def test_frame_sha256_mismatch_and_missing_frames_fail_closed(tmp_path: Path) ->
         for s in samples
     ]
 
-    # Missing frames without --allow-missing-frames-dry-run must fail closed
-    with pytest.raises(InputError, match="missing --frames-dir"):
+    # Missing frames_manifest without --allow-missing-frames-dry-run must fail closed
+    with pytest.raises(InputError, match="requires --frames-manifest"):
         build_fold_sft_dataset(
             fold=0,
             modality="images",
@@ -509,9 +542,21 @@ def test_frame_sha256_mismatch_and_missing_frames_fail_closed(tmp_path: Path) ->
             repo_root=root,
         )
 
-    # Corrupted PNG byte against frames-manifest SHA-256 must fail closed
+    # Supplying --frames-dir alone without --frames-manifest in non-dry-run mode MUST fail closed
+    # (prevents mismatched PNGs from another clip from pairing silently with train labels)
     fdir8, rec8 = _write_fake_frames_and_manifest(tmp_path / "tamper", ctx.manifest_sha256, sample_meta, 8)
-    (fdir8 / samples[0].candidate_id / "frame_00.png").write_bytes(PNG_MAGIC + b"corrupted")
+    with pytest.raises(InputError, match="requires --frames-manifest"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="images",
+            num_frames=8,
+            output_dir=tmp_path / "fail_dir_only",
+            frames_dir=fdir8,
+            repo_root=root,
+        )
+
+    # Swapping/corrupting PNG bytes against frames-manifest SHA-256 must fail closed
+    (fdir8 / samples[0].candidate_id / "frame_00.png").write_bytes(PNG_MAGIC + b"wrong_clip_frame")
     with pytest.raises(InputError, match="sha256 mismatch"):
         build_fold_sft_dataset(
             fold=0,
@@ -524,7 +569,7 @@ def test_frame_sha256_mismatch_and_missing_frames_fail_closed(tmp_path: Path) ->
         )
 
 
-def test_direct_frames_dir_and_overwrite_guard(tmp_path: Path) -> None:
+def test_verified_manifest_export_overwrite_guard_and_extra_exclusions_provenance(tmp_path: Path) -> None:
     fx = _create_synthetic_repo(tmp_path)
     root = fx["root"]
     ctx = load_fold_isolation_context(0, repo_root=root)
@@ -533,18 +578,37 @@ def test_direct_frames_dir_and_overwrite_guard(tmp_path: Path) -> None:
         {"candidate_id": s.candidate_id, "clip_sha256": s.clip_sha256, "total_frames": s.total_frames}
         for s in samples
     ]
-    fdir8, _ = _write_fake_frames_and_manifest(tmp_path / "direct", ctx.manifest_sha256, sample_meta, 8)
+    fdir8, rec8 = _write_fake_frames_and_manifest(tmp_path / "direct", ctx.manifest_sha256, sample_meta, 8)
     out_dir = tmp_path / "out_direct"
+
+    # Optional supplemental exclusions file preserves official + extra hashes separately
+    extra_excl = tmp_path / "extra_exclusions.json"
+    extra_excl.write_text(
+        json.dumps(
+            {
+                "schema": "tensile-dev-exclusions/1",
+                "decision_id": "DEC-EXTRA",
+                "excluded_dev_sources": [],
+                "isolated_virtual_videos": [],
+            }
+        ),
+        encoding="utf-8",
+    )
 
     summary = build_fold_sft_dataset(
         fold=0,
         modality="images",
         num_frames=8,
         output_dir=out_dir,
+        frames_manifest=rec8,
         frames_dir=fdir8,
+        exclusions_path=extra_excl,
         repo_root=root,
     )
     assert summary["dry_run_missing_frames"] is False
+    assert summary["inputs"]["dev_exclusions_path"] == "data/splits/dev-exclusions.json"
+    assert summary["inputs"]["dev_exclusions_extra_path"] == str(extra_excl)
+    assert summary["inputs"]["dev_exclusions_extra_sha256"] == hashlib.sha256(extra_excl.read_bytes()).hexdigest()
 
     # Second write without overwrite=True must refuse
     with pytest.raises(InputError, match="refusing to overwrite"):
@@ -553,10 +617,24 @@ def test_direct_frames_dir_and_overwrite_guard(tmp_path: Path) -> None:
             modality="images",
             num_frames=8,
             output_dir=out_dir,
+            frames_manifest=rec8,
             frames_dir=fdir8,
             repo_root=root,
             overwrite=False,
         )
+
+    # Second write with overwrite=True succeeds via atomic replacement on regular files
+    summary2 = build_fold_sft_dataset(
+        fold=0,
+        modality="images",
+        num_frames=8,
+        output_dir=out_dir,
+        frames_manifest=rec8,
+        frames_dir=fdir8,
+        repo_root=root,
+        overwrite=True,
+    )
+    assert summary2["fingerprints"]["dataset_sha256"] == summary["fingerprints"]["dataset_sha256"]
 
 
 def test_sharegpt_record_rejects_placeholder_in_prompt_and_non_strict_target() -> None:

@@ -37,6 +37,7 @@ from .constants import (
 from .data_guards import (
     SelectedTrainSample,
     load_fold_isolation_context,
+    safe_write_bytes,
     select_confirmed_fold_train_samples,
     validate_safe_output_path,
 )
@@ -515,8 +516,7 @@ def main(argv: list[str] | None = None) -> int:
         report["scope"] = args.scope
         rendered = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
         if args.output:
-            with Path(args.output).open("x", encoding="utf-8") as stream:
-                stream.write(rendered)
+            safe_write_bytes(Path(args.output), rendered.encode("utf-8"), overwrite=False, label="preflight output")
         print(rendered, end="")
         return 0
     except (InputError, ValueError, OSError, UnicodeError) as exc:

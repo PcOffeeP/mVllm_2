@@ -4,8 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import posixpath
+import tempfile
 from typing import Any, Iterable
 
 from script.five_label_eval.errors import InputError
@@ -88,6 +90,74 @@ def validate_safe_output_path(
                     f"{label} must not write inside protected path {joined!r}: {raw_str!r}"
                 )
     return norm_str
+
+
+def assert_no_symlink_components(path: Path, *, label: str = "output_path") -> None:
+    """Reject if ``path`` itself or any existing ancestor inside it is a symlink."""
+    # Check target itself first (even if dangling symlink).
+    if path.is_symlink():
+        raise InputError(f"{label} must not be a symlink: {path}")
+    # Check non-root ancestors that exist under a relative or explicit path without tripping
+    # over OS-level system symlinks like macOS /var -> /private/var or /tmp -> /private/tmp.
+    # For the immediate parent directory and target itself, symlinks are always refused.
+    if path.parent.is_symlink():
+        raise InputError(f"{label} parent directory must not be a symlink: {path.parent}")
+
+
+def safe_write_bytes(
+    path: Path,
+    content: bytes,
+    *,
+    overwrite: bool = False,
+    label: str = "output_file",
+) -> None:
+    """Safely write bytes without ever following symlinks or truncating protected targets.
+
+    - Always validates ``path`` against protected repository locations (both raw and resolved).
+    - Refuses symlink targets and symlink parent directories.
+    - When ``overwrite=False``, uses ``O_CREAT | O_EXCL | O_NOFOLLOW`` exclusive creation.
+    - When ``overwrite=True``, writes to a sibling temporary file and atomically replaces
+      via ``os.replace`` so no symlink target can ever be truncated.
+    """
+    validate_safe_output_path(path, label=label)
+    assert_no_symlink_components(path, label=label)
+    if path.exists() and not overwrite:
+        raise InputError(f"refusing to overwrite existing {label} (pass --overwrite to force): {path}")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Re-check after mkdir in case parent was swapped.
+    assert_no_symlink_components(path, label=label)
+    validate_safe_output_path(path, label=label)
+
+    if not overwrite:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        try:
+            fd = os.open(str(path), flags, 0o644)
+        except FileExistsError as exc:
+            raise InputError(f"refusing to overwrite existing {label} (pass --overwrite to force): {path}") from exc
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(content)
+        return
+
+    tmp_name: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=str(path.parent), prefix=".tmp_sft_", delete=False) as tmp:
+            tmp_name = tmp.name
+            tmp.write(content)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+        if path.is_symlink():
+            raise InputError(f"{label} must not be a symlink: {path}")
+        os.replace(tmp_name, str(path))
+        tmp_name = None
+    finally:
+        if tmp_name is not None:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
 
 
 def sha256_file(path: Path) -> str:

@@ -1,14 +1,16 @@
 """Unit tests for LlamaFactory QLoRA YAML and paired vLLM LoRA command renderer."""
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
 
 from script.five_label_eval.errors import InputError
-from script.five_label_sft.constants import PURE_SYSTEM_PATH, VLM_EVAL_VLLM_BIN
+from script.five_label_sft.constants import BUILD_SUMMARY_SCHEMA, PURE_SYSTEM_PATH, VLM_EVAL_VLLM_BIN
 from script.five_label_sft.render_config import (
     build_qlora_config,
     build_runtime_commands,
@@ -17,14 +19,85 @@ from script.five_label_sft.render_config import (
 )
 
 
+def _create_verified_bundle(
+    bundle_dir: Path,
+    *,
+    fold: int,
+    modality: str,
+    num_frames: int,
+    dataset_name: str,
+    dry_run: bool = False,
+    max_est_tokens: int = 7612,
+) -> Path:
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    ds_file = f"{dataset_name}.json"
+    media_col = "images" if modality == "images" else "videos"
+    ds_bytes = b"[]\n"
+    (bundle_dir / ds_file).write_bytes(ds_bytes)
+    info_obj = {
+        dataset_name: {
+            "file_name": ds_file,
+            "formatting": "sharegpt",
+            "columns": {"messages": "messages", media_col: media_col},
+            "tags": {
+                "role_tag": "role",
+                "content_tag": "content",
+                "user_tag": "user",
+                "assistant_tag": "assistant",
+            },
+        }
+    }
+    info_bytes = (json.dumps(info_obj, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    (bundle_dir / "dataset_info.json").write_bytes(info_bytes)
+    summary_obj: dict[str, Any] = {
+        "schema": BUILD_SUMMARY_SCHEMA,
+        "dataset_name": dataset_name,
+        "dataset_file": ds_file,
+        "fold": fold,
+        "modality": modality,
+        "num_frames": num_frames,
+        "dry_run_missing_frames": dry_run,
+        "strict_target_json_verified": True,
+        "isolation_checks": {
+            "exported_candidate_count": 2,
+            "exported_source_count": 1,
+            "fold_val_source_overlap": 0,
+            "test_source_overlap": 0,
+            "eval_test_v1_source_overlap": 0,
+            "eval_test_v1_candidate_overlap": 0,
+            "eval_dev_v1_fold_val_candidate_overlap": 0,
+            "dec007_excluded_overlap": 0,
+        },
+        "fingerprints": {
+            "dataset_sha256": hashlib.sha256(ds_bytes).hexdigest(),
+            "dataset_info_sha256": hashlib.sha256(info_bytes).hexdigest(),
+        },
+        "preflight_summary": {
+            "estimated_total_tokens": {"max": max_est_tokens},
+        },
+    }
+    (bundle_dir / "build_summary.json").write_text(
+        json.dumps(summary_obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    return bundle_dir
+
+
 def test_render_8f_images_matches_dec008_golden_recipe(tmp_path: Path) -> None:
+    ds_name = "tensile_five_label_fold0_images_8f"
+    bundle_dir = _create_verified_bundle(
+        tmp_path / "bundle_img8",
+        fold=0,
+        modality="images",
+        num_frames=8,
+        dataset_name=ds_name,
+    )
     out_yaml = tmp_path / "fold0_images_8f.yaml"
     cfg, cmds = render_config_bundle(
         fold=0,
         modality="images",
         num_frames=8,
-        dataset_dir="trains/sft-fold0-images8f/input",
-        dataset_name="tensile_five_label_fold0_images_8f",
+        dataset_dir=str(bundle_dir),
+        dataset_name=ds_name,
         train_output_dir="trains/sft-fold0-images8f/adapter",
         output_yaml=out_yaml,
     )
@@ -42,6 +115,7 @@ def test_render_8f_images_matches_dec008_golden_recipe(tmp_path: Path) -> None:
     assert cfg["image_min_pixels"] == 65_536
     assert cfg["cutoff_len"] == 8192
     assert "video_max_pixels" not in cfg
+    assert cmds["dataset_bundle_verification"]["verified"] is True
 
     vllm_cmd = cmds["vllm_serve_lora_command"]
     assert PURE_SYSTEM_PATH in vllm_cmd
@@ -52,6 +126,14 @@ def test_render_8f_images_matches_dec008_golden_recipe(tmp_path: Path) -> None:
 
 
 def test_render_16f_video_includes_bit_exact_vllm_flags(tmp_path: Path) -> None:
+    ds_name = "tensile_five_label_fold0_video_16f"
+    bundle_dir = _create_verified_bundle(
+        tmp_path / "bundle_vid16",
+        fold=0,
+        modality="video",
+        num_frames=16,
+        dataset_name=ds_name,
+    )
     out_yaml = tmp_path / "fold0_video_16f.yaml"
     rc = render_main(
         [
@@ -62,7 +144,7 @@ def test_render_16f_video_includes_bit_exact_vllm_flags(tmp_path: Path) -> None:
             "--num-frames",
             "16",
             "--dataset-dir",
-            "trains/sft-fold0-video16f/input",
+            str(bundle_dir),
             "--train-output-dir",
             "trains/sft-fold0-video16f/adapter",
             "--output-yaml",
@@ -78,6 +160,7 @@ def test_render_16f_video_includes_bit_exact_vllm_flags(tmp_path: Path) -> None:
     assert loaded["video_min_pixels"] == 256
     assert loaded["video_fps"] == 2.0
     assert "image_max_pixels" not in loaded
+    assert cmds["dataset_bundle_verification"]["verified"] is True
 
     vllm_cmd = cmds["vllm_serve_lora_command"]
     assert PURE_SYSTEM_PATH in vllm_cmd
@@ -90,7 +173,75 @@ def test_render_16f_video_includes_bit_exact_vllm_flags(tmp_path: Path) -> None:
     assert '"cap_pixels_per_frame": false' in vllm_cmd
 
 
-def test_render_refuses_protected_and_legacy_output_dirs(tmp_path: Path) -> None:
+def test_render_blocks_cross_fold_mismatch_dry_run_and_tampered_bundle(tmp_path: Path) -> None:
+    # Fold 0 bundle exported with generic dataset_name="train"
+    fold0_bundle = _create_verified_bundle(
+        tmp_path / "fold0_train_bundle",
+        fold=0,
+        modality="video",
+        num_frames=16,
+        dataset_name="train",
+    )
+
+    # Cross-fold mismatch: requesting Fold 1 config on Fold 0 bundle MUST fail closed
+    with pytest.raises(InputError, match="fold=0 != requested 1"):
+        render_config_bundle(
+            fold=1,
+            modality="video",
+            num_frames=16,
+            dataset_dir=str(fold0_bundle),
+            dataset_name="train",
+            train_output_dir="trains/fold1/adapter",
+            output_yaml=tmp_path / "cross_fold.yaml",
+        )
+
+    # Modality mismatch MUST fail closed
+    with pytest.raises(InputError, match="modality='video' != requested 'images'"):
+        render_config_bundle(
+            fold=0,
+            modality="images",
+            num_frames=8,
+            dataset_dir=str(fold0_bundle),
+            dataset_name="train",
+            train_output_dir="trains/fold0/adapter",
+            output_yaml=tmp_path / "bad_mod.yaml",
+        )
+
+    # Dry-run bundle MUST be rejected for runnable training config
+    dry_bundle = _create_verified_bundle(
+        tmp_path / "dry_bundle",
+        fold=0,
+        modality="video",
+        num_frames=16,
+        dataset_name="train",
+        dry_run=True,
+    )
+    with pytest.raises(InputError, match="dry-run"):
+        render_config_bundle(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            dataset_dir=str(dry_bundle),
+            dataset_name="train",
+            train_output_dir="trains/fold0/adapter",
+            output_yaml=tmp_path / "dry.yaml",
+        )
+
+    # Tampered dataset JSON sha256 MUST fail closed
+    (fold0_bundle / "train.json").write_bytes(b"[{\"tampered\": true}]\n")
+    with pytest.raises(InputError, match="sha256 mismatch"):
+        render_config_bundle(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            dataset_dir=str(fold0_bundle),
+            dataset_name="train",
+            train_output_dir="trains/fold0/adapter",
+            output_yaml=tmp_path / "tampered.yaml",
+        )
+
+
+def test_render_refuses_protected_legacy_and_symlink_output_paths(tmp_path: Path) -> None:
     for bad_dir in (
         "LlamaFactory/saves/qwen3vl/lora",
         "LlamaFactory//saves/qwen3vl/lora",
@@ -111,19 +262,40 @@ def test_render_refuses_protected_and_legacy_output_dirs(tmp_path: Path) -> None
                 train_output_dir=bad_dir,
             )
 
-    # Protected output_yaml must also be refused before creating directories
+    bundle = _create_verified_bundle(
+        tmp_path / "ok_bundle", fold=0, modality="video", num_frames=16, dataset_name="demo"
+    )
+    # Protected output_yaml must be refused before creating directories
     bad_yaml = tmp_path / "data" / "sub_video" / "evil.yaml"
     with pytest.raises(InputError, match="protected path"):
         render_config_bundle(
             fold=0,
             modality="video",
             num_frames=16,
-            dataset_dir="trains/in",
+            dataset_dir=str(bundle),
             dataset_name="demo",
             train_output_dir="trains/ok/adapter",
             output_yaml=bad_yaml,
         )
     assert not bad_yaml.parent.exists()
+
+    # Symlink output_yaml pointing to another file must be refused even with overwrite=True
+    victim = tmp_path / "victim.txt"
+    victim.write_text("DO_NOT_TOUCH", encoding="utf-8")
+    link_yaml = tmp_path / "linked.yaml"
+    link_yaml.symlink_to(victim)
+    with pytest.raises(InputError, match="symlink"):
+        render_config_bundle(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            dataset_dir=str(bundle),
+            dataset_name="demo",
+            train_output_dir="trains/ok/adapter",
+            output_yaml=link_yaml,
+            overwrite=True,
+        )
+    assert victim.read_text(encoding="utf-8") == "DO_NOT_TOUCH"
 
 
 def test_render_rejects_invalid_hyperparams_and_cross_modality_overrides() -> None:
