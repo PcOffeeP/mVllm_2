@@ -159,7 +159,7 @@ def _resolve_sample_frames_from_manifest(
     frames_dir: Path,
     frame_path_prefix: str | None,
     allow_missing_frames_dry_run: bool,
-) -> list[str]:
+) -> tuple[list[str], dict[str, str]]:
     cid = _validate_safe_component(sample.candidate_id, "candidate_id")
     if record.get("record_schema") != RECORD_SCHEMA:
         raise InputError(f"{cid}: record_schema {record.get('record_schema')!r} != {RECORD_SCHEMA!r}")
@@ -214,6 +214,7 @@ def _resolve_sample_frames_from_manifest(
 
     seen_names: set[str] = set()
     emitted: list[str] = []
+    verified_shas: dict[str, str] = {}
     for expected_order, entry in enumerate(ordered):
         if not isinstance(entry, dict):
             raise InputError(f"{cid}: frames[{expected_order}] must be object")
@@ -244,15 +245,15 @@ def _resolve_sample_frames_from_manifest(
                 expected_size=(sample.width, sample.height),
                 context=cid,
             )
-            emitted.append(
-                _format_emitted_frame_path(
-                    resolved_path=resolved_img,
-                    candidate_id=cid,
-                    image_name=image_name,
-                    frames_dir=frames_dir,
-                    frame_path_prefix=frame_path_prefix,
-                )
+            emitted_path = _format_emitted_frame_path(
+                resolved_path=resolved_img,
+                candidate_id=cid,
+                image_name=image_name,
+                frames_dir=frames_dir,
+                frame_path_prefix=frame_path_prefix,
             )
+            emitted.append(emitted_path)
+            verified_shas[emitted_path] = expected_sha
         else:
             emitted.append(
                 _format_emitted_frame_path(
@@ -263,7 +264,7 @@ def _resolve_sample_frames_from_manifest(
                     frame_path_prefix=frame_path_prefix,
                 )
             )
-    return emitted
+    return emitted, verified_shas
 
 
 def _resolve_sample_frames_from_dir(
@@ -549,13 +550,14 @@ def build_fold_sft_dataset(
             f_dir_path = f_manifest_path.resolve().parent
 
     dataset_rows: list[dict[str, Any]] = []
+    verified_frame_sha256s: dict[str, str] = {}
     for sample in samples:
         if manifest_records is not None:
             rec = manifest_records.get(sample.candidate_id)
             if rec is None:
                 raise InputError(f"{sample.candidate_id}: missing from --frames-manifest {f_manifest_path}")
             assert f_dir_path is not None
-            frame_paths = _resolve_sample_frames_from_manifest(
+            frame_paths, sample_shas = _resolve_sample_frames_from_manifest(
                 sample,
                 rec,
                 ctx=ctx,
@@ -564,6 +566,7 @@ def build_fold_sft_dataset(
                 frame_path_prefix=frame_path_prefix,
                 allow_missing_frames_dry_run=allow_missing_frames_dry_run,
             )
+            verified_frame_sha256s.update(sample_shas)
         else:
             frame_paths = _resolve_sample_frames_from_dir(
                 sample,
@@ -655,6 +658,7 @@ def build_fold_sft_dataset(
         },
         "exported_source_ids": sorted({s.source_id for s in samples}),
         "exported_candidate_ids": [s.candidate_id for s in samples],
+        "verified_frame_sha256s": dict(sorted(verified_frame_sha256s.items())),
     }
     summary_bytes = (json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
 

@@ -4,7 +4,9 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import struct
 from typing import Any
+import zlib
 
 import pytest
 import yaml
@@ -18,6 +20,17 @@ from script.five_label_sft.render_config import (
     render_config_bundle,
     verify_rendered_launch,
 )
+
+
+def _make_png(r: int, g: int, b: int) -> bytes:
+    def _chunk(tag: bytes, data: bytes) -> bytes:
+        crc = zlib.crc32(tag + data) & 0xFFFFFFFF
+        return struct.pack("!I", len(data)) + tag + data + struct.pack("!I", crc)
+
+    ihdr = struct.pack("!IIBBBBB", 4, 4, 8, 2, 0, 0, 0)
+    row = b"\x00" + bytes([r & 0xFF, g & 0xFF, b & 0xFF]) * 4
+    idat = zlib.compress(row * 4, level=1)
+    return b"\x89PNG\r\n\x1a\n" + _chunk(b"IHDR", ihdr) + _chunk(b"IDAT", idat) + _chunk(b"IEND", b"")
 
 
 def _create_verified_bundle(
@@ -35,9 +48,27 @@ def _create_verified_bundle(
     video_min_pixels: int | None = None,
 ) -> Path:
     bundle_dir.mkdir(parents=True, exist_ok=True)
+    frames_dir = bundle_dir / "_frames"
+    frames_dir.mkdir(exist_ok=True)
+    frame_paths: list[str] = []
+    verified_frame_shas: dict[str, str] = {}
+    for i in range(num_frames):
+        fp = (frames_dir / f"f{i:02d}.png").resolve()
+        raw = _make_png(fold + 1, i, 42)
+        fp.write_bytes(raw)
+        frame_paths.append(str(fp))
+        verified_frame_shas[str(fp)] = hashlib.sha256(raw).hexdigest()
+
     ds_file = f"{dataset_name}.json"
     media_col = "images" if modality == "images" else "videos"
-    ds_bytes = b"[]\n"
+    sample_row: dict[str, Any] = {
+        "messages": [
+            {"role": "user", "content": ("<image>" * num_frames if modality == "images" else "<video>") + "\nprompt"},
+            {"role": "assistant", "content": "{}"},
+        ],
+        media_col: frame_paths if modality == "images" else [frame_paths],
+    }
+    ds_bytes = (json.dumps([sample_row], ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     (bundle_dir / ds_file).write_bytes(ds_bytes)
     info_obj = {
         dataset_name: {
@@ -111,6 +142,7 @@ def _create_verified_bundle(
         "preflight_summary": {
             "estimated_total_tokens": {"max": max_est_tokens},
         },
+        "verified_frame_sha256s": verified_frame_shas,
     }
     (bundle_dir / "build_summary.json").write_text(
         json.dumps(summary_obj, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -409,14 +441,32 @@ def test_render_pins_absolute_dataset_dir_across_cwd_changes_and_blocks_case_ali
     assert Path(loaded["dataset_dir"]) == fold0_input.resolve()
     assert Path(loaded["dataset_dir"]).is_absolute()
 
-    # Pre-launch verification passes on untouched Fold 0 bundle, and fails closed if bundle is swapped to Fold 1
+    # Pre-launch verification passes on untouched Fold 0 bundle
     cmd_json = out_yaml.with_suffix(".commands.json")
     cmds = json.loads(cmd_json.read_text(encoding="utf-8"))
     assert "--verify-commands-json" in cmds["train_command_manual_only"]
+    assert Path(loaded["output_dir"]).is_absolute()
     assert verify_rendered_launch(cmd_json)["verified"] is True
     assert render_main(["--verify-commands-json", str(cmd_json)]) == 0
 
-    # Simulate overwriting Fold 0's dataset dir with Fold 1 bundle -> pre-launch guard MUST block!
+    # 1. Swapping a referenced PNG at its original path AFTER export/render MUST be rejected pre-launch!
+    orig_png = fold0_input / "_frames/f00.png"
+    orig_png_bytes = orig_png.read_bytes()
+    orig_png.write_bytes(_make_png(200, 200, 200))
+    with pytest.raises(InputError, match="training frame PNG sha256 mismatch"):
+        verify_rendered_launch(cmd_json)
+    orig_png.write_bytes(orig_png_bytes)
+    assert verify_rendered_launch(cmd_json)["verified"] is True
+
+    # 2. Pre-existing checkpoint-* in output_dir MUST be rejected pre-launch (prevents cross-fold auto-resume)
+    ckpt_dir = Path(loaded["output_dir"]) / "checkpoint-10"
+    ckpt_dir.mkdir(parents=True)
+    with pytest.raises(InputError, match="existing checkpoint/adapter"):
+        verify_rendered_launch(cmd_json)
+    ckpt_dir.rmdir()
+    Path(loaded["output_dir"]).rmdir()
+
+    # 3. Simulate overwriting Fold 0's dataset dir with Fold 1 bundle -> pre-launch guard MUST block!
     _create_verified_bundle(
         fold0_run / "input", fold=1, modality="video", num_frames=16, dataset_name="train"
     )
@@ -424,18 +474,19 @@ def test_render_pins_absolute_dataset_dir_across_cwd_changes_and_blocks_case_ali
         verify_rendered_launch(cmd_json)
     assert render_main(["--verify-commands-json", str(cmd_json)]) == 2
 
-    # Refusing non-.yaml/.yml output path (prevents overwriting dataset_info.json in bundle dir)
-    with pytest.raises(InputError, match=r"\.yaml or \.yml"):
-        render_config_bundle(
-            fold=1,
-            modality="video",
-            num_frames=16,
-            dataset_dir=str(fold0_input),
-            dataset_name="train",
-            train_output_dir="trains/fold1/adapter",
-            output_yaml=fold0_input / "dataset_info.json",
-            overwrite=True,
-        )
+    # 4. Refusing non-.yaml/.yml and uppercase .YAML output paths
+    for bad_out in (fold0_input / "dataset_info.json", fold0_run / "UPPER.YAML"):
+        with pytest.raises(InputError, match=r"lowercase \.yaml or \.yml"):
+            render_config_bundle(
+                fold=1,
+                modality="video",
+                num_frames=16,
+                dataset_dir=str(fold0_input),
+                dataset_name="train",
+                train_output_dir=str(tmp_path / "fresh_out/adapter"),
+                output_yaml=bad_out,
+                overwrite=True,
+            )
 
     # Case-insensitive protected path alias (e.g. data/SPLITS/three-fold/evil.yaml on macOS) MUST be refused
     splits_dir = tmp_path / "data/splits/three-fold"

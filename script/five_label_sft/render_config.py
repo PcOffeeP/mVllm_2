@@ -55,6 +55,82 @@ def _validate_train_output_dir(output_dir: str) -> str:
     return validate_safe_output_path(output_dir, label="train_output_dir")
 
 
+def _assert_clean_train_output_dir(output_dir: Path | str) -> None:
+    """Refuse pre-existing checkpoints/adapters in ``output_dir`` to prevent cross-fold auto-resume."""
+    out_path = Path(output_dir)
+    if out_path.is_symlink():
+        raise InputError(f"train_output_dir must not be a symlink: {out_path}")
+    if not out_path.exists():
+        return
+    if not out_path.is_dir():
+        raise InputError(f"train_output_dir exists as a non-directory file: {out_path}")
+    existing_artifacts = sorted(
+        p.name
+        for p in out_path.iterdir()
+        if p.name.startswith("checkpoint-")
+        or p.name in ("adapter_model.safetensors", "adapter_model.bin", "adapter_config.json", "trainer_state.json")
+    )
+    if existing_artifacts:
+        raise InputError(
+            f"refusing to reuse train_output_dir {out_path} containing existing checkpoint/adapter "
+            f"artifacts {existing_artifacts[:5]} (prevents silent cross-fold auto-resume)"
+        )
+
+
+def _verify_referenced_frame_pngs(
+    dataset_path: Path,
+    summary: dict[str, Any],
+    *,
+    modality: str,
+) -> int:
+    """Re-verify every L3 PNG path referenced in the dataset JSON against ``verified_frame_sha256s``."""
+    raw_map = summary.get("verified_frame_sha256s")
+    if not isinstance(raw_map, dict) or not raw_map:
+        raise InputError(
+            f"build_summary.json missing non-empty verified_frame_sha256s; re-export with build_dataset.py"
+        )
+    rows = decode_file(dataset_path.read_text(encoding="utf-8"), str(dataset_path))
+    if not isinstance(rows, list) or not rows:
+        raise InputError(f"{dataset_path}: expected non-empty ShareGPT dataset list")
+
+    seen_paths: set[str] = set()
+    for idx, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise InputError(f"{dataset_path}[{idx}]: expected object")
+        if modality == "images":
+            frame_list = row.get("images")
+        else:
+            videos = row.get("videos")
+            frame_list = videos[0] if isinstance(videos, list) and len(videos) == 1 else None
+        if not isinstance(frame_list, list) or not frame_list:
+            raise InputError(f"{dataset_path}[{idx}]: missing media frame path list")
+        for fpath_str in frame_list:
+            if not isinstance(fpath_str, str) or not fpath_str.strip():
+                raise InputError(f"{dataset_path}[{idx}]: invalid frame path {fpath_str!r}")
+            expected_sha = raw_map.get(fpath_str)
+            if not isinstance(expected_sha, str) or len(expected_sha) != 64:
+                raise InputError(
+                    f"{dataset_path}[{idx}]: frame path absent from build_summary verified_frame_sha256s: {fpath_str!r}"
+                )
+            if fpath_str in seen_paths:
+                continue
+            seen_paths.add(fpath_str)
+            fp = Path(fpath_str)
+            if not fp.is_absolute():
+                raise InputError(f"{dataset_path}[{idx}]: formal training frame path must be absolute: {fpath_str!r}")
+            if fp.is_symlink() or not fp.is_file():
+                raise InputError(f"verified training frame missing or symlink on disk: {fp}")
+            raw_bytes = fp.read_bytes()
+            if not raw_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+                raise InputError(f"verified training frame is not a valid PNG: {fp}")
+            actual_sha = sha256_file(fp)
+            if actual_sha != expected_sha:
+                raise InputError(
+                    f"training frame PNG sha256 mismatch for {fp}: expected {expected_sha}, got {actual_sha}"
+                )
+    return len(seen_paths)
+
+
 def verify_dataset_bundle(
     *,
     dataset_dir: Path | str,
@@ -197,6 +273,8 @@ def verify_dataset_bundle(
             f"cutoff_len ({cutoff_len}) is smaller than dataset max estimated tokens ({est['max']})"
         )
 
+    verified_frame_count = _verify_referenced_frame_pngs(dataset_path, summary, modality=modality)
+
     return {
         "verified": True,
         "resolved_dataset_dir": str(bundle_dir),
@@ -205,6 +283,7 @@ def verify_dataset_bundle(
         "dataset_sha256": actual_ds_sha,
         "dataset_info_sha256": actual_info_sha,
         "preflight_report_sha256": actual_preflight_sha,
+        "verified_frame_count": verified_frame_count,
         "exported_candidate_count": isolation.get("exported_candidate_count"),
         "exported_source_count": isolation.get("exported_source_count"),
     }
@@ -243,6 +322,12 @@ def verify_rendered_launch(commands_json_path: Path | str) -> dict[str, Any]:
     cfg = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
     if not isinstance(cfg, dict):
         raise InputError(f"{yaml_path}: invalid YAML config")
+
+    out_dir_str = cfg.get("output_dir")
+    if not isinstance(out_dir_str, str) or not Path(out_dir_str).is_absolute():
+        raise InputError(f"{yaml_path}: output_dir must be a pinned absolute path, got {out_dir_str!r}")
+    validate_safe_output_path(out_dir_str, label="train_output_dir")
+    _assert_clean_train_output_dir(out_dir_str)
 
     live = verify_dataset_bundle(
         dataset_dir=cfg["dataset_dir"],
@@ -570,17 +655,24 @@ def render_config_bundle(
             video_max_pixels=cfg.get("video_max_pixels"),
             video_min_pixels=cfg.get("video_min_pixels"),
         )
-        # Pin the exact verified absolute dataset_dir in YAML so launching from another cwd never swaps folds.
+        # Pin exact verified absolute dataset_dir and train_output_dir in YAML so cwd changes or
+        # pre-existing cross-fold checkpoints can never silently contaminate training.
         cfg["dataset_dir"] = bundle_verification["resolved_dataset_dir"]
+        resolved_train_out = str(Path(train_output_dir).resolve())
+        validate_safe_output_path(resolved_train_out, label="train_output_dir")
+        _assert_clean_train_output_dir(resolved_train_out)
+        cfg["output_dir"] = resolved_train_out
+        effective_train_output_dir = resolved_train_out
     else:
         bundle_verification = {
             "verified": False,
             "warning": "allow_remote_dataset_dir=True: dataset_dir was NOT locally cross-checked against build_summary.json",
         }
+        effective_train_output_dir = train_output_dir
 
     yaml_path = Path(output_yaml)
-    if yaml_path.suffix.lower() not in (".yaml", ".yml"):
-        raise InputError(f"output_yaml must have a .yaml or .yml suffix, got {yaml_path!r}")
+    if yaml_path.suffix not in (".yaml", ".yml"):
+        raise InputError(f"output_yaml must have a lowercase .yaml or .yml suffix, got {yaml_path!r}")
     commands_path = yaml_path.with_suffix(".commands.json")
     if str(yaml_path.resolve()).lower() == str(commands_path.resolve()).lower():
         raise InputError(f"output_yaml collides with companion commands path: {yaml_path}")
@@ -611,7 +703,7 @@ def render_config_bundle(
         num_frames=num_frames,
         yaml_path=resolved_yaml_str,
         commands_json_path=resolved_commands_str if not allow_remote_dataset_dir else None,
-        train_output_dir=train_output_dir,
+        train_output_dir=effective_train_output_dir,
         model_name_or_path=model_name_or_path,
         lora_rank=lora_rank,
         port=port,
