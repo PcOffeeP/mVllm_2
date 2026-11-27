@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 import json
 from pathlib import Path
 import re
+import struct
 import sys
 from typing import Any
 
@@ -118,7 +119,13 @@ def _format_emitted_frame_path(
     return f"{base.rstrip('/')}/{candidate_id}/{image_name}"
 
 
-def _verify_png_file(path: Path, *, expected_sha256: str | None, context: str) -> None:
+def _verify_png_file(
+    path: Path,
+    *,
+    expected_sha256: str | None,
+    expected_size: tuple[int, int] | None = None,
+    context: str,
+) -> None:
     if path.is_symlink():
         raise InputError(f"{context}: L3 frame PNG must not be a symlink: {path}")
     if not path.is_file():
@@ -126,6 +133,14 @@ def _verify_png_file(path: Path, *, expected_sha256: str | None, context: str) -
     raw = path.read_bytes()
     if not raw.startswith(PNG_MAGIC):
         raise InputError(f"{context}: L3 frame is not a valid PNG file: {path}")
+    if expected_size is not None:
+        if len(raw) < 24 or raw[12:16] != b"IHDR":
+            raise InputError(f"{context}: L3 frame PNG missing valid IHDR header: {path}")
+        png_w, png_h = struct.unpack("!II", raw[16:24])
+        if (png_w, png_h) != expected_size:
+            raise InputError(
+                f"{context}: L3 frame PNG dimensions {png_w}x{png_h} != manifest {expected_size[0]}x{expected_size[1]} ({path})"
+            )
     if expected_sha256 is not None:
         actual = sha256_bytes(raw)
         if actual != expected_sha256:
@@ -223,7 +238,12 @@ def _resolve_sample_frames_from_manifest(
                 resolved_img.relative_to(clip_dir)
             except ValueError as exc:
                 raise InputError(f"{cid}: L3 frame PNG escapes candidate directory: {resolved_img}") from exc
-            _verify_png_file(resolved_img, expected_sha256=expected_sha, context=cid)
+            _verify_png_file(
+                resolved_img,
+                expected_sha256=expected_sha,
+                expected_size=(sample.width, sample.height),
+                context=cid,
+            )
             emitted.append(
                 _format_emitted_frame_path(
                     resolved_path=resolved_img,
@@ -462,9 +482,9 @@ def build_fold_sft_dataset(
         raise InputError(f"output_dir must not be a symlink: {out_dir}")
     ds_name = dataset_name or f"tensile_five_label_fold{fold}_{modality}_{num_frames}f"
     _validate_safe_component(ds_name, "dataset_name")
-    if ds_name in RESERVED_DATASET_NAMES:
+    if ds_name.lower() in RESERVED_DATASET_NAMES:
         raise InputError(
-            f"dataset_name {ds_name!r} collides with reserved bundle artifact name; "
+            f"dataset_name {ds_name!r} collides with reserved bundle artifact name (case-insensitive); "
             f"reserved names: {sorted(RESERVED_DATASET_NAMES)}"
         )
     if frames_manifest is None and not allow_missing_frames_dry_run:
@@ -644,9 +664,9 @@ def build_fold_sft_dataset(
         (out_dir / "build_summary.json", summary_bytes, "build_summary"),
         (out_dir / "preflight_report.json", preflight_bytes, "preflight_report"),
     ]
-    resolved_targets = [p.resolve() for p, _, _ in targets]
-    if len(set(resolved_targets)) != len(targets):
-        raise InputError(f"output artifact paths collide: {[str(p) for p, _, _ in targets]}")
+    resolved_targets_ci = [str(p.resolve()).lower() for p, _, _ in targets]
+    if len(set(resolved_targets_ci)) != len(targets):
+        raise InputError(f"output artifact paths collide (case-insensitive): {[str(p) for p, _, _ in targets]}")
     for path, _, label in targets:
         validate_safe_output_path(path, label=label)
         assert_no_symlink_components(path, label=label)
@@ -654,6 +674,18 @@ def build_fold_sft_dataset(
         existing = [str(p) for p, _, _ in targets if p.exists()]
         if existing:
             raise InputError(f"refusing to overwrite existing output files (pass --overwrite to force): {existing}")
+    else:
+        existing_summary_path = out_dir / "build_summary.json"
+        if existing_summary_path.is_file() and not existing_summary_path.is_symlink():
+            try:
+                prev_summary = decode_file(existing_summary_path.read_text(encoding="utf-8"), str(existing_summary_path))
+            except (InputError, OSError, UnicodeError):
+                prev_summary = None
+            if isinstance(prev_summary, dict) and prev_summary.get("fold") not in (None, fold):
+                raise InputError(
+                    f"refusing to overwrite existing fold_{prev_summary.get('fold')} bundle in {out_dir} "
+                    f"with fold_{fold} export; use a fold-specific output directory"
+                )
 
     out_dir.mkdir(parents=True, exist_ok=True)
     for path, content, label in targets:

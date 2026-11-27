@@ -16,6 +16,7 @@ from script.five_label_sft.render_config import (
     build_runtime_commands,
     main as render_main,
     render_config_bundle,
+    verify_rendered_launch,
 )
 
 
@@ -408,23 +409,48 @@ def test_render_pins_absolute_dataset_dir_across_cwd_changes_and_blocks_case_ali
     assert Path(loaded["dataset_dir"]) == fold0_input.resolve()
     assert Path(loaded["dataset_dir"]).is_absolute()
 
-    # Case-insensitive protected path alias (e.g. data/SPLITS/three-fold/test.json on macOS) MUST be refused
-    splits_dir = tmp_path / "data/splits/three-fold"
-    splits_dir.mkdir(parents=True)
-    test_file = splits_dir / "test.json"
-    test_file.write_text('{"split":"test"}', encoding="utf-8")
-    with pytest.raises(InputError, match="protected path"):
+    # Pre-launch verification passes on untouched Fold 0 bundle, and fails closed if bundle is swapped to Fold 1
+    cmd_json = out_yaml.with_suffix(".commands.json")
+    cmds = json.loads(cmd_json.read_text(encoding="utf-8"))
+    assert "--verify-commands-json" in cmds["train_command_manual_only"]
+    assert verify_rendered_launch(cmd_json)["verified"] is True
+    assert render_main(["--verify-commands-json", str(cmd_json)]) == 0
+
+    # Simulate overwriting Fold 0's dataset dir with Fold 1 bundle -> pre-launch guard MUST block!
+    _create_verified_bundle(
+        fold0_run / "input", fold=1, modality="video", num_frames=16, dataset_name="train"
+    )
+    with pytest.raises(InputError, match="fold=1 != requested 0"):
+        verify_rendered_launch(cmd_json)
+    assert render_main(["--verify-commands-json", str(cmd_json)]) == 2
+
+    # Refusing non-.yaml/.yml output path (prevents overwriting dataset_info.json in bundle dir)
+    with pytest.raises(InputError, match=r"\.yaml or \.yml"):
         render_config_bundle(
-            fold=0,
+            fold=1,
             modality="video",
             num_frames=16,
             dataset_dir=str(fold0_input),
             dataset_name="train",
-            train_output_dir="trains/fold0/adapter",
-            output_yaml=tmp_path / "data/SPLITS/three-fold/test.json",
+            train_output_dir="trains/fold1/adapter",
+            output_yaml=fold0_input / "dataset_info.json",
             overwrite=True,
         )
-    assert test_file.read_text(encoding="utf-8") == '{"split":"test"}'
+
+    # Case-insensitive protected path alias (e.g. data/SPLITS/three-fold/evil.yaml on macOS) MUST be refused
+    splits_dir = tmp_path / "data/splits/three-fold"
+    splits_dir.mkdir(parents=True)
+    with pytest.raises(InputError, match="protected path"):
+        render_config_bundle(
+            fold=1,
+            modality="video",
+            num_frames=16,
+            dataset_dir=str(fold0_input),
+            dataset_name="train",
+            train_output_dir="trains/fold1/adapter",
+            output_yaml=tmp_path / "data/SPLITS/three-fold/evil.yaml",
+            overwrite=True,
+        )
 
 
 def test_render_propagates_custom_lora_rank_to_vllm_command() -> None:

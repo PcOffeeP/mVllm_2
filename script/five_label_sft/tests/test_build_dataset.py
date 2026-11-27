@@ -203,15 +203,15 @@ def _create_synthetic_repo(tmp_path: Path) -> dict[str, Any]:
     return {"root": tmp_path, "app": app, "manifest_path": manifest_path, "reviews_path": reviews_path}
 
 
-def _make_valid_1x1_png(r: int, g: int, b: int) -> bytes:
-    """Create a genuine decodable 1x1 RGB PNG byte stream using only Python stdlib."""
+def _make_valid_png(width: int, height: int, r: int, g: int, b: int) -> bytes:
+    """Create a genuine decodable width x height RGB PNG byte stream using only Python stdlib."""
     def _chunk(tag: bytes, data: bytes) -> bytes:
         crc = zlib.crc32(tag + data) & 0xFFFFFFFF
         return struct.pack("!I", len(data)) + tag + data + struct.pack("!I", crc)
 
-    ihdr = struct.pack("!IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
-    raw_scanline = bytes([0, r & 0xFF, g & 0xFF, b & 0xFF])
-    idat = zlib.compress(raw_scanline)
+    ihdr = struct.pack("!IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    row = b"\x00" + bytes([r & 0xFF, g & 0xFF, b & 0xFF]) * width
+    idat = zlib.compress(row * height, level=1)
     return PNG_MAGIC + _chunk(b"IHDR", ihdr) + _chunk(b"IDAT", idat) + _chunk(b"IEND", b"")
 
 
@@ -227,13 +227,15 @@ def _write_fake_frames_and_manifest(
     lines: list[str] = []
     for s_idx, s in enumerate(samples):
         cid = s["candidate_id"]
+        w = int(s.get("width", 1))
+        h = int(s.get("height", 1))
         cdir = frames_dir / cid
         cdir.mkdir(parents=True, exist_ok=True)
         indices = sample_frame_indices(s["total_frames"], num_frames)
         frame_rows = []
         for order, fidx in enumerate(indices):
             fname = f"frame_{order:02d}.png"
-            raw = _make_valid_1x1_png(s_idx + 1, order, fidx % 256)
+            raw = _make_valid_png(w, h, s_idx + 1, order, fidx % 256)
             (cdir / fname).write_bytes(raw)
             frame_rows.append(
                 {
@@ -270,7 +272,13 @@ def test_dual_channel_format_and_filtering_on_synthetic_repo(tmp_path: Path) -> 
     assert [s.candidate_id for s in samples] == ["video_0002_fracture_01", "video_0002_pre_01"]
 
     sample_meta = [
-        {"candidate_id": s.candidate_id, "clip_sha256": s.clip_sha256, "total_frames": s.total_frames}
+        {
+            "candidate_id": s.candidate_id,
+            "clip_sha256": s.clip_sha256,
+            "total_frames": s.total_frames,
+            "width": s.width,
+            "height": s.height,
+        }
         for s in samples
     ]
 
@@ -427,8 +435,8 @@ def test_build_dataset_refuses_protected_output_dirs_reserved_names_and_symlink_
                 repo_root=root,
             )
 
-    # Reserved artifact names must be rejected so dataset JSON never overwrites dataset_info/build_summary/preflight
-    for reserved in ("dataset_info", "build_summary", "preflight_report"):
+    # Reserved artifact names (including case-insensitive aliases on APFS/Windows) must be rejected
+    for reserved in ("dataset_info", "DATASET_INFO", "Build_Summary", "build_summary", "preflight_report"):
         with pytest.raises(InputError, match="reserved bundle artifact"):
             build_fold_sft_dataset(
                 fold=0,
@@ -488,7 +496,13 @@ def test_symlink_frame_rejected_fail_closed(tmp_path: Path) -> None:
     ctx = load_fold_isolation_context(0, repo_root=root)
     samples, _ = select_confirmed_fold_train_samples(ctx)
     sample_meta = [
-        {"candidate_id": s.candidate_id, "clip_sha256": s.clip_sha256, "total_frames": s.total_frames}
+        {
+            "candidate_id": s.candidate_id,
+            "clip_sha256": s.clip_sha256,
+            "total_frames": s.total_frames,
+            "width": s.width,
+            "height": s.height,
+        }
         for s in samples
     ]
     fdir8, rec8 = _write_fake_frames_and_manifest(tmp_path / "sym", ctx.manifest_sha256, sample_meta, 8)
@@ -545,7 +559,13 @@ def test_frame_sha256_mismatch_and_missing_frames_fail_closed(tmp_path: Path) ->
     ctx = load_fold_isolation_context(0, repo_root=root)
     samples, _ = select_confirmed_fold_train_samples(ctx)
     sample_meta = [
-        {"candidate_id": s.candidate_id, "clip_sha256": s.clip_sha256, "total_frames": s.total_frames}
+        {
+            "candidate_id": s.candidate_id,
+            "clip_sha256": s.clip_sha256,
+            "total_frames": s.total_frames,
+            "width": s.width,
+            "height": s.height,
+        }
         for s in samples
     ]
 
@@ -587,7 +607,7 @@ def test_frame_sha256_mismatch_and_missing_frames_fail_closed(tmp_path: Path) ->
         )
 
     # Swapping/corrupting PNG bytes against frames-manifest SHA-256 must fail closed
-    (fdir8 / samples[0].candidate_id / "frame_00.png").write_bytes(PNG_MAGIC + b"wrong_clip_frame")
+    (fdir8 / samples[0].candidate_id / "frame_00.png").write_bytes(_make_valid_png(samples[0].width, samples[0].height, 99, 99, 99))
     with pytest.raises(InputError, match="sha256 mismatch"):
         build_fold_sft_dataset(
             fold=0,
@@ -599,6 +619,20 @@ def test_frame_sha256_mismatch_and_missing_frames_fail_closed(tmp_path: Path) ->
             repo_root=root,
         )
 
+    # PNG with wrong IHDR dimensions (1x1 instead of manifest dimensions) MUST fail closed even if sha256 matches
+    wrong_meta = [dict(m, width=1, height=1) for m in sample_meta]
+    fdir_wrong, rec_wrong = _write_fake_frames_and_manifest(tmp_path / "wrong_dims", ctx.manifest_sha256, wrong_meta, 8)
+    with pytest.raises(InputError, match="PNG dimensions 1x1 !="):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="images",
+            num_frames=8,
+            output_dir=tmp_path / "fail_dims",
+            frames_manifest=rec_wrong,
+            frames_dir=fdir_wrong,
+            repo_root=root,
+        )
+
 
 def test_verified_manifest_export_overwrite_guard_and_extra_exclusions_provenance(tmp_path: Path) -> None:
     fx = _create_synthetic_repo(tmp_path)
@@ -606,7 +640,13 @@ def test_verified_manifest_export_overwrite_guard_and_extra_exclusions_provenanc
     ctx = load_fold_isolation_context(0, repo_root=root)
     samples, _ = select_confirmed_fold_train_samples(ctx)
     sample_meta = [
-        {"candidate_id": s.candidate_id, "clip_sha256": s.clip_sha256, "total_frames": s.total_frames}
+        {
+            "candidate_id": s.candidate_id,
+            "clip_sha256": s.clip_sha256,
+            "total_frames": s.total_frames,
+            "width": s.width,
+            "height": s.height,
+        }
         for s in samples
     ]
     fdir8, rec8 = _write_fake_frames_and_manifest(tmp_path / "direct", ctx.manifest_sha256, sample_meta, 8)
@@ -666,6 +706,18 @@ def test_verified_manifest_export_overwrite_guard_and_extra_exclusions_provenanc
         overwrite=True,
     )
     assert summary2["fingerprints"]["dataset_sha256"] == summary["fingerprints"]["dataset_sha256"]
+
+    # Overwriting an existing Fold 0 bundle directory with Fold 1 MUST be refused even with overwrite=True
+    with pytest.raises(InputError, match="refusing to overwrite existing fold_0 bundle"):
+        build_fold_sft_dataset(
+            fold=1,
+            modality="images",
+            num_frames=8,
+            output_dir=out_dir,
+            allow_missing_frames_dry_run=True,
+            repo_root=root,
+            overwrite=True,
+        )
 
 
 def test_sharegpt_record_rejects_placeholder_in_prompt_and_non_strict_target() -> None:

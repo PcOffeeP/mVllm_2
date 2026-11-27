@@ -27,6 +27,7 @@ from .constants import (
     SUPPORTED_NUM_FRAMES,
     VLM_EVAL_VLLM_BIN,
     VLM_SFT_LLAMAFACTORY_CLI,
+    VLM_SFT_PYTHON_BIN,
     get_channel_preset,
 )
 from .data_guards import (
@@ -199,12 +200,75 @@ def verify_dataset_bundle(
     return {
         "verified": True,
         "resolved_dataset_dir": str(bundle_dir),
+        "dataset_file": dataset_file,
+        "build_summary_sha256": sha256_file(summary_path),
         "dataset_sha256": actual_ds_sha,
         "dataset_info_sha256": actual_info_sha,
         "preflight_report_sha256": actual_preflight_sha,
         "exported_candidate_count": isolation.get("exported_candidate_count"),
         "exported_source_count": isolation.get("exported_source_count"),
     }
+
+
+def verify_rendered_launch(commands_json_path: Path | str) -> dict[str, Any]:
+    """Re-verify rendered YAML and pinned dataset bundle hashes immediately before training launch.
+
+    Fail-closed guard preventing a stale YAML from ever launching against an overwritten or
+    swapped fold dataset directory.
+    """
+    cmd_path = Path(commands_json_path)
+    if cmd_path.is_symlink() or not cmd_path.is_file():
+        raise InputError(f"missing non-symlink commands manifest: {cmd_path}")
+    commands = decode_file(cmd_path.read_text(encoding="utf-8"), str(cmd_path))
+    if not isinstance(commands, dict) or commands.get("schema") != CONFIG_MANIFEST_SCHEMA:
+        raise InputError(f"{cmd_path}: invalid commands manifest schema")
+
+    pinned = commands.get("dataset_bundle_verification")
+    if not isinstance(pinned, dict) or pinned.get("verified") is not True:
+        raise InputError(f"{cmd_path}: refusing to launch unverified/remote dataset config")
+
+    yaml_path_str = commands.get("yaml_path")
+    if not isinstance(yaml_path_str, str) or not yaml_path_str.strip():
+        raise InputError(f"{cmd_path}: missing yaml_path")
+    yaml_path = Path(yaml_path_str)
+    if yaml_path.is_symlink() or not yaml_path.is_file():
+        raise InputError(f"{cmd_path}: rendered YAML missing or symlink: {yaml_path}")
+    expected_yaml_sha = commands.get("yaml_sha256")
+    actual_yaml_sha = sha256_file(yaml_path)
+    if expected_yaml_sha != actual_yaml_sha:
+        raise InputError(
+            f"{yaml_path}: YAML sha256 mismatch (expected {expected_yaml_sha!r}, got {actual_yaml_sha!r})"
+        )
+
+    cfg = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+    if not isinstance(cfg, dict):
+        raise InputError(f"{yaml_path}: invalid YAML config")
+
+    live = verify_dataset_bundle(
+        dataset_dir=cfg["dataset_dir"],
+        fold=commands["fold"],
+        modality=commands["modality"],
+        num_frames=commands["num_frames"],
+        dataset_name=cfg["dataset"],
+        cutoff_len=cfg["cutoff_len"],
+        image_max_pixels=cfg.get("image_max_pixels"),
+        image_min_pixels=cfg.get("image_min_pixels"),
+        video_max_pixels=cfg.get("video_max_pixels"),
+        video_min_pixels=cfg.get("video_min_pixels"),
+    )
+    for key in (
+        "resolved_dataset_dir",
+        "build_summary_sha256",
+        "dataset_sha256",
+        "dataset_info_sha256",
+        "preflight_report_sha256",
+    ):
+        if live.get(key) != pinned.get(key):
+            raise InputError(
+                f"pre-launch dataset verification failed for {yaml_path}: {key} drifted "
+                f"(pinned={pinned.get(key)!r}, live={live.get(key)!r}); re-render config before training"
+            )
+    return live
 
 
 def build_qlora_config(
@@ -336,6 +400,7 @@ def build_runtime_commands(
     modality: str,
     num_frames: int,
     yaml_path: str,
+    commands_json_path: str | None = None,
     train_output_dir: str,
     model_name_or_path: str = DEFAULT_BASE_MODEL_PATH,
     served_model_name: str = DEFAULT_SERVED_MODEL_NAME,
@@ -367,10 +432,18 @@ def build_runtime_commands(
     )
     eff_fps = _require_pos_float(video_fps if video_fps is not None else (preset.video_fps or 2.0), "video_fps")
 
-    train_cmd = (
+    raw_train_cmd = (
         f"PYTORCH_CUDA_ALLOC_CONF={CUDA_ALLOC_CONF} "
         f"{VLM_SFT_LLAMAFACTORY_CLI} train {shlex.quote(yaml_path)}"
     )
+    if commands_json_path is not None:
+        verify_cmd = (
+            f"{VLM_SFT_PYTHON_BIN} -m script.five_label_sft.render_config "
+            f"--verify-commands-json {shlex.quote(commands_json_path)}"
+        )
+        train_cmd = f"{verify_cmd} && {raw_train_cmd}"
+    else:
+        train_cmd = raw_train_cmd
 
     vllm_parts = [
         f"PATH={shlex.quote(PURE_SYSTEM_PATH)}",
@@ -506,18 +579,38 @@ def render_config_bundle(
         }
 
     yaml_path = Path(output_yaml)
+    if yaml_path.suffix.lower() not in (".yaml", ".yml"):
+        raise InputError(f"output_yaml must have a .yaml or .yml suffix, got {yaml_path!r}")
     commands_path = yaml_path.with_suffix(".commands.json")
-    if yaml_path.resolve() == commands_path.resolve():
+    if str(yaml_path.resolve()).lower() == str(commands_path.resolve()).lower():
         raise InputError(f"output_yaml collides with companion commands path: {yaml_path}")
     for label, p in (("output_yaml", yaml_path), ("commands_json", commands_path)):
         validate_safe_output_path(p, label=label)
         assert_no_symlink_components(p, label=label)
 
+    if bundle_verification.get("verified") is True:
+        bdir = Path(bundle_verification["resolved_dataset_dir"])
+        bundle_files_ci = {
+            str((bdir / name).resolve()).lower()
+            for name in (
+                "build_summary.json",
+                "dataset_info.json",
+                "preflight_report.json",
+                bundle_verification["dataset_file"],
+            )
+        }
+        for label, p in (("output_yaml", yaml_path), ("commands_json", commands_path)):
+            if str(p.resolve()).lower() in bundle_files_ci:
+                raise InputError(f"{label} collides with verified dataset bundle artifact: {p}")
+
+    resolved_yaml_str = str(yaml_path.resolve())
+    resolved_commands_str = str(commands_path.resolve())
     commands = build_runtime_commands(
         fold=fold,
         modality=modality,
         num_frames=num_frames,
-        yaml_path=str(yaml_path),
+        yaml_path=resolved_yaml_str,
+        commands_json_path=resolved_commands_str if not allow_remote_dataset_dir else None,
         train_output_dir=train_output_dir,
         model_name_or_path=model_name_or_path,
         lora_rank=lora_rank,
@@ -525,6 +618,7 @@ def render_config_bundle(
         vllm_max_model_len=vllm_max_model_len,
         video_fps=video_fps,
     )
+    commands["yaml_path"] = resolved_yaml_str
     commands["dataset_bundle_verification"] = bundle_verification
 
     if not overwrite:
@@ -534,25 +628,29 @@ def render_config_bundle(
 
     header = (
         f"# Auto-generated by script/five_label_sft/render_config.py (fold={fold}, modality={modality}, {num_frames}f)\n"
-        f"# Launch manually with: PYTORCH_CUDA_ALLOC_CONF={CUDA_ALLOC_CONF} llamafactory-cli train <this_yaml>\n"
+        f"# Launch manually with: {commands['train_command_manual_only']}\n"
         f"# DEC-008 §5: Train strictly on clean fold_{fold}_train; evaluate only on eval-dev-v1 ∩ fold_{fold}_val.\n"
     )
     yaml_text = header + yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True)
+    yaml_bytes = yaml_text.encode("utf-8")
+    import hashlib
+    commands["yaml_sha256"] = hashlib.sha256(yaml_bytes).hexdigest()
     commands_text = json.dumps(commands, ensure_ascii=False, indent=2) + "\n"
-    safe_write_bytes(yaml_path, yaml_text.encode("utf-8"), overwrite=overwrite, label="output_yaml")
+    safe_write_bytes(yaml_path, yaml_bytes, overwrite=overwrite, label="output_yaml")
     safe_write_bytes(commands_path, commands_text.encode("utf-8"), overwrite=overwrite, label="commands_json")
     return cfg, commands
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--fold", type=int, choices=SUPPORTED_FOLDS, required=True, help="CV fold (0, 1, or 2)")
-    parser.add_argument("--modality", choices=SUPPORTED_MODALITIES, required=True, help="Channel modality: images or video")
-    parser.add_argument("--num-frames", type=int, choices=SUPPORTED_NUM_FRAMES, required=True, help="Number of L3 frames per clip")
-    parser.add_argument("--dataset-dir", required=True, help="Directory containing dataset_info.json and dataset JSON")
+    parser.add_argument("--verify-commands-json", help="Pre-launch verification mode: verify rendered YAML & dataset bundle hashes before training")
+    parser.add_argument("--fold", type=int, choices=SUPPORTED_FOLDS, help="CV fold (0, 1, or 2)")
+    parser.add_argument("--modality", choices=SUPPORTED_MODALITIES, help="Channel modality: images or video")
+    parser.add_argument("--num-frames", type=int, choices=SUPPORTED_NUM_FRAMES, help="Number of L3 frames per clip")
+    parser.add_argument("--dataset-dir", help="Directory containing dataset_info.json and dataset JSON")
     parser.add_argument("--dataset-name", help="Dataset key in dataset_info.json (default: tensile_five_label_fold{k}_{modality}_{K}f)")
-    parser.add_argument("--train-output-dir", required=True, help="Adapter output directory (e.g. trains/sft-fold0-video16f/adapter)")
-    parser.add_argument("--output-yaml", required=True, help="Target YAML file path (also writes .commands.json)")
+    parser.add_argument("--train-output-dir", help="Adapter output directory (e.g. trains/sft-fold0-video16f/adapter)")
+    parser.add_argument("--output-yaml", help="Target YAML file path (.yaml/.yml; also writes .commands.json)")
     parser.add_argument("--model-name-or-path", default=DEFAULT_BASE_MODEL_PATH, help="Base model path on training machine")
     parser.add_argument("--cutoff-len", type=int, help="Override cutoff_len")
     parser.add_argument("--vllm-max-model-len", type=int, help="Override vLLM --max-model-len")
@@ -573,6 +671,27 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        if args.verify_commands_json:
+            live = verify_rendered_launch(args.verify_commands_json)
+            print(
+                f"OK: pre-launch verification passed for {args.verify_commands_json} "
+                f"(dataset_sha256={live['dataset_sha256'][:12]}...)"
+            )
+            return 0
+        missing = [
+            flag
+            for flag, val in (
+                ("--fold", args.fold),
+                ("--modality", args.modality),
+                ("--num-frames", args.num_frames),
+                ("--dataset-dir", args.dataset_dir),
+                ("--train-output-dir", args.train_output_dir),
+                ("--output-yaml", args.output_yaml),
+            )
+            if val is None
+        ]
+        if missing:
+            raise InputError(f"missing required arguments: {', '.join(missing)}")
         ds_name = args.dataset_name or f"tensile_five_label_fold{args.fold}_{args.modality}_{args.num_frames}f"
         cfg, commands = render_config_bundle(
             fold=args.fold,

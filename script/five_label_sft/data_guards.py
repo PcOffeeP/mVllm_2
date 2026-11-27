@@ -382,6 +382,11 @@ def load_fold_isolation_context(
     eval_test_sel.assert_manifest_sha256(manifest_sha, context="sft:eval-test-v1")
     eval_dev_cids = frozenset(eval_dev_sel.candidate_ids)
     eval_test_cids = frozenset(eval_test_sel.candidate_ids)
+    missing_eval_dev = sorted(cid for cid in eval_dev_cids if cid not in manifest_by_id)
+    if missing_eval_dev:
+        raise InputError(
+            f"{ed_path}: eval-dev candidate IDs absent from manifest {m_path}: {missing_eval_dev[:10]}"
+        )
     missing_eval_test = sorted(cid for cid in eval_test_cids if cid not in manifest_by_id)
     if missing_eval_test:
         raise InputError(
