@@ -71,7 +71,7 @@
 
 ### 5. SFT 三折严格隔离红线（防数据泄漏）
 
-- **严禁在整份 `eval-dev-v1`（210 条，横跨三折验证集）上训练**：任何折的训练数据构造器严禁摄入跨折验证源，也严禁摄入 [DEC-007](0007-dev-test-dedup-exclusion.md) [`data/splits/dev-exclusions.json`](../../data/splits/dev-exclusions.json) 中排除的开发源（`video_0006`、`video_0079` 及其 20 条子视频）与 15 条隔离虚拟视频。
+- **严禁在整份 `eval-dev-v1`（210 条，横跨三折验证集）上训练**：任何折的训练数据构造器对第 $k$ 折严禁摄入 `fold_{k}_val`（及任何跨折混入该折验证源的数据），也严禁摄入 [DEC-007](0007-dev-test-dedup-exclusion.md) [`data/splits/dev-exclusions.json`](../../data/splits/dev-exclusions.json) 中排除的开发源（`video_0006`、`video_0079` 及其 20 条子视频）与 15 条隔离虚拟视频。
 - **按折严格隔离训练与验证**：对每一折 $k \in \{0, 1, 2\}$：
   - **训练集**：仅限该折 `data/splits/three-fold/fold_{k}_train.json` 扣除 `DEC-007` 排除源后的 **58 个干净开发源**中已完成人工确认的片段；
   - **验证集**：严格限定为 **`eval-dev-v1 ∩ fold_{k}_val`**（扣除 `DEC-007` 后每折均 29 个干净验证源：其中 **Fold 0 验证集为 69 条 / 29 源**，Fold 1 为 73 条 / 29 源，Fold 2 为 68 条 / 29 源），并按三画幅档（`w_le_200` / `w_200_400` / `w_gt_400`）分档报告，不跨档合并主指标。
