@@ -28,6 +28,10 @@ def _create_verified_bundle(
     dataset_name: str,
     dry_run: bool = False,
     max_est_tokens: int = 7612,
+    image_max_pixels: int | None = None,
+    image_min_pixels: int | None = None,
+    video_max_pixels: int | None = None,
+    video_min_pixels: int | None = None,
 ) -> Path:
     bundle_dir.mkdir(parents=True, exist_ok=True)
     ds_file = f"{dataset_name}.json"
@@ -49,6 +53,36 @@ def _create_verified_bundle(
     }
     info_bytes = (json.dumps(info_obj, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     (bundle_dir / "dataset_info.json").write_bytes(info_bytes)
+
+    pixel_config = (
+        {
+            "image_max_pixels": 1_200_000 if image_max_pixels is None else image_max_pixels,
+            "image_min_pixels": 65_536 if image_min_pixels is None else image_min_pixels,
+            "video_max_pixels": None,
+            "video_min_pixels": None,
+        }
+        if modality == "images"
+        else {
+            "image_max_pixels": None,
+            "image_min_pixels": None,
+            "video_max_pixels": 1_200_000 if video_max_pixels is None else video_max_pixels,
+            "video_min_pixels": 256 if video_min_pixels is None else video_min_pixels,
+        }
+    )
+    preflight_obj = {
+        "schema": "five-label-sft-preflight/1",
+        "modality": modality,
+        "num_frames": num_frames,
+        "cutoff_len": 8192,
+        "pixel_config": pixel_config,
+        "short_clip_count": 0,
+        "exceeds_cutoff_count": 0,
+        "exceeds_gpu_frame_pixel_guard_count": 0,
+        "estimated_total_tokens": {"max": max_est_tokens},
+    }
+    preflight_bytes = (json.dumps(preflight_obj, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    (bundle_dir / "preflight_report.json").write_bytes(preflight_bytes)
+
     summary_obj: dict[str, Any] = {
         "schema": BUILD_SUMMARY_SCHEMA,
         "dataset_name": dataset_name,
@@ -71,6 +105,7 @@ def _create_verified_bundle(
         "fingerprints": {
             "dataset_sha256": hashlib.sha256(ds_bytes).hexdigest(),
             "dataset_info_sha256": hashlib.sha256(info_bytes).hexdigest(),
+            "preflight_report_sha256": hashlib.sha256(preflight_bytes).hexdigest(),
         },
         "preflight_summary": {
             "estimated_total_tokens": {"max": max_est_tokens},
@@ -227,6 +262,19 @@ def test_render_blocks_cross_fold_mismatch_dry_run_and_tampered_bundle(tmp_path:
             output_yaml=tmp_path / "dry.yaml",
         )
 
+    # Pixel parameter drift vs verified preflight_report.json MUST fail closed
+    with pytest.raises(InputError, match="pixel config mismatch"):
+        render_config_bundle(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            dataset_dir=str(fold0_bundle),
+            dataset_name="train",
+            train_output_dir="trains/fold0/adapter",
+            output_yaml=tmp_path / "drift_pixels.yaml",
+            video_min_pixels=1_200_000,
+        )
+
     # Tampered dataset JSON sha256 MUST fail closed
     (fold0_bundle / "train.json").write_bytes(b"[{\"tampered\": true}]\n")
     with pytest.raises(InputError, match="sha256 mismatch"):
@@ -329,6 +377,54 @@ def test_render_rejects_invalid_hyperparams_and_cross_modality_overrides() -> No
             fold=0, modality="video", num_frames=16, yaml_path="trains/a.yaml",
             train_output_dir="trains/out", gpu_memory_utilization=1.5,
         )
+
+
+def test_render_pins_absolute_dataset_dir_across_cwd_changes_and_blocks_case_alias(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fold0_run = tmp_path / "run_fold0"
+    fold1_run = tmp_path / "run_fold1"
+    fold0_input = _create_verified_bundle(
+        fold0_run / "input", fold=0, modality="video", num_frames=16, dataset_name="train"
+    )
+    _create_verified_bundle(
+        fold1_run / "input", fold=1, modality="video", num_frames=16, dataset_name="train"
+    )
+
+    monkeypatch.chdir(fold0_run)
+    out_yaml = fold0_run / "qlora_fold0.yaml"
+    render_config_bundle(
+        fold=0,
+        modality="video",
+        num_frames=16,
+        dataset_dir="input",  # relative path
+        dataset_name="train",
+        train_output_dir="trains/fold0/adapter",
+        output_yaml=out_yaml,
+    )
+    # Switch cwd to Fold 1 run dir; YAML MUST still point to Fold 0's absolute verified input dir
+    monkeypatch.chdir(fold1_run)
+    loaded = yaml.safe_load(out_yaml.read_text(encoding="utf-8"))
+    assert Path(loaded["dataset_dir"]) == fold0_input.resolve()
+    assert Path(loaded["dataset_dir"]).is_absolute()
+
+    # Case-insensitive protected path alias (e.g. data/SPLITS/three-fold/test.json on macOS) MUST be refused
+    splits_dir = tmp_path / "data/splits/three-fold"
+    splits_dir.mkdir(parents=True)
+    test_file = splits_dir / "test.json"
+    test_file.write_text('{"split":"test"}', encoding="utf-8")
+    with pytest.raises(InputError, match="protected path"):
+        render_config_bundle(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            dataset_dir=str(fold0_input),
+            dataset_name="train",
+            train_output_dir="trains/fold0/adapter",
+            output_yaml=tmp_path / "data/SPLITS/three-fold/test.json",
+            overwrite=True,
+        )
+    assert test_file.read_text(encoding="utf-8") == '{"split":"test"}'
 
 
 def test_render_propagates_custom_lora_rank_to_vllm_command() -> None:

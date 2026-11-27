@@ -62,28 +62,39 @@ def verify_dataset_bundle(
     num_frames: int,
     dataset_name: str,
     cutoff_len: int,
+    image_max_pixels: int | None = None,
+    image_min_pixels: int | None = None,
+    video_max_pixels: int | None = None,
+    video_min_pixels: int | None = None,
 ) -> dict[str, Any]:
-    """Fail-closed cross-check of ``build_summary.json``, ``dataset_info.json``, and dataset JSON.
+    """Fail-closed cross-check of ``build_summary.json``, ``dataset_info.json``, ``preflight_report.json``, and dataset JSON.
 
     Prevents cross-fold leakage (e.g., training Fold 1 config on Fold 0 dataset), modality/frame
-    mismatch, tampered dataset bytes, or accidentally launching training on a dry-run bundle.
+    mismatch, pixel/cutoff drift vs verified preflight, tampered dataset bytes, or dry-run bundles.
     """
-    bundle_dir = Path(dataset_dir)
-    if bundle_dir.is_symlink() or not bundle_dir.is_dir():
+    raw_dir = Path(dataset_dir)
+    if raw_dir.is_symlink() or not raw_dir.is_dir():
         raise InputError(
-            f"dataset_dir does not exist or is not a regular directory: {bundle_dir}; "
+            f"dataset_dir does not exist or is not a regular directory: {raw_dir}; "
             "export a verified dataset bundle with build_dataset.py first (or pass --allow-remote-dataset-dir "
             "only when rendering a template for a remote host path)"
         )
+    bundle_dir = raw_dir.resolve()
 
     summary_path = bundle_dir / "build_summary.json"
     info_path = bundle_dir / "dataset_info.json"
-    for label, p in (("build_summary.json", summary_path), ("dataset_info.json", info_path)):
+    preflight_path = bundle_dir / "preflight_report.json"
+    for label, p in (
+        ("build_summary.json", summary_path),
+        ("dataset_info.json", info_path),
+        ("preflight_report.json", preflight_path),
+    ):
         if p.is_symlink() or not p.is_file():
             raise InputError(f"dataset bundle missing required non-symlink {label}: {p}")
 
     summary = decode_file(summary_path.read_text(encoding="utf-8"), str(summary_path))
     info = decode_file(info_path.read_text(encoding="utf-8"), str(info_path))
+    preflight = decode_file(preflight_path.read_text(encoding="utf-8"), str(preflight_path))
     if not isinstance(summary, dict) or summary.get("schema") != BUILD_SUMMARY_SCHEMA:
         raise InputError(f"{summary_path}: invalid build_summary schema {summary.get('schema') if isinstance(summary, dict) else None!r}")
     if summary.get("dry_run_missing_frames") is not False:
@@ -143,6 +154,11 @@ def verify_dataset_bundle(
         raise InputError(
             f"{info_path}: sha256 mismatch (expected {fingerprints.get('dataset_info_sha256')!r}, got {actual_info_sha!r})"
         )
+    actual_preflight_sha = sha256_file(preflight_path)
+    if fingerprints.get("preflight_report_sha256") != actual_preflight_sha:
+        raise InputError(
+            f"{preflight_path}: sha256 mismatch (expected {fingerprints.get('preflight_report_sha256')!r}, got {actual_preflight_sha!r})"
+        )
     dataset_path = bundle_dir / dataset_file
     if dataset_path.is_symlink() or not dataset_path.is_file():
         raise InputError(f"dataset bundle missing required non-symlink dataset file: {dataset_path}")
@@ -152,18 +168,40 @@ def verify_dataset_bundle(
             f"{dataset_path}: sha256 mismatch (expected {fingerprints.get('dataset_sha256')!r}, got {actual_ds_sha!r})"
         )
 
-    preflight_summary = summary.get("preflight_summary")
-    if isinstance(preflight_summary, dict):
-        est = preflight_summary.get("estimated_total_tokens")
-        if isinstance(est, dict) and isinstance(est.get("max"), int) and cutoff_len < est["max"]:
+    # Verify YAML pixel parameters and cutoff_len match the verified preflight report (no silent drift).
+    if not isinstance(preflight, dict):
+        raise InputError(f"{preflight_path}: invalid preflight_report JSON object")
+    for count_key in ("short_clip_count", "exceeds_cutoff_count", "exceeds_gpu_frame_pixel_guard_count"):
+        if preflight.get(count_key) != 0:
+            raise InputError(f"{preflight_path}: {count_key} != 0 ({preflight.get(count_key)!r})")
+    pixel_cfg = preflight.get("pixel_config")
+    if not isinstance(pixel_cfg, dict):
+        raise InputError(f"{preflight_path}: missing pixel_config")
+    expected_pixels = (
+        {"image_max_pixels": image_max_pixels, "image_min_pixels": image_min_pixels}
+        if modality == "images"
+        else {"video_max_pixels": video_max_pixels, "video_min_pixels": video_min_pixels}
+    )
+    for px_key, yaml_val in expected_pixels.items():
+        if pixel_cfg.get(px_key) != yaml_val:
             raise InputError(
-                f"cutoff_len ({cutoff_len}) is smaller than dataset max estimated tokens ({est['max']})"
+                f"pixel config mismatch vs verified {preflight_path}: YAML {px_key}={yaml_val!r} != "
+                f"preflight {pixel_cfg.get(px_key)!r}; re-export or re-run preflight with matching pixel settings"
             )
+    est = preflight.get("estimated_total_tokens")
+    if not isinstance(est, dict) or not isinstance(est.get("max"), int):
+        raise InputError(f"{preflight_path}: missing estimated_total_tokens.max")
+    if cutoff_len < est["max"]:
+        raise InputError(
+            f"cutoff_len ({cutoff_len}) is smaller than dataset max estimated tokens ({est['max']})"
+        )
 
     return {
         "verified": True,
+        "resolved_dataset_dir": str(bundle_dir),
         "dataset_sha256": actual_ds_sha,
         "dataset_info_sha256": actual_info_sha,
+        "preflight_report_sha256": actual_preflight_sha,
         "exported_candidate_count": isolation.get("exported_candidate_count"),
         "exported_source_count": isolation.get("exported_source_count"),
     }
@@ -454,7 +492,13 @@ def render_config_bundle(
             num_frames=num_frames,
             dataset_name=dataset_name,
             cutoff_len=cfg["cutoff_len"],
+            image_max_pixels=cfg.get("image_max_pixels"),
+            image_min_pixels=cfg.get("image_min_pixels"),
+            video_max_pixels=cfg.get("video_max_pixels"),
+            video_min_pixels=cfg.get("video_min_pixels"),
         )
+        # Pin the exact verified absolute dataset_dir in YAML so launching from another cwd never swaps folds.
+        cfg["dataset_dir"] = bundle_verification["resolved_dataset_dir"]
     else:
         bundle_verification = {
             "verified": False,

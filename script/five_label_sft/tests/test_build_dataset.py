@@ -4,7 +4,9 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import struct
 from typing import Any
+import zlib
 
 import pytest
 
@@ -201,6 +203,18 @@ def _create_synthetic_repo(tmp_path: Path) -> dict[str, Any]:
     return {"root": tmp_path, "app": app, "manifest_path": manifest_path, "reviews_path": reviews_path}
 
 
+def _make_valid_1x1_png(r: int, g: int, b: int) -> bytes:
+    """Create a genuine decodable 1x1 RGB PNG byte stream using only Python stdlib."""
+    def _chunk(tag: bytes, data: bytes) -> bytes:
+        crc = zlib.crc32(tag + data) & 0xFFFFFFFF
+        return struct.pack("!I", len(data)) + tag + data + struct.pack("!I", crc)
+
+    ihdr = struct.pack("!IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+    raw_scanline = bytes([0, r & 0xFF, g & 0xFF, b & 0xFF])
+    idat = zlib.compress(raw_scanline)
+    return PNG_MAGIC + _chunk(b"IHDR", ihdr) + _chunk(b"IDAT", idat) + _chunk(b"IEND", b"")
+
+
 def _write_fake_frames_and_manifest(
     root: Path,
     manifest_sha: str,
@@ -211,7 +225,7 @@ def _write_fake_frames_and_manifest(
     frames_dir.mkdir(parents=True, exist_ok=True)
     records_path = frames_dir / f"records_{num_frames}f.jsonl"
     lines: list[str] = []
-    for s in samples:
+    for s_idx, s in enumerate(samples):
         cid = s["candidate_id"]
         cdir = frames_dir / cid
         cdir.mkdir(parents=True, exist_ok=True)
@@ -219,7 +233,7 @@ def _write_fake_frames_and_manifest(
         frame_rows = []
         for order, fidx in enumerate(indices):
             fname = f"frame_{order:02d}.png"
-            raw = PNG_MAGIC + f"{cid}:{order}:{fidx}".encode("utf-8")
+            raw = _make_valid_1x1_png(s_idx + 1, order, fidx % 256)
             (cdir / fname).write_bytes(raw)
             frame_rows.append(
                 {
@@ -396,9 +410,12 @@ def test_build_dataset_refuses_protected_output_dirs_reserved_names_and_symlink_
     root = fx["root"]
     for bad_out in (
         root / "data/splits/evil_out",
+        root / "data/SPLITS/evil_out",
         root / "data/roi/evil_out",
         "data//sub_video/evil_out",
+        "Data/Sub_Video/evil_out",
         "LlamaFactory//saves/evil_out",
+        "LLAMAFACTORY/SAVES/evil_out",
     ):
         with pytest.raises(InputError, match="protected path"):
             build_fold_sft_dataset(
@@ -552,6 +569,20 @@ def test_frame_sha256_mismatch_and_missing_frames_fail_closed(tmp_path: Path) ->
             num_frames=8,
             output_dir=tmp_path / "fail_dir_only",
             frames_dir=fdir8,
+            repo_root=root,
+        )
+
+    # Supplying --frame-path-prefix in non-dry-run mode MUST fail closed
+    # (prevents decoupling SHA-256-verified local PNGs from unverified emitted paths)
+    with pytest.raises(InputError, match="--frame-path-prefix is forbidden"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="images",
+            num_frames=8,
+            output_dir=tmp_path / "fail_prefix",
+            frames_manifest=rec8,
+            frames_dir=fdir8,
+            frame_path_prefix="/other/unverified/8f_cache",
             repo_root=root,
         )
 

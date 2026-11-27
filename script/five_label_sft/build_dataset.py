@@ -473,6 +473,12 @@ def build_fold_sft_dataset(
             "to cryptographically bind L3 PNG frames to manifest_sha256, clip_sha256, sampling order, "
             "and per-frame sha256; pass --allow-missing-frames-dry-run only for offline dry-run audits"
         )
+    if frame_path_prefix is not None and not allow_missing_frames_dry_run:
+        raise InputError(
+            "--frame-path-prefix is forbidden in non-dry-run export because emitted paths must "
+            "exactly match the SHA-256-verified local L3 PNG paths; run export directly on the "
+            "target host or pass --allow-missing-frames-dry-run for offline dry-run audits"
+        )
 
     p_path = Path(prompt_path) if prompt_path is not None else root / DEFAULT_PROMPT_REL
     if not p_path.is_file():

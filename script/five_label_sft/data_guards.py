@@ -51,8 +51,10 @@ def _has_segment_sequence(parts: tuple[str, ...], seq: tuple[str, ...]) -> bool:
     n = len(seq)
     if len(parts) < n:
         return False
-    for idx in range(len(parts) - n + 1):
-        if parts[idx : idx + n] == seq:
+    lowered_parts = tuple(p.lower() for p in parts)
+    lowered_seq = tuple(s.lower() for s in seq)
+    for idx in range(len(lowered_parts) - n + 1):
+        if lowered_parts[idx : idx + n] == lowered_seq:
             return True
     return False
 
@@ -376,12 +378,19 @@ def load_fold_isolation_context(
 
     eval_dev_sel = load_candidate_selection(ed_path)
     eval_test_sel = load_candidate_selection(et_path)
+    eval_dev_sel.assert_manifest_sha256(manifest_sha, context="sft:eval-dev-v1")
+    eval_test_sel.assert_manifest_sha256(manifest_sha, context="sft:eval-test-v1")
     eval_dev_cids = frozenset(eval_dev_sel.candidate_ids)
     eval_test_cids = frozenset(eval_test_sel.candidate_ids)
+    missing_eval_test = sorted(cid for cid in eval_test_cids if cid not in manifest_by_id)
+    if missing_eval_test:
+        raise InputError(
+            f"{et_path}: eval-test candidate IDs absent from manifest {m_path}: {missing_eval_test[:10]}"
+        )
     eval_test_sources = frozenset(
         manifest_by_id[cid]["source_video_id"]
         for cid in eval_test_cids
-        if cid in manifest_by_id and isinstance(manifest_by_id[cid].get("source_video_id"), str)
+        if isinstance(manifest_by_id[cid].get("source_video_id"), str)
     )
     fold_val_manifest_cids = frozenset(
         cid
