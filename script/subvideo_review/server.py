@@ -60,7 +60,9 @@ def load_dev_exclusions(path):
     schema = payload.get("schema")
     if schema is not None and schema != DEC007_EXCLUSIONS_SCHEMA:
         raise ReviewError(f"DEC-007 排除清单 schema 不符：{schema}")
-    entries = payload.get("excluded_dev_sources", [])
+    if "excluded_dev_sources" not in payload:
+        raise ReviewError("DEC-007 排除清单缺少 excluded_dev_sources 字段")
+    entries = payload["excluded_dev_sources"]
     if not isinstance(entries, list):
         raise ReviewError("DEC-007 排除清单 excluded_dev_sources 须为列表")
     raw_decision = payload.get("decision_id")
@@ -511,11 +513,20 @@ class ReviewApp:
             return self.dec007_exclusions["by_source"][source_id]
         return None
 
+    @staticmethod
+    def _group_revisions_by_candidate(revisions):
+        grouped = {}
+        for row in revisions:
+            candidate_id = row.get("candidate_id")
+            if candidate_id is not None:
+                grouped.setdefault(candidate_id, []).append(row)
+        return grouped
+
     def batch_catalog(self, *, hide_excluded=False):
-        revisions = self.read_store()
+        revisions_by_candidate = self._group_revisions_by_candidate(self.read_store())
         statuses = {}
         for candidate_id, candidate in self.candidates.items():
-            latest = self._review(candidate, revisions)["latest"]
+            latest = self._review(candidate, revisions_by_candidate.get(candidate_id, ()))["latest"]
             statuses[candidate_id] = latest["review_status"] if latest else "unreviewed"
         excluded_all = {
             candidate_id

@@ -766,9 +766,74 @@ class ReviewTests(unittest.TestCase):
         self.write_exclusions({"schema": "wrong-schema/99", "excluded_dev_sources": []})
         with self.assertRaisesRegex(ReviewError, "DEC-007"):
             ReviewApp(self.root)
+        # File present but missing required excluded_dev_sources key must raise ReviewError (distinct from absent file).
+        self.write_exclusions({"schema": "tensile-dev-exclusions/1", "decision_id": "DEC-007"})
+        with self.assertRaisesRegex(ReviewError, "excluded_dev_sources"):
+            ReviewApp(self.root)
+        self.write_exclusions({"schema": "tensile-dev-exclusions/1", "excluded_dev_sources": None})
+        with self.assertRaisesRegex(ReviewError, "excluded_dev_sources"):
+            ReviewApp(self.root)
         (self.root / "data/splits/dev-exclusions.json").write_text("{broken json", encoding="utf-8")
         with self.assertRaisesRegex(ReviewError, "DEC-007"):
             ReviewApp(self.root)
+
+    def test_batch_catalog_pregroups_revisions_by_candidate_id(self):
+        from unittest import mock
+
+        batches_path = self.root / "data/subvideo-review/batches.json"
+        batches_path.parent.mkdir(parents=True, exist_ok=True)
+        batches_path.write_text(json.dumps({
+            "schema": "subvideo-review-batches/v1",
+            "batches": [{
+                "batch_id": "B3",
+                "name": "开发集全量",
+                "description": "合成测试批次",
+                "status": "ready",
+                "selection": {"type": "explicit_ids", "ids": ["a", "b"]},
+                "provenance": {"source": "docs/TODO.md", "section": "6. SUBVIDEO-HUMAN-REVIEW", "note": "合成"},
+            }],
+        }, ensure_ascii=False), encoding="utf-8")
+        self.write_exclusions({
+            "schema": "tensile-dev-exclusions/1",
+            "decision_id": "DEC-007",
+            "excluded_dev_sources": [{
+                "source_id": "source_a",
+                "reason": "near_duplicate_of_test_source",
+                "matched_test_source_id": "fixed_test",
+                "excluded_subvideo_ids": ["a"],
+            }],
+        })
+        app = ReviewApp(self.root)
+        draft_a = app.save({**self.payload("draft", candidate_id="a"), "manifest_sha256": app.manifest_sha256})
+        app.save({
+            **self.payload("confirmed", candidate_id="a", labels=self.labels()),
+            "manifest_sha256": app.manifest_sha256,
+            "expected_review_id": draft_a["review_id"],
+        })
+
+        seen_rows_per_candidate = {}
+        orig_review = app._review
+
+        def spy_review(candidate, rows):
+            seen_rows_per_candidate[candidate["candidate_id"]] = list(rows)
+            return orig_review(candidate, rows)
+
+        with mock.patch.object(app, "_review", side_effect=spy_review), \
+                mock.patch.object(ReviewApp, "matches", wraps=ReviewApp.matches) as spy_matches:
+            catalog = app.batch_catalog()
+
+        # Pre-grouping guarantees each candidate only scans its own revisions (_review checks history + isolated -> 2*2=4 calls for a, 0 for b).
+        self.assertEqual([r["candidate_id"] for r in seen_rows_per_candidate["a"]], ["a", "a"])
+        self.assertEqual(seen_rows_per_candidate["b"], [])
+        self.assertEqual(spy_matches.call_count, 4)
+
+        b3 = catalog["batches"][0]
+        self.assertEqual(b3["confirmed_count"], 1)
+        self.assertEqual(b3["excluded_confirmed_count"], 1)
+        self.assertEqual(b3["clean_confirmed_count"], 0)
+        self.assertEqual(b3["unreviewed_count"], 1)
+        self.assertEqual(b3["clean_unreviewed_count"], 1)
+        self.assertEqual(b3["excluded_unreviewed_count"], 0)
 
 
 if __name__ == "__main__":

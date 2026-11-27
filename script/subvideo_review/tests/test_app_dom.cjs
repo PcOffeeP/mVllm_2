@@ -3186,3 +3186,34 @@ test("D6 excluded candidates show a visual cue in the list while missing DEC-007
   assert.equal(plain.elements.get("dec007-banner").hidden, true);
   assert.deepEqual(visibleIds(plain.elements), ["plain_clip"]);
 });
+
+test("D7 batch filter option counts stay synchronized with batch summary after confirming", async () => {
+  const {elements} = await dec007Harness();
+  const b3Option = optionByValue(elements, "B3");
+  assert.ok(b3Option, "应渲染 B3 批次选项");
+  assert.match(b3Option.textContent, /有效待审 1，DEC-007 排除 1/,
+    `初始 #batch-filter B3 文案应反映有效待审 1，实际为「${b3Option.textContent}」`);
+
+  /* 选中 B3、隐藏排除源并确认干净候选后，#batch-filter 下拉计数与 #batch-summary 同步实时归零。 */
+  elements.get("batch-filter").value = "B3";
+  await fire(elements, "batch-filter", "change");
+  elements.get("hide-excluded-filter").checked = true;
+  await fire(elements, "hide-excluded-filter", "change");
+  assert.equal(elements.get("clip-title").textContent, "video_0001_pre_01");
+  await fire(elements, "confirm-review", "click");
+
+  assert.match(elements.get("batch-summary").textContent, /有效待审 0/);
+  assert.match(b3Option.textContent, /有效待审 0，DEC-007 排除 1/,
+    `确认后 #batch-filter B3 文案应同步更新为有效待审 0，实际为「${b3Option.textContent}」`);
+  assert.equal(elements.get("batch-filter").value, "B3", "刷新选项文案不应重置当前选中的批次");
+
+  /* 未选中任何批次时直接保存草稿，#batch-filter 内对应批次的待审计数也应实时更新。 */
+  const unbatched = await dec007Harness();
+  const unbatchedB3 = optionByValue(unbatched.elements, "B3");
+  assert.match(unbatchedB3.textContent, /有效待审 1，DEC-007 排除 1/);
+  await fire(unbatched.elements, "next-candidate", "click");
+  assert.equal(unbatched.elements.get("clip-title").textContent, "video_0001_pre_01");
+  await fire(unbatched.elements, "save-draft", "click");
+  assert.match(unbatchedB3.textContent, /有效待审 0，DEC-007 排除 1/,
+    `未按批次筛选时保存草稿后，#batch-filter B3 文案也应同步刷新为有效待审 0，实际为「${unbatchedB3.textContent}」`);
+});
