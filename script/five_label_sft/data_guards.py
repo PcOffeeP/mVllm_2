@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import posixpath
+import re
 import tempfile
 from typing import Any, Iterable
 
@@ -59,17 +60,36 @@ def _has_segment_sequence(parts: tuple[str, ...], seq: tuple[str, ...]) -> bool:
     return False
 
 
+RESERVED_DATASET_NAMES = frozenset({"dataset_info", "build_summary", "preflight_report"})
+_DATASET_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+
+
+def validate_dataset_name(name: Any, *, label: str = "dataset_name") -> str:
+    """Validate a single LlamaFactory dataset key (no commas, whitespace, path separators, or reserved names)."""
+    if not isinstance(name, str) or not _DATASET_NAME_RE.fullmatch(name):
+        raise InputError(
+            f"{label} must be a single identifier matching ^[A-Za-z0-9][A-Za-z0-9_.-]*$ "
+            f"(no commas, whitespace, or path separators), got {name!r}"
+        )
+    if name.lower() in RESERVED_DATASET_NAMES:
+        raise InputError(
+            f"{label} {name!r} collides with reserved bundle artifact name (case-insensitive); "
+            f"reserved names: {sorted(RESERVED_DATASET_NAMES)}"
+        )
+    return name
+
+
 def validate_safe_output_path(
     path: Path | str,
     *,
     label: str = "output_path",
     check_resolved: bool = True,
 ) -> str:
-    """Reject empty, parent-traversal, or protected repository paths (including ``//`` bypasses)."""
+    """Reject empty, parent-traversal, or protected repository paths (including ``//``, case, and symlink aliases)."""
     raw_str = str(path) if isinstance(path, Path) else path
     if not isinstance(raw_str, str) or not raw_str.strip():
         raise InputError(f"{label} must be a non-empty path")
-    slash_str = raw_str.replace("\\", "/").strip()
+    slash_str = raw_str.replace("\\", "/")
     raw_parts = tuple(p for p in slash_str.split("/") if p)
     if ".." in raw_parts:
         raise InputError(f"{label} must not contain '..': {raw_str!r}")
@@ -78,9 +98,14 @@ def validate_safe_output_path(
     norm_parts = tuple(p for p in norm_str.split("/") if p and p != ".")
     candidate_part_tuples: list[tuple[str, ...]] = [norm_parts]
     if check_resolved:
+        # Resolve the exact unmodified path object that filesystem writes will target (never strip significant spaces).
+        exact_path = path if isinstance(path, Path) else Path(raw_str)
         try:
-            resolved_parts = Path(norm_str).resolve().parts
-            candidate_part_tuples.append(resolved_parts)
+            candidate_part_tuples.append(exact_path.resolve().parts)
+        except OSError:
+            pass
+        try:
+            candidate_part_tuples.append(Path(norm_str).resolve().parts)
         except OSError:
             pass
 
@@ -91,7 +116,7 @@ def validate_safe_output_path(
                 raise InputError(
                     f"{label} must not write inside protected path {joined!r}: {raw_str!r}"
                 )
-    return norm_str
+    return raw_str
 
 
 def assert_no_symlink_components(path: Path, *, label: str = "output_path") -> None:

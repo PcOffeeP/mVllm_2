@@ -35,6 +35,7 @@ from .constants import (
 )
 from .data_guards import (
     FoldIsolationContext,
+    RESERVED_DATASET_NAMES,
     SelectedTrainSample,
     assert_no_fold_leakage,
     assert_no_symlink_components,
@@ -43,13 +44,13 @@ from .data_guards import (
     select_confirmed_fold_train_samples,
     sha256_bytes,
     sha256_file,
+    validate_dataset_name,
     validate_safe_output_path,
 )
 from .preflight import run_preflight_on_samples
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
-RESERVED_DATASET_NAMES = frozenset({"dataset_info", "build_summary", "preflight_report"})
 _NATURAL_TOKEN_RE = re.compile(r"(\d+)")
 
 
@@ -481,13 +482,10 @@ def build_fold_sft_dataset(
     out_dir = Path(output_dir)
     if out_dir.is_symlink():
         raise InputError(f"output_dir must not be a symlink: {out_dir}")
-    ds_name = dataset_name or f"tensile_five_label_fold{fold}_{modality}_{num_frames}f"
-    _validate_safe_component(ds_name, "dataset_name")
-    if ds_name.lower() in RESERVED_DATASET_NAMES:
-        raise InputError(
-            f"dataset_name {ds_name!r} collides with reserved bundle artifact name (case-insensitive); "
-            f"reserved names: {sorted(RESERVED_DATASET_NAMES)}"
-        )
+    ds_name = validate_dataset_name(
+        dataset_name or f"tensile_five_label_fold{fold}_{modality}_{num_frames}f",
+        label="dataset_name",
+    )
     if frames_manifest is None and not allow_missing_frames_dry_run:
         raise InputError(
             "non-dry-run export requires --frames-manifest (records*.jsonl from frames.py) "

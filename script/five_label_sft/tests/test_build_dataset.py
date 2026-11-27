@@ -448,6 +448,32 @@ def test_build_dataset_refuses_protected_output_dirs_reserved_names_and_symlink_
                 repo_root=root,
             )
 
+    # Comma or whitespace in dataset_name (LlamaFactory splits dataset on commas) MUST be rejected
+    for bad_name in ("baseline,fold0", " fold0", "fold0 ", "fold 0"):
+        with pytest.raises(InputError, match="single identifier"):
+            build_fold_sft_dataset(
+                fold=0,
+                modality="images",
+                num_frames=8,
+                output_dir=tmp_path / "bad_ds_name",
+                dataset_name=bad_name,
+                allow_missing_frames_dry_run=True,
+                repo_root=root,
+            )
+
+    # Higher-level directory symlink with leading space pointing into protected data/splits MUST be refused
+    spaced_alias = tmp_path / " alias_dir"
+    spaced_alias.symlink_to(root / "data/splits")
+    with pytest.raises(InputError, match="protected path"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="images",
+            num_frames=8,
+            output_dir=spaced_alias / "nested_sub",
+            allow_missing_frames_dry_run=True,
+            repo_root=root,
+        )
+
     # Symlink target inside normal output_dir pointing to protected test.json MUST fail even with overwrite=True
     test_split_path = root / "data/splits/three-fold/test.json"
     original_test_bytes = test_split_path.read_bytes()

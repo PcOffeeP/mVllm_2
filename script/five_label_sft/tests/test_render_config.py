@@ -221,7 +221,7 @@ def test_render_16f_video_includes_bit_exact_vllm_flags(tmp_path: Path) -> None:
     )
     assert rc == 0
     loaded = yaml.safe_load(out_yaml.read_text(encoding="utf-8"))
-    cmds = json.loads(out_yaml.with_suffix(".commands.json").read_text(encoding="utf-8"))
+    cmds = json.loads(Path(f"{out_yaml}.commands.json").read_text(encoding="utf-8"))
     assert loaded["template"] == "qwen3_vl_nothink"
     assert loaded["cutoff_len"] == 8192
     assert loaded["video_max_pixels"] == 1_200_000
@@ -442,12 +442,40 @@ def test_render_pins_absolute_dataset_dir_across_cwd_changes_and_blocks_case_ali
     assert Path(loaded["dataset_dir"]).is_absolute()
 
     # Pre-launch verification passes on untouched Fold 0 bundle
-    cmd_json = out_yaml.with_suffix(".commands.json")
+    cmd_json = Path(f"{out_yaml}.commands.json")
     cmds = json.loads(cmd_json.read_text(encoding="utf-8"))
     assert "--verify-commands-json" in cmds["train_command_manual_only"]
+    assert "--verify-yaml" in cmds["train_command_manual_only"]
     assert Path(loaded["output_dir"]).is_absolute()
-    assert verify_rendered_launch(cmd_json)["verified"] is True
-    assert render_main(["--verify-commands-json", str(cmd_json)]) == 0
+    assert verify_rendered_launch(cmd_json, expected_yaml_path=out_yaml)["verified"] is True
+    assert render_main(["--verify-commands-json", str(cmd_json), "--verify-yaml", str(out_yaml)]) == 0
+
+    # 0. Companion commands JSON keeps full suffix (.yaml vs .yml) and --verify-yaml blocks YAML mismatch
+    alt_yml = fold0_run / "qlora_fold0.yml"
+    render_config_bundle(
+        fold=1,
+        modality="video",
+        num_frames=16,
+        dataset_dir=str(fold1_run / "input"),
+        dataset_name="train",
+        train_output_dir=str(tmp_path / "fold1_alt_adapter"),
+        output_yaml=alt_yml,
+    )
+    assert Path(f"{alt_yml}.commands.json").is_file()
+    assert cmd_json.is_file()
+    with pytest.raises(InputError, match="launch YAML mismatch"):
+        verify_rendered_launch(Path(f"{alt_yml}.commands.json"), expected_yaml_path=out_yaml)
+
+    # Comma in dataset_name MUST be rejected by render_config as well
+    with pytest.raises(InputError, match="single identifier"):
+        build_qlora_config(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            dataset_dir="trains/in",
+            dataset_name="baseline,fold0",
+            train_output_dir="trains/out",
+        )
 
     # 1. Swapping a referenced PNG at its original path AFTER export/render MUST be rejected pre-launch!
     orig_png = fold0_input / "_frames/f00.png"

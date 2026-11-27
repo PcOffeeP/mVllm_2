@@ -34,6 +34,7 @@ from .data_guards import (
     assert_no_symlink_components,
     safe_write_bytes,
     sha256_file,
+    validate_dataset_name,
     validate_fold,
     validate_safe_output_path,
 )
@@ -289,11 +290,15 @@ def verify_dataset_bundle(
     }
 
 
-def verify_rendered_launch(commands_json_path: Path | str) -> dict[str, Any]:
+def verify_rendered_launch(
+    commands_json_path: Path | str,
+    *,
+    expected_yaml_path: Path | str | None = None,
+) -> dict[str, Any]:
     """Re-verify rendered YAML and pinned dataset bundle hashes immediately before training launch.
 
     Fail-closed guard preventing a stale YAML from ever launching against an overwritten or
-    swapped fold dataset directory.
+    swapped fold dataset directory, or validating a different YAML than the one being launched.
     """
     cmd_path = Path(commands_json_path)
     if cmd_path.is_symlink() or not cmd_path.is_file():
@@ -310,6 +315,12 @@ def verify_rendered_launch(commands_json_path: Path | str) -> dict[str, Any]:
     if not isinstance(yaml_path_str, str) or not yaml_path_str.strip():
         raise InputError(f"{cmd_path}: missing yaml_path")
     yaml_path = Path(yaml_path_str)
+    if expected_yaml_path is not None:
+        if Path(expected_yaml_path).resolve() != yaml_path.resolve():
+            raise InputError(
+                f"launch YAML mismatch: --verify-yaml {Path(expected_yaml_path).resolve()} != "
+                f"commands manifest yaml_path {yaml_path.resolve()}"
+            )
     if yaml_path.is_symlink() or not yaml_path.is_file():
         raise InputError(f"{cmd_path}: rendered YAML missing or symlink: {yaml_path}")
     expected_yaml_sha = commands.get("yaml_sha256")
@@ -388,8 +399,7 @@ def build_qlora_config(
 
     if not isinstance(dataset_dir, str) or not dataset_dir.strip():
         raise InputError("dataset_dir must be non-empty")
-    if not isinstance(dataset_name, str) or not dataset_name.strip():
-        raise InputError("dataset_name must be non-empty")
+    dataset_name = validate_dataset_name(dataset_name, label="dataset_name")
     if not isinstance(model_name_or_path, str) or not model_name_or_path.strip():
         raise InputError("model_name_or_path must be non-empty")
 
@@ -524,7 +534,8 @@ def build_runtime_commands(
     if commands_json_path is not None:
         verify_cmd = (
             f"{VLM_SFT_PYTHON_BIN} -m script.five_label_sft.render_config "
-            f"--verify-commands-json {shlex.quote(commands_json_path)}"
+            f"--verify-commands-json {shlex.quote(commands_json_path)} "
+            f"--verify-yaml {shlex.quote(yaml_path)}"
         )
         train_cmd = f"{verify_cmd} && {raw_train_cmd}"
     else:
@@ -673,7 +684,7 @@ def render_config_bundle(
     yaml_path = Path(output_yaml)
     if yaml_path.suffix not in (".yaml", ".yml"):
         raise InputError(f"output_yaml must have a lowercase .yaml or .yml suffix, got {yaml_path!r}")
-    commands_path = yaml_path.with_suffix(".commands.json")
+    commands_path = Path(f"{yaml_path}.commands.json")
     if str(yaml_path.resolve()).lower() == str(commands_path.resolve()).lower():
         raise InputError(f"output_yaml collides with companion commands path: {yaml_path}")
     for label, p in (("output_yaml", yaml_path), ("commands_json", commands_path)):
@@ -736,6 +747,7 @@ def render_config_bundle(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verify-commands-json", help="Pre-launch verification mode: verify rendered YAML & dataset bundle hashes before training")
+    parser.add_argument("--verify-yaml", help="Explicit YAML path being launched (must match commands manifest yaml_path)")
     parser.add_argument("--fold", type=int, choices=SUPPORTED_FOLDS, help="CV fold (0, 1, or 2)")
     parser.add_argument("--modality", choices=SUPPORTED_MODALITIES, help="Channel modality: images or video")
     parser.add_argument("--num-frames", type=int, choices=SUPPORTED_NUM_FRAMES, help="Number of L3 frames per clip")
@@ -764,7 +776,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.verify_commands_json:
-            live = verify_rendered_launch(args.verify_commands_json)
+            live = verify_rendered_launch(args.verify_commands_json, expected_yaml_path=args.verify_yaml)
             print(
                 f"OK: pre-launch verification passed for {args.verify_commands_json} "
                 f"(dataset_sha256={live['dataset_sha256'][:12]}...)"
@@ -811,7 +823,7 @@ def main(argv: list[str] | None = None) -> int:
             overwrite=args.overwrite,
         )
         print(
-            f"Wrote {args.output_yaml} & {Path(args.output_yaml).with_suffix('.commands.json')} "
+            f"Wrote {args.output_yaml} & {args.output_yaml}.commands.json "
             f"(template={cfg['template']}, cutoff_len={cfg['cutoff_len']}, lora={commands['lora_module_name']})"
         )
         return 0
