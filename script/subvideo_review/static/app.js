@@ -100,9 +100,12 @@
     select.append(option);
     return option;
   }
-  function formatBatchOptionLabel(batch) {
+  function formatBatchOptionLabel(batch, {useLive = false} = {}) {
     if (!batch.selectable) {
       return `${batch.batch_id} · ${batch.name}（待定，三折池 ${Object.values(batch.fold_pool_counts).join("/")}）`;
+    }
+    if (!useLive && batch.excluded_candidate_count > 0 && Number.isInteger(batch.clean_unreviewed_count)) {
+      return `${batch.batch_id} · ${batch.name}（有效待审 ${batch.clean_unreviewed_count}，DEC-007 排除 ${batch.excluded_candidate_count}）`;
     }
     const ids = batchMembers.get(batch.batch_id);
     const batchItems = state.data?.candidates && ids
@@ -120,7 +123,7 @@
   }
   function updateBatchFilterOptions() {
     for (const {batch, option} of batchCatalog.values()) {
-      option.textContent = formatBatchOptionLabel(batch);
+      option.textContent = formatBatchOptionLabel(batch, {useLive: true});
     }
   }
   async function loadBatches() {
@@ -220,7 +223,6 @@
         }
       }
     }
-    updateBatchFilterOptions();
     const count = byId("candidate-count");
     if (count) count.textContent = `${candidates.length} / ${state.data.candidates.length}`;
     updateNavigation();
@@ -523,6 +525,7 @@
         historyFailed = true;
       }
       renderList();
+      updateBatchFilterOptions();
       state.lastSaveAt = Date.now();
       message(`已保存${statusNames[row.review_status]}；新修订 ${row.review_id}。${historyFailed ? "历史记录未能刷新，可重载页面核对。" : "这不是数据发布。"}`);
       return {historyFailed};
