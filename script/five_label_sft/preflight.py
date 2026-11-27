@@ -160,6 +160,7 @@ class SamplePreflightResult:
     exceeds_cutoff: bool
     short_clip: bool
     lf_downscale_triggered: bool
+    lf_preprocess_resized: bool
     raw_frame_pixels: int
     effective_frame_pixels: int
     max_safe_train_frame_pixels: int | None
@@ -191,6 +192,7 @@ class SamplePreflightResult:
             "exceeds_cutoff": self.exceeds_cutoff,
             "short_clip": self.short_clip,
             "lf_downscale_triggered": self.lf_downscale_triggered,
+            "lf_preprocess_resized": self.lf_preprocess_resized,
             "max_safe_train_frame_pixels": self.max_safe_train_frame_pixels,
             "exceeds_gpu_frame_pixel_guard": self.exceeds_gpu_frame_pixel_guard,
         }
@@ -259,6 +261,7 @@ def analyze_sample_preflight(
 
     grid_thw = (grid_t, grid_h, grid_w)
     vllm_grid_mismatch = grid_thw != vllm_grid_thw
+    lf_preprocess_resized = (reg_w != width) or (reg_h != height)
     estimated_total = visual_pad_tokens + visual_wrapper_tokens + prompt_template_tokens + target_json_tokens
     raw_frame_pixels = width * height
     effective_frame_pixels = reg_w * reg_h
@@ -290,6 +293,7 @@ def analyze_sample_preflight(
         exceeds_cutoff=estimated_total > cutoff_len,
         short_clip=total_frames < num_frames,
         lf_downscale_triggered=downscaled,
+        lf_preprocess_resized=lf_preprocess_resized,
         raw_frame_pixels=raw_frame_pixels,
         effective_frame_pixels=effective_frame_pixels,
         max_safe_train_frame_pixels=max_safe_train_frame_pixels,
@@ -370,6 +374,7 @@ def run_preflight_on_samples(
     exceeding = [r for r in results if r.exceeds_cutoff]
     short_clips = [r for r in results if r.short_clip]
     downscaled = [r for r in results if r.lf_downscale_triggered]
+    lf_resized = [r for r in results if r.lf_preprocess_resized]
     vllm_mismatches = [r for r in results if r.vllm_grid_mismatch]
     gpu_guard_exceeding = [r for r in results if r.exceeds_gpu_frame_pixel_guard]
 
@@ -400,8 +405,10 @@ def run_preflight_on_samples(
         "exceeds_gpu_frame_pixel_guard_count": len(gpu_guard_exceeding),
         "gpu_frame_pixel_guard_samples": [r.to_dict() for r in gpu_guard_exceeding],
         "lf_downscale_triggered_count": len(downscaled),
+        "lf_preprocess_resized_count": len(lf_resized),
         "vllm_grid_mismatch_count": len(vllm_mismatches),
-        "vllm_alignment_clean": len(vllm_mismatches) == 0 and len(downscaled) == 0,
+        "vllm_grid_aligned": len(vllm_mismatches) == 0,
+        "vllm_alignment_clean": len(vllm_mismatches) == 0 and len(lf_resized) == 0,
         "visual_pad_tokens": {
             "min": vis_sorted[0] if vis_sorted else 0,
             "median": int(statistics.median(vis_sorted)) if vis_sorted else 0,
@@ -437,10 +444,11 @@ def run_preflight_on_samples(
             for r in exceeding[:10]
         )
         raise InputError(f"preflight failed: {len(exceeding)} sample(s) exceed cutoff_len={eff_cutoff}: [{preview}]")
-    if fail_on_lf_downscale and (downscaled or vllm_mismatches):
-        bad = vllm_mismatches if vllm_mismatches else downscaled
+    if fail_on_lf_downscale and (lf_resized or vllm_mismatches):
+        bad = vllm_mismatches if vllm_mismatches else lf_resized
         preview = ", ".join(
-            f"{r.candidate_id}(lf={list(r.grid_thw)} vs vllm={list(r.vllm_grid_thw)})"
+            f"{r.candidate_id}(raw={r.width}x{r.height}->reg={r.lf_reg_width}x{r.lf_reg_height}, "
+            f"lf={list(r.grid_thw)} vs vllm={list(r.vllm_grid_thw)})"
             for r in bad[:10]
         )
         raise InputError(

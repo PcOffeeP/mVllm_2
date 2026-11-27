@@ -251,6 +251,32 @@ def test_preflight_detects_video_min_pixels_upscale_vllm_mismatch() -> None:
         )
 
 
+def test_preflight_detects_images_8f_two_stage_upscale_interpolation_history() -> None:
+    # 60x80 < image_min_pixels=65536 undergoes LlamaFactory pre-upscale (221x295 -> 224x320) vs vLLM direct (60x80 -> 224x320).
+    # Grids match ([8, 20, 14]), so vllm_grid_aligned=True, but bit-exact vllm_alignment_clean MUST be False!
+    small = [
+        {"candidate_id": "video_0054_coverage_03", "source_id": "video_0054", "width": 60, "height": 80, "total_frames": 600}
+    ]
+    report = run_preflight_on_samples(
+        small,
+        modality="images",
+        num_frames=8,
+        fail_on_lf_downscale=False,
+    )
+    assert report["vllm_grid_aligned"] is True
+    assert report["vllm_grid_mismatch_count"] == 0
+    assert report["lf_preprocess_resized_count"] == 1
+    assert report["vllm_alignment_clean"] is False
+
+    with pytest.raises(InputError, match="smart_resize alignment"):
+        run_preflight_on_samples(
+            small,
+            modality="images",
+            num_frames=8,
+            fail_on_lf_downscale=True,
+        )
+
+
 def test_preflight_cli_refuses_protected_output_path() -> None:
     rc = preflight_main(
         [
