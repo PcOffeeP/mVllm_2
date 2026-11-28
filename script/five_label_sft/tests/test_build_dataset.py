@@ -1011,6 +1011,26 @@ def test_frame_lineage_emission_legacy_rejection_and_input_collision_guard(tmp_p
             repo_root=root,
         )
 
+    # 4b. Internally self-consistent verified record whose offset/roi/orig ALL shifted by +1 (contradicting
+    # manifest source_start_frame=100, with recomputed input_id) MUST fail closed!
+    shifted_rows = [json.loads(l) for l in rec_ver.read_text(encoding="utf-8").splitlines() if l.strip()]
+    shifted_rows[0]["frames"][1]["frame_index_mapping"]["clip_to_roi"]["offset"] += 1
+    shifted_rows[0]["frames"][1]["roi_frame_index"] += 1
+    shifted_rows[0]["frames"][1]["original_source_frame_index"] += 1
+    shifted_rows[0]["input_id"] = compute_record_input_id(shifted_rows[0])
+    shifted_rec = tmp_path / "lin16_shifted_vs_manifest.jsonl"
+    shifted_rec.write_text("\n".join(json.dumps(r) for r in shifted_rows) + "\n", encoding="utf-8")
+    with pytest.raises(InputError, match="!= manifest source_start_frame"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            output_dir=tmp_path / "fail_shifted_manifest",
+            frames_manifest=shifted_rec,
+            frames_dir=fdir_ver,
+            repo_root=root,
+        )
+
     # 5. Tampered clip_to_model_input (e.g. target_frame_count mismatch) MUST fail closed
     bad_c2m_rows = [json.loads(l) for l in rec_ver.read_text(encoding="utf-8").splitlines() if l.strip()]
     bad_c2m_rows[0]["frames"][0]["frame_index_mapping"]["clip_to_model_input"]["target_frame_count"] = 8

@@ -5,12 +5,12 @@ import argparse
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
-import secrets
 import shlex
+import subprocess
 import sys
-import time
-from typing import Any
+from typing import Any, Callable
 
 import yaml
 
@@ -46,11 +46,6 @@ from .data_guards import (
 )
 
 ADAPTER_PROVENANCE_FILENAME = "sft_adapter_provenance.json"
-LAUNCH_TOKEN_SCHEMA = "five-label-sft-launch-token/1"
-
-
-def _launch_token_path(commands_json_path: Path) -> Path:
-    return Path(f"{commands_json_path}.launch_token.json")
 
 
 def _require_pos_int(value: Any, name: str) -> int:
@@ -449,17 +444,13 @@ def verify_rendered_launch(
     commands_json_path: Path | str,
     *,
     expected_yaml_path: Path | str | None = None,
-    issue_launch_token: bool = True,
 ) -> dict[str, Any]:
     """Re-verify rendered YAML and pinned dataset bundle hashes immediately before training launch.
 
     Fail-closed guard preventing a stale YAML from ever launching against an overwritten or
     swapped fold dataset directory, or validating a different YAML than the one being launched.
-    When ``issue_launch_token=True``, writes a one-time sibling launch token bound to this
-    verified pre-launch state so post-train ``stamp_adapter_provenance`` only accepts artifacts
-    created after this clean-directory verification.
     """
-    cmd_path, commands, yaml_path, cfg, yaml_sha = _load_and_verify_commands_and_yaml(
+    _, commands, yaml_path, cfg, _ = _load_and_verify_commands_and_yaml(
         commands_json_path,
         expected_yaml_path=expected_yaml_path,
     )
@@ -492,30 +483,6 @@ def verify_rendered_launch(
                 f"pre-launch dataset verification failed for {yaml_path}: {key} drifted "
                 f"(pinned={pinned.get(key)!r}, live={live.get(key)!r}); re-render config before training"
             )
-    if issue_launch_token:
-        token_path = _launch_token_path(cmd_path)
-        token_payload = {
-            "schema": LAUNCH_TOKEN_SCHEMA,
-            "nonce": secrets.token_hex(16),
-            "launched_at_ns": time.time_ns(),
-            "fold": commands["fold"],
-            "modality": commands["modality"],
-            "num_frames": commands["num_frames"],
-            "yaml_path": str(yaml_path),
-            "yaml_sha256": yaml_sha,
-            "commands_json_path": str(cmd_path),
-            "commands_json_sha256": sha256_file(cmd_path),
-            "dataset_sha256": live["dataset_sha256"],
-            "frame_lineage_sha256": live["frame_lineage_sha256"],
-            "adapter_dir": str(Path(cfg["output_dir"]).resolve()),
-        }
-        assert_no_input_output_collision([token_path], [cmd_path, yaml_path], context="verify_rendered_launch")
-        safe_write_bytes(
-            token_path,
-            (json.dumps(token_payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"),
-            overwrite=True,
-            label="launch_token",
-        )
     return live
 
 
@@ -532,26 +499,16 @@ def _find_adapter_weights_file(adapter_dir: Path) -> Path:
     )
 
 
-def stamp_adapter_provenance(
-    commands_json_path: Path | str,
+def _seal_adapter_provenance_after_verified_run(
     *,
-    expected_yaml_path: Path | str | None = None,
+    cmd_path: Path,
+    commands: dict[str, Any],
+    yaml_path: Path,
+    cfg: dict[str, Any],
+    yaml_sha: str,
+    live_bundle: dict[str, Any],
 ) -> dict[str, Any]:
-    """Write fold/dataset/weight provenance into ``train_output_dir/sft_adapter_provenance.json`` after training.
-
-    Fail-closed rules:
-    - If ``sft_adapter_provenance.json`` already exists, re-stamping is strictly idempotent:
-      every training identity field AND live ``adapter_config_sha256`` / ``adapter_weights_sha256``
-      must match the existing provenance verbatim (refuses re-stamping swapped weights or cross-fold artifacts).
-    - First-time stamping requires a matching one-time pre-launch token emitted by
-      ``verify_rendered_launch`` and verifies that adapter config & weights were written after
-      clean-directory pre-launch verification (``mtime_ns >= launched_at_ns``), then consumes the token.
-    """
-    cmd_path, commands, yaml_path, cfg, yaml_sha = _load_and_verify_commands_and_yaml(
-        commands_json_path,
-        expected_yaml_path=expected_yaml_path,
-    )
-    pinned = commands["dataset_bundle_verification"]
+    """Internal provenance sealer invoked ONLY inside ``run_verified_training`` after rc==0."""
     adapter_dir = Path(cfg["output_dir"])
     if adapter_dir.is_symlink() or not adapter_dir.is_dir():
         raise InputError(f"trained adapter output_dir missing or symlink: {adapter_dir}")
@@ -560,10 +517,6 @@ def stamp_adapter_provenance(
         raise InputError(f"trained adapter missing non-symlink adapter_config.json: {adapter_cfg_path}")
     weights_path = _find_adapter_weights_file(adapter_dir)
 
-    actual_cfg_sha = sha256_file(adapter_cfg_path)
-    actual_weights_sha = sha256_file(weights_path)
-    actual_cmd_sha = sha256_file(cmd_path)
-
     adapter_cfg = decode_file(adapter_cfg_path.read_text(encoding="utf-8"), str(adapter_cfg_path))
     if isinstance(adapter_cfg, dict) and isinstance(adapter_cfg.get("r"), int):
         if adapter_cfg["r"] != cfg.get("lora_rank"):
@@ -571,97 +524,34 @@ def stamp_adapter_provenance(
                 f"{adapter_cfg_path}: adapter rank r={adapter_cfg['r']} != YAML lora_rank={cfg.get('lora_rank')}"
             )
 
-    expected_provenance_core = {
+    prov_path = adapter_dir / ADAPTER_PROVENANCE_FILENAME
+    if prov_path.exists() or prov_path.is_symlink():
+        raise InputError(f"refusing to overwrite pre-existing adapter provenance: {prov_path}")
+
+    provenance = {
         "schema": ADAPTER_PROVENANCE_SCHEMA,
         "fold": commands["fold"],
         "modality": commands["modality"],
         "num_frames": commands["num_frames"],
         "lora_module_name": commands["lora_module_name"],
         "dataset_name": cfg["dataset"],
-        "dataset_dir": pinned["resolved_dataset_dir"],
-        "dataset_sha256": pinned["dataset_sha256"],
-        "frame_lineage_sha256": pinned["frame_lineage_sha256"],
+        "dataset_dir": live_bundle["resolved_dataset_dir"],
+        "dataset_sha256": live_bundle["dataset_sha256"],
+        "frame_lineage_sha256": live_bundle["frame_lineage_sha256"],
         "yaml_path": str(yaml_path),
         "yaml_sha256": yaml_sha,
         "commands_json_path": str(cmd_path),
-        "commands_json_sha256": actual_cmd_sha,
+        "commands_json_sha256": sha256_file(cmd_path),
         "adapter_dir": str(adapter_dir.resolve()),
-        "adapter_config_sha256": actual_cfg_sha,
+        "adapter_config_sha256": sha256_file(adapter_cfg_path),
         "adapter_weights_file": weights_path.name,
-        "adapter_weights_sha256": actual_weights_sha,
+        "adapter_weights_sha256": sha256_file(weights_path),
         "eval_scope_warning": commands["eval_scope_warning"],
-    }
-
-    prov_path = adapter_dir / ADAPTER_PROVENANCE_FILENAME
-    if prov_path.is_symlink():
-        raise InputError(f"adapter provenance must not be a symlink: {prov_path}")
-    if prov_path.exists():
-        existing = decode_file(prov_path.read_text(encoding="utf-8"), str(prov_path))
-        if not isinstance(existing, dict) or existing.get("schema") != ADAPTER_PROVENANCE_SCHEMA:
-            raise InputError(f"refusing to overwrite invalid existing provenance file: {prov_path}")
-        for key, expected_val in expected_provenance_core.items():
-            if existing.get(key) != expected_val:
-                raise InputError(
-                    f"refusing to re-stamp modified or cross-fold adapter provenance in {prov_path}: "
-                    f"{key} mismatch (existing={existing.get(key)!r}, live={expected_val!r})"
-                )
-        # Strictly idempotent retry on identical training identity & artifact digests.
-        return existing
-
-    # First-time stamp MUST bind to a matching one-time pre-launch verification token.
-    token_path = _launch_token_path(cmd_path)
-    if token_path.is_symlink() or not token_path.is_file():
-        raise InputError(
-            f"missing pre-launch verification token {token_path}; "
-            "run --verify-commands-json immediately before training so adapter provenance is bound to a verified clean launch"
-        )
-    token = decode_file(token_path.read_text(encoding="utf-8"), str(token_path))
-    if not isinstance(token, dict) or token.get("schema") != LAUNCH_TOKEN_SCHEMA:
-        raise InputError(f"{token_path}: invalid launch token schema")
-    for t_key, t_exp in (
-        ("fold", commands["fold"]),
-        ("modality", commands["modality"]),
-        ("num_frames", commands["num_frames"]),
-        ("yaml_path", str(yaml_path)),
-        ("yaml_sha256", yaml_sha),
-        ("commands_json_path", str(cmd_path)),
-        ("commands_json_sha256", actual_cmd_sha),
-        ("dataset_sha256", pinned["dataset_sha256"]),
-        ("frame_lineage_sha256", pinned["frame_lineage_sha256"]),
-        ("adapter_dir", str(adapter_dir.resolve())),
-    ):
-        if token.get(t_key) != t_exp:
-            raise InputError(
-                f"launch token mismatch in {token_path}: {t_key}={token.get(t_key)!r} != expected {t_exp!r}"
-            )
-    launched_at_ns = token.get("launched_at_ns")
-    nonce = token.get("nonce")
-    if (
-        isinstance(launched_at_ns, bool)
-        or not isinstance(launched_at_ns, int)
-        or launched_at_ns <= 0
-        or not isinstance(nonce, str)
-        or len(nonce) < 16
-    ):
-        raise InputError(f"{token_path}: malformed launched_at_ns or nonce")
-
-    # Allow 1-second coarse filesystem mtime granularity margin while rejecting pre-existing stale files.
-    mtime_floor_ns = launched_at_ns - 1_000_000_000
-    for artifact_label, artifact_path in (("adapter_config.json", adapter_cfg_path), (weights_path.name, weights_path)):
-        if artifact_path.stat().st_mtime_ns < mtime_floor_ns:
-            raise InputError(
-                f"refusing to stamp pre-existing {artifact_label} ({artifact_path}) older than pre-launch "
-                f"verification token ({token_path})"
-            )
-
-    provenance = {
-        **expected_provenance_core,
-        "launch_token_nonce": nonce,
     }
     assert_no_input_output_collision(
         [prov_path],
-        [cmd_path, yaml_path, adapter_cfg_path, weights_path, token_path],
-        context="stamp_adapter_provenance",
+        [cmd_path, yaml_path, adapter_cfg_path, weights_path],
+        context="run_verified_training",
     )
     safe_write_bytes(
         prov_path,
@@ -669,12 +559,46 @@ def stamp_adapter_provenance(
         overwrite=False,
         label="adapter_provenance",
     )
-    # One-time consume launch token so it cannot be replayed later.
-    try:
-        token_path.unlink()
-    except OSError:
-        pass
     return provenance
+
+
+def _default_llamafactory_train_runner(yaml_path: Path) -> int:
+    env = os.environ.copy()
+    env["PYTORCH_CUDA_ALLOC_CONF"] = CUDA_ALLOC_CONF
+    proc = subprocess.run([VLM_SFT_LLAMAFACTORY_CLI, "train", str(yaml_path)], env=env, check=False)
+    return int(proc.returncode)
+
+
+def run_verified_training(
+    commands_json_path: Path | str,
+    *,
+    expected_yaml_path: Path | str | None = None,
+    train_runner: Callable[[Path], int] | None = None,
+) -> dict[str, Any]:
+    """Controlled end-to-end training launcher: verify clean dir & bundle -> train -> seal provenance.
+
+    Binds ``sft_adapter_provenance.json`` strictly to a verified clean-directory launch and a
+    zero-exit training subprocess in the same controlled execution (no standalone stamp CLI).
+    """
+    cmd_path, commands, yaml_path, cfg, yaml_sha = _load_and_verify_commands_and_yaml(
+        commands_json_path,
+        expected_yaml_path=expected_yaml_path,
+    )
+    live_bundle = verify_rendered_launch(cmd_path, expected_yaml_path=yaml_path)
+
+    runner = train_runner if train_runner is not None else _default_llamafactory_train_runner
+    rc = int(runner(yaml_path))
+    if rc != 0:
+        raise InputError(f"training process failed with exit code {rc}; adapter provenance NOT sealed")
+
+    return _seal_adapter_provenance_after_verified_run(
+        cmd_path=cmd_path,
+        commands=commands,
+        yaml_path=yaml_path,
+        cfg=cfg,
+        yaml_sha=yaml_sha,
+        live_bundle=live_bundle,
+    )
 
 
 def verify_serve_launch(
@@ -925,17 +849,11 @@ def build_runtime_commands(
         f"{VLM_SFT_LLAMAFACTORY_CLI} train {shlex.quote(yaml_path)}"
     )
     if commands_json_path is not None:
-        verify_cmd = (
+        train_cmd = (
             f"{VLM_SFT_PYTHON_BIN} -m script.five_label_sft.render_config "
-            f"--verify-commands-json {shlex.quote(commands_json_path)} "
+            f"--run-verified-train {shlex.quote(commands_json_path)} "
             f"--verify-yaml {shlex.quote(yaml_path)}"
         )
-        stamp_cmd = (
-            f"{VLM_SFT_PYTHON_BIN} -m script.five_label_sft.render_config "
-            f"--stamp-adapter-provenance {shlex.quote(commands_json_path)} "
-            f"--verify-yaml {shlex.quote(yaml_path)}"
-        )
-        train_cmd = f"{verify_cmd} && {raw_train_cmd} && {stamp_cmd}"
     else:
         train_cmd = raw_train_cmd
 
@@ -1159,7 +1077,7 @@ def render_config_bundle(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verify-commands-json", help="Pre-launch verification mode: verify rendered YAML & dataset bundle hashes before training")
-    parser.add_argument("--stamp-adapter-provenance", help="Post-train mode: stamp fold/dataset/weight provenance into adapter output_dir")
+    parser.add_argument("--run-verified-train", help="Controlled launch mode: verify clean dir/bundle, run llamafactory-cli train, and seal provenance only on rc=0")
     parser.add_argument("--verify-serve-commands-json", help="Pre-serve verification mode: verify adapter provenance & fold match before vllm serve")
     parser.add_argument("--verify-yaml", help="Explicit YAML path being launched (must match commands manifest yaml_path)")
     parser.add_argument("--expected-fold", type=int, choices=SUPPORTED_FOLDS, help="Expected fold for --verify-serve-commands-json")
@@ -1196,11 +1114,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         modes = sum(
             bool(x)
-            for x in (args.verify_commands_json, args.stamp_adapter_provenance, args.verify_serve_commands_json)
+            for x in (args.verify_commands_json, args.run_verified_train, args.verify_serve_commands_json)
         )
         if modes > 1:
             raise InputError(
-                "pass at most one of --verify-commands-json, --stamp-adapter-provenance, --verify-serve-commands-json"
+                "pass at most one of --verify-commands-json, --run-verified-train, --verify-serve-commands-json"
             )
         if args.verify_commands_json:
             live = verify_rendered_launch(args.verify_commands_json, expected_yaml_path=args.verify_yaml)
@@ -1209,10 +1127,10 @@ def main(argv: list[str] | None = None) -> int:
                 f"(dataset_sha256={live['dataset_sha256'][:12]}..., lineage_sha256={live['frame_lineage_sha256'][:12]}...)"
             )
             return 0
-        if args.stamp_adapter_provenance:
-            prov = stamp_adapter_provenance(args.stamp_adapter_provenance, expected_yaml_path=args.verify_yaml)
+        if args.run_verified_train:
+            prov = run_verified_training(args.run_verified_train, expected_yaml_path=args.verify_yaml)
             print(
-                f"OK: stamped adapter provenance in {prov['adapter_dir']}/{ADAPTER_PROVENANCE_FILENAME} "
+                f"OK: verified training succeeded and sealed provenance in {prov['adapter_dir']}/{ADAPTER_PROVENANCE_FILENAME} "
                 f"(fold={prov['fold']}, weights={prov['adapter_weights_file']})"
             )
             return 0

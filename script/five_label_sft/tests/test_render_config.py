@@ -25,7 +25,7 @@ from script.five_label_sft.render_config import (
     build_runtime_commands,
     main as render_main,
     render_config_bundle,
-    stamp_adapter_provenance,
+    run_verified_training,
     verify_rendered_launch,
     verify_serve_launch,
 )
@@ -523,7 +523,7 @@ def test_render_pins_absolute_dataset_dir_across_cwd_changes_and_blocks_case_ali
     # Pre-launch verification passes on untouched Fold 0 bundle
     cmd_json = Path(f"{out_yaml}.commands.json")
     cmds = json.loads(cmd_json.read_text(encoding="utf-8"))
-    assert "--verify-commands-json" in cmds["train_command_manual_only"]
+    assert "--run-verified-train" in cmds["train_command_manual_only"]
     assert "--verify-yaml" in cmds["train_command_manual_only"]
     assert Path(loaded["output_dir"]).is_absolute()
     assert verify_rendered_launch(cmd_json, expected_yaml_path=out_yaml)["verified"] is True
@@ -645,7 +645,7 @@ def test_frame_lineage_tampering_and_adapter_provenance_serve_guard(tmp_path: Pa
         output_yaml=yaml_path,
     )
     cmd_json = Path(f"{yaml_path}.commands.json")
-    assert "--stamp-adapter-provenance" in cmds["train_command_manual_only"]
+    assert "--run-verified-train" in cmds["train_command_manual_only"]
     assert "--verify-serve-commands-json" in cmds["vllm_serve_lora_command"]
 
     # 1. Tampering frame_lineage.jsonl fails closed pre-launch
@@ -656,32 +656,41 @@ def test_frame_lineage_tampering_and_adapter_provenance_serve_guard(tmp_path: Pa
         verify_rendered_launch(cmd_json)
     lin_path.write_bytes(orig_lin)
 
-    # 2. First-time stamping WITHOUT pre-launch verification token MUST fail closed
+    # 2. Pre-existing copied weights in adapter_dir MUST block controlled launch AND fail pre-serve
     adapter_dir.mkdir(parents=True)
     (adapter_dir / "adapter_config.json").write_text(json.dumps({"r": 16, "lora_alpha": 32}), encoding="utf-8")
-    (adapter_dir / "adapter_model.safetensors").write_bytes(b"preexisting-unverified-weights")
-    with pytest.raises(InputError, match="missing pre-launch verification token"):
-        stamp_adapter_provenance(cmd_json, expected_yaml_path=yaml_path)
-
-    # Clean adapter_dir, run pre-launch verification (issues one-time launch token), then simulate training output
-    (adapter_dir / "adapter_config.json").unlink()
-    (adapter_dir / "adapter_model.safetensors").unlink()
-    assert verify_rendered_launch(cmd_json, expected_yaml_path=yaml_path)["verified"] is True
-
-    # Pre-serve fails before adapter provenance is stamped
-    (adapter_dir / "adapter_config.json").write_text(json.dumps({"r": 16, "lora_alpha": 32}), encoding="utf-8")
-    (adapter_dir / "adapter_model.safetensors").write_bytes(b"fake-safetensors-weights")
+    (adapter_dir / "adapter_model.safetensors").write_bytes(b"preexisting-fold1-weights")
+    with pytest.raises(InputError, match="existing checkpoint/adapter"):
+        run_verified_training(cmd_json, expected_yaml_path=yaml_path, train_runner=lambda _: 0)
     with pytest.raises(InputError, match=ADAPTER_PROVENANCE_FILENAME):
         verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
 
-    # 3. Stamp provenance via CLI (consumes launch token), verify idempotent retry & pre-serve pass
-    assert render_main(["--stamp-adapter-provenance", str(cmd_json), "--verify-yaml", str(yaml_path)]) == 0
-    # Idempotent retry on unchanged artifacts succeeds
-    prov_retry = stamp_adapter_provenance(cmd_json, expected_yaml_path=yaml_path)
-    prov = verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
+    # Clean adapter_dir, verify failed training subprocess (rc != 0) does NOT seal provenance
+    (adapter_dir / "adapter_config.json").unlink()
+    (adapter_dir / "adapter_model.safetensors").unlink()
+
+    def _failing_train(_yaml: Path) -> int:
+        (adapter_dir / "adapter_config.json").write_text(json.dumps({"r": 16}), encoding="utf-8")
+        (adapter_dir / "adapter_model.safetensors").write_bytes(b"partial-weights")
+        return 1
+
+    with pytest.raises(InputError, match="exit code 1"):
+        run_verified_training(cmd_json, expected_yaml_path=yaml_path, train_runner=_failing_train)
+    assert not (adapter_dir / ADAPTER_PROVENANCE_FILENAME).exists()
+    (adapter_dir / "adapter_config.json").unlink()
+    (adapter_dir / "adapter_model.safetensors").unlink()
+
+    # 3. Controlled run_verified_training verifies clean dir, runs training, seals provenance on rc==0
+    def _ok_train(_yaml: Path) -> int:
+        adapter_dir.mkdir(parents=True, exist_ok=True)
+        (adapter_dir / "adapter_config.json").write_text(json.dumps({"r": 16, "lora_alpha": 32}), encoding="utf-8")
+        (adapter_dir / "adapter_model.safetensors").write_bytes(b"fake-safetensors-weights")
+        return 0
+
+    prov = run_verified_training(cmd_json, expected_yaml_path=yaml_path, train_runner=_ok_train)
     assert prov["schema"] == ADAPTER_PROVENANCE_SCHEMA
     assert prov["fold"] == 0
-    assert prov_retry == prov
+    assert verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir) == prov
     assert render_main([
         "--verify-serve-commands-json",
         str(cmd_json),
@@ -695,14 +704,14 @@ def test_frame_lineage_tampering_and_adapter_provenance_serve_guard(tmp_path: Pa
     with pytest.raises(InputError, match="pre-serve fold mismatch"):
         verify_serve_launch(cmd_json, expected_fold=1, expected_adapter_dir=adapter_dir)
 
-    # 5. Swapping weights with same-rank Fold 1 weights: BOTH verify_serve_launch AND re-stamping MUST fail closed!
+    # 5. Swapping weights with same-rank Fold 1 weights: BOTH verify_serve_launch AND re-running train fail closed!
     (adapter_dir / "adapter_model.safetensors").write_bytes(b"swapped-cross-fold-weights")
     with pytest.raises(InputError, match="sha256 mismatch"):
         verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
-    with pytest.raises(InputError, match="refusing to re-stamp modified or cross-fold adapter provenance"):
-        stamp_adapter_provenance(cmd_json, expected_yaml_path=yaml_path)
+    with pytest.raises(InputError, match="existing checkpoint/adapter"):
+        run_verified_training(cmd_json, expected_yaml_path=yaml_path, train_runner=_ok_train)
 
-    # 6. Stamping mismatched adapter_config rank r vs YAML lora_rank fails closed immediately
+    # 6. Mismatched adapter_config rank r vs YAML lora_rank fails closed inside run_verified_training
     adapter_dir2 = tmp_path / "fold0_adapter_badrank"
     yaml_path2 = tmp_path / "fold0_badrank.yaml"
     render_config_bundle(
@@ -715,9 +724,12 @@ def test_frame_lineage_tampering_and_adapter_provenance_serve_guard(tmp_path: Pa
         output_yaml=yaml_path2,
     )
     cmd_json2 = Path(f"{yaml_path2}.commands.json")
-    verify_rendered_launch(cmd_json2, expected_yaml_path=yaml_path2)
-    adapter_dir2.mkdir(parents=True)
-    (adapter_dir2 / "adapter_config.json").write_text(json.dumps({"r": 64}), encoding="utf-8")
-    (adapter_dir2 / "adapter_model.safetensors").write_bytes(b"rank64-weights")
+
+    def _bad_rank_train(_yaml: Path) -> int:
+        adapter_dir2.mkdir(parents=True, exist_ok=True)
+        (adapter_dir2 / "adapter_config.json").write_text(json.dumps({"r": 64}), encoding="utf-8")
+        (adapter_dir2 / "adapter_model.safetensors").write_bytes(b"rank64-weights")
+        return 0
+
     with pytest.raises(InputError, match="adapter rank r=64 != YAML lora_rank=16"):
-        stamp_adapter_provenance(cmd_json2, expected_yaml_path=yaml_path2)
+        run_verified_training(cmd_json2, expected_yaml_path=yaml_path2, train_runner=_bad_rank_train)

@@ -402,6 +402,30 @@ def _resolve_sample_frames_from_manifest(
 
         clip_idx = int(entry["clip_frame_index"])
         derived_roi = sample.source_start_frame + clip_idx if sample.source_start_frame is not None else None
+        ver_roi = entry.get("roi_frame_index")
+        ver_orig = entry.get("original_source_frame_index")
+        if lineage_verification.get("method") != "unverified":
+            if sample.source_start_frame is None:
+                raise InputError(
+                    f"{cid}: frames[{expected_order}] claims verified lineage ({lineage_verification.get('method')!r}) "
+                    "but manifest candidate lacks integer output.frame_mapping.source_start_frame"
+                )
+            c2r_offset = mapping["clip_to_roi"].get("offset")
+            if c2r_offset != sample.source_start_frame:
+                raise InputError(
+                    f"{cid}: frames[{expected_order}].frame_index_mapping.clip_to_roi.offset "
+                    f"{c2r_offset!r} != manifest source_start_frame {sample.source_start_frame}"
+                )
+            if ver_roi != derived_roi:
+                raise InputError(
+                    f"{cid}: frames[{expected_order}].roi_frame_index {ver_roi!r} != "
+                    f"manifest source_start_frame + clip_frame_index ({derived_roi})"
+                )
+            if ver_orig != derived_roi:
+                raise InputError(
+                    f"{cid}: frames[{expected_order}].original_source_frame_index {ver_orig!r} != "
+                    f"manifest expected index ({derived_roi})"
+                )
         pair_idx, ts_sec, ts_label = temporal_meta[expected_order] if temporal_meta is not None else (None, None, None)
         frame_lineage_rows.append(
             {
@@ -410,8 +434,8 @@ def _resolve_sample_frames_from_manifest(
                 "png_sha256": row_png_sha,
                 "clip_frame_index": clip_idx,
                 "pts_seconds": entry.get("pts_seconds"),
-                "verified_roi_frame_index": entry.get("roi_frame_index"),
-                "verified_original_frame_index": entry.get("original_source_frame_index"),
+                "verified_roi_frame_index": ver_roi,
+                "verified_original_frame_index": ver_orig,
                 "derived_roi_frame_index": derived_roi,
                 "derived_original_frame_index": derived_roi,
                 "derived_index_status": "derived_planned" if derived_roi is not None else "unavailable",

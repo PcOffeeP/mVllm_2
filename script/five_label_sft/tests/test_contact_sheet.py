@@ -178,10 +178,24 @@ def test_contact_sheet_renders_all_16_rows_5_cols_and_all_8_rows_4_cols(tmp_path
         return {i: store16[(layer, i)] for i in indices}
 
     out16 = tmp_path / "sheets_16f"
+    # Without co-located runtime_verify_report.json, default call MUST fail closed unless allow_unverified_l4=True
+    with pytest.raises(InputError, match="missing co-located runtime_verify_report.json"):
+        build_contact_sheets_and_audit(
+            lineage_path=lin16,
+            output_dir=out16,
+            l4_dir=l4_16,
+            roi_manifest_path=roi16,
+            l0_dir=l0_dir,
+            l1_dir=l1_dir,
+            l2_dir=l2_dir,
+            frame_extractor=_extractor16,
+        )
+
     audit16 = build_contact_sheets_and_audit(
         lineage_path=lin16,
         output_dir=out16,
         l4_dir=l4_16,
+        allow_unverified_l4=True,
         roi_manifest_path=roi16,
         l0_dir=l0_dir,
         l1_dir=l1_dir,
@@ -190,6 +204,7 @@ def test_contact_sheet_renders_all_16_rows_5_cols_and_all_8_rows_4_cols(tmp_path
         cell_height=140,
         frame_extractor=_extractor16,
     )
+    assert audit16["l4_verified_by_runtime_report"] is False
     assert audit16["schema"] == CORRESPONDENCE_AUDIT_SCHEMA
     assert DEC005_BOUNDARY_NOTICE_ZH in audit16["dec005_boundary_notice"]
     assert audit16["columns"] == 5
@@ -319,6 +334,28 @@ def test_stratified_selector_and_protected_output_guard(tmp_path: Path) -> None:
         frame_extractor=_ext_p,
     )
     assert ok_audit["columns"] == 5
+    assert ok_audit["l4_verified_by_runtime_report"] is True
+
+    # Runtime report colliding with correspondence_audit.json MUST fail closed even with overwrite=True
+    col_dir = tmp_path / "p_rt_collide"
+    col_dir.mkdir()
+    col_rt = col_dir / "correspondence_audit.json"
+    col_rt.write_bytes(rt_path.read_bytes())
+    orig_rt_bytes = col_rt.read_bytes()
+    with pytest.raises(InputError, match="refusing to overwrite input file"):
+        build_contact_sheets_and_audit(
+            lineage_path=lin,
+            output_dir=col_dir,
+            l4_dir=l4_dir,
+            runtime_report_path=col_rt,
+            roi_manifest_path=roi,
+            l0_dir=l0_p,
+            l1_dir=l1_p,
+            l2_dir=l2_p,
+            overwrite=True,
+            frame_extractor=_ext_p,
+        )
+    assert col_rt.read_bytes() == orig_rt_bytes
 
     # Mismatched lineage SHA-256 (e.g. mixing 16f L4 into 8f lineage) fails closed
     bad_rt = json.loads(rt_path.read_text(encoding="utf-8"))

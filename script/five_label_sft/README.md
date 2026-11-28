@@ -31,7 +31,7 @@
 3. **零交集断言**：仅从 `fold_{k}_train.json` 扣除 `DEC-007` 后的 **58 个干净开发源**取样，并显式断言导出集与 `fold_{k}_val.json`、`test.json`、`eval-dev-v1 ∩ fold_{k}_val`、`eval-test-v1.json`、`dev-exclusions.json` 交集全为 `∅`。
 4. **目标输出严格单 JSON 核验**：每条 `assistant` 目标串经 `script.five_label_eval.score.extract()` 实时校验，要求 100% `strict_format_valid == True`、`issues == []`、`conflicts == []`。
 5. **L3 帧血缘、三节点映射与 `frame_lineage.jsonl`**：非 dry-run 正式导出**强制要求提供 `frames.py` 生成的 `--frames-manifest`（`records*.jsonl`）**，通过 `read_records` 与 `compute_record_input_id` 校验 `input_id` 与三节点 `frame_index_mapping`（`clip_to_model_input` / `clip_to_roi` / `roi_to_original`），显式拒绝旧 v2 schema 与旧字段；同目录输出与 `<dataset>.json` 1:1 对应的 `frame_lineage.jsonl`（明确区分 `verified_*` 与 `derived_*` `derived_planned` 字段，不冒充已验证），并将 `frame_lineage_sha256` 纳入 `build_summary.json` 与 `render_config.py` 启动前哈希校验。
-6. **输入输出防撞写与跨折 Adapter 溯源守卫**：所有写盘操作均拒绝符号链接目标、拒绝保留产物撞名、拒绝写入受保护目录、并拒绝覆盖任何输入文件（即使传入 `--overwrite`）；`render_config.py` 在训练命令末尾串联 `--stamp-adapter-provenance`（写入 `sft_adapter_provenance.json`），在 `vllm serve` 命令前串联 `--verify-serve-commands-json`，杜绝跨折错挂或权重被替换的 LoRA Adapter。
+6. **输入输出防撞写与跨折 Adapter 溯源守卫**：所有写盘操作均拒绝符号链接目标、拒绝保留产物撞名、拒绝写入受保护目录、并拒绝覆盖任何输入文件（即使传入 `--overwrite`）；`render_config.py` 通过受控入口 `--run-verified-train` 将启动前洁净目录/数据包核验、训练执行与成功退出（`rc=0`）后的 `sft_adapter_provenance.json` 封签绑定为同一受控流程（不提供可单独对任意目录盖章的后门），并在 `vllm serve` 前串联 `--verify-serve-commands-json`，杜绝跨折错挂或权重被替换的 LoRA Adapter。
 
 ---
 

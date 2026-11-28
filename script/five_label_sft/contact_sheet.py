@@ -312,6 +312,7 @@ def render_contact_sheet_png(
     row_frames: list[dict[str, Image.Image]],
     frame_audits: list[dict[str, Any]],
     has_l4: bool,
+    l4_verified: bool = True,
     ncc_threshold: float = DEFAULT_NCC_THRESHOLD,
     cell_width: int = 240,
     cell_height: int = 280,
@@ -342,7 +343,7 @@ def render_contact_sheet_png(
             ("L3", "L3 预抽 PNG"),
         ]
         if has_l4:
-            col_specs.append(("L4", "L4 模型张量还原图"))
+            col_specs.append(("L4", "L4 模型张量还原图" if l4_verified else "L4 模型张量还原图(未校报告)"))
         boundary_line = f"{DEC005_BOUNDARY_NOTICE_ZH} | {DEC005_BOUNDARY_NOTICE_ASCII}"
     else:
         col_specs = [
@@ -352,7 +353,7 @@ def render_contact_sheet_png(
             ("L3", "L3 Pre-extracted PNG"),
         ]
         if has_l4:
-            col_specs.append(("L4", "L4 Model Tensor Reconstructed"))
+            col_specs.append(("L4", "L4 Model Tensor Reconstructed" if l4_verified else "L4 Reconstructed (UNVERIFIED)"))
         boundary_line = DEC005_BOUNDARY_NOTICE_ASCII
 
     num_cols = len(col_specs)
@@ -536,6 +537,7 @@ def build_contact_sheets_and_audit(
     output_dir: Path | str,
     l4_dir: Path | str | None = None,
     runtime_report_path: Path | str | None = None,
+    allow_unverified_l4: bool = False,
     roi_manifest_path: Path | str | None = None,
     repo_root: Path = REPO_ROOT,
     l0_dir: Path | str | None = None,
@@ -572,7 +574,8 @@ def build_contact_sheets_and_audit(
 
     lineage_rows = load_frame_lineage_jsonl(lin_path)
 
-    # Cross-check runtime_verify_report.json when explicitly provided or co-located beside l4_dir.
+    # Require runtime_verify_report.json by default whenever --l4-dir is supplied so L4 frames
+    # cannot silently mix across 8f/16f or folds (allow explicit opt-in via --allow-unverified-l4).
     l4_sha_index: dict[str, dict[int, str]] | None = None
     effective_runtime_report: Path | None = None
     if runtime_report_path is not None:
@@ -583,12 +586,19 @@ def build_contact_sheets_and_audit(
         candidate_report = l4_root.resolve().parent / "runtime_verify_report.json"
         if candidate_report.exists():
             effective_runtime_report = candidate_report
+        elif not allow_unverified_l4:
+            raise InputError(
+                f"missing co-located runtime_verify_report.json beside --l4-dir ({candidate_report}); "
+                "pass --runtime-report to bind L4 frames to frame_lineage.jsonl, or pass --allow-unverified-l4 explicitly"
+            )
     if effective_runtime_report is not None:
         l4_sha_index = _load_and_verify_runtime_report_for_l4(
             runtime_report_path=effective_runtime_report,
             lineage_path=lin_path,
             lineage_rows=lineage_rows,
         )
+    l4_verified = l4_sha_index is not None
+
     if candidate_ids:
         wanted = list(dict.fromkeys(candidate_ids))
         by_cid = {r["candidate_id"]: r for r in lineage_rows}
@@ -605,7 +615,23 @@ def build_contact_sheets_and_audit(
 
     extractor = frame_extractor if frame_extractor is not None else extract_video_frames_ffmpeg
     audit_path = out_dir / "correspondence_audit.json"
-    assert_no_input_output_collision([audit_path], [lin_path, roi_path], context="contact_sheet")
+
+    # Upfront collision guard covering ALL planned outputs vs ALL inputs (lineage, ROI manifest,
+    # runtime report, L0/L1/L2 videos, L3 PNGs, and L4 PNGs) before writing a single byte.
+    planned_outputs: list[Path] = [audit_path]
+    all_inputs: list[Path | str | None] = [lin_path, roi_path, effective_runtime_report]
+    for lrow in selected:
+        cid_s = validate_safe_path_component(lrow.get("candidate_id"), "candidate_id")
+        sid_s = validate_safe_path_component(lrow.get("source_id"), "source_id")
+        mod_s = validate_safe_path_component(lrow.get("modality"), "modality")
+        nf_s = int(lrow["num_frames"])
+        planned_outputs.append(out_dir / f"{cid_s}_contact_sheet_{mod_s}_{nf_s}f.png")
+        all_inputs.extend([l0_root / f"{sid_s}.mp4", l1_root / f"{sid_s}.mp4", l2_root / f"{cid_s}.mp4"])
+        for order, fm in enumerate(lrow["frames"]):
+            all_inputs.append(fm.get("emitted_path"))
+            if l4_root is not None:
+                all_inputs.append(l4_root / cid_s / f"frame_{order:02d}.png")
+    assert_no_input_output_collision(planned_outputs, all_inputs, context="contact_sheet")
 
     candidate_audits: list[dict[str, Any]] = []
     all_alerts: list[dict[str, Any]] = []
@@ -722,12 +748,12 @@ def build_contact_sheets_and_audit(
             row_frames=row_images,
             frame_audits=frame_audits,
             has_l4=has_l4,
+            l4_verified=l4_verified,
             ncc_threshold=ncc_threshold,
             cell_width=cell_width,
             cell_height=cell_height,
         )
         sheet_path = out_dir / f"{cid}_contact_sheet_{modality}_{num_frames}f.png"
-        assert_no_input_output_collision([sheet_path], [lin_path, roi_path], context="contact_sheet")
         safe_write_bytes(sheet_path, sheet_bytes, overwrite=overwrite, label="contact_sheet_png")
 
         numeric_scores = [
@@ -760,6 +786,8 @@ def build_contact_sheets_and_audit(
         "lineage_path": str(lin_path.resolve()),
         "roi_manifest_path": str(roi_path.resolve()),
         "l4_dir": str(l4_root.resolve()) if l4_root is not None else None,
+        "runtime_report_path": str(effective_runtime_report.resolve()) if effective_runtime_report is not None else None,
+        "l4_verified_by_runtime_report": l4_verified if has_l4 else None,
         "columns": 5 if has_l4 else 4,
         "ncc_mode": ncc_mode,
         "ncc_threshold": ncc_threshold,
@@ -784,6 +812,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", required=True, help="Output directory for full-K-row PNG sheets and correspondence_audit.json")
     parser.add_argument("--l4-dir", help="Optional l4_reconstructed/ directory from verify_runtime_input.py (enables 5th L4 column)")
     parser.add_argument("--runtime-report", help="Optional runtime_verify_report.json to verify L4 lineage/channel/SHA-256 (auto-detected beside --l4-dir if present)")
+    parser.add_argument("--allow-unverified-l4", action="store_true", help="Explicitly allow --l4-dir without a verified runtime_verify_report.json (marks L4 as unverified)")
     parser.add_argument("--roi-manifest", help="Optional override for data/roi/manifest.json")
     parser.add_argument("--repo-root", default=str(REPO_ROOT), help="Repository root path")
     parser.add_argument("--l0-dir", help="Optional override for L0 original videos directory")
@@ -805,6 +834,7 @@ def main(argv: list[str] | None = None) -> int:
             output_dir=args.output_dir,
             l4_dir=args.l4_dir,
             runtime_report_path=args.runtime_report,
+            allow_unverified_l4=args.allow_unverified_l4,
             roi_manifest_path=args.roi_manifest,
             repo_root=Path(args.repo_root),
             l0_dir=args.l0_dir,
