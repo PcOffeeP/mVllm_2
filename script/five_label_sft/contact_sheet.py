@@ -33,12 +33,14 @@ from .constants import (
     DEFAULT_NCC_THRESHOLD,
     DEFAULT_ROI_MANIFEST_REL,
     REPO_ROOT,
+    RUNTIME_VERIFY_SCHEMA,
 )
 from .data_guards import (
     assert_no_input_output_collision,
     assert_no_symlink_components,
     safe_write_bytes,
     sha256_bytes,
+    sha256_file,
     validate_safe_output_path,
     validate_safe_path_component,
 )
@@ -481,11 +483,59 @@ def _resolve_target_frame_index(frame_meta: dict[str, Any], *, verified_key: str
     raise InputError(f"{cid}: frames[{frame_meta.get('display_order')}] missing both {verified_key} and {derived_key}")
 
 
+def _load_and_verify_runtime_report_for_l4(
+    *,
+    runtime_report_path: Path,
+    lineage_path: Path,
+    lineage_rows: list[dict[str, Any]],
+) -> dict[str, dict[int, str]]:
+    """Verify ``runtime_verify_report.json`` matches ``frame_lineage.jsonl`` (preventing 8f/16f L4 mixups)."""
+    if runtime_report_path.is_symlink() or not runtime_report_path.is_file():
+        raise InputError(f"missing non-symlink runtime_verify_report.json: {runtime_report_path}")
+    report = decode_file(runtime_report_path.read_text(encoding="utf-8"), str(runtime_report_path))
+    if not isinstance(report, dict) or report.get("schema") != RUNTIME_VERIFY_SCHEMA:
+        raise InputError(f"{runtime_report_path}: invalid runtime_verify_report schema")
+    if report.get("failed_sample_count") != 0:
+        raise InputError(
+            f"{runtime_report_path}: refusing to pair L4 frames from failed runtime verify report "
+            f"(failed_sample_count={report.get('failed_sample_count')!r})"
+        )
+    bundle_ver = report.get("bundle_verification")
+    actual_lineage_sha = sha256_file(lineage_path)
+    if not isinstance(bundle_ver, dict) or bundle_ver.get("frame_lineage_sha256") != actual_lineage_sha:
+        raise InputError(
+            f"{runtime_report_path}: frame_lineage_sha256 mismatch against {lineage_path} "
+            f"(report={bundle_ver.get('frame_lineage_sha256') if isinstance(bundle_ver, dict) else None!r}, "
+            f"actual={actual_lineage_sha!r}); refusing to mix L4 frames across bundles/channels"
+        )
+    expected_mod = lineage_rows[0]["modality"]
+    expected_nf = int(lineage_rows[0]["num_frames"])
+    if report.get("modality") != expected_mod or report.get("num_frames") != expected_nf:
+        raise InputError(
+            f"{runtime_report_path}: channel mismatch ({report.get('modality')}/{report.get('num_frames')}f "
+            f"!= lineage {expected_mod}/{expected_nf}f)"
+        )
+    l4_sha_index: dict[str, dict[int, str]] = {}
+    for sample_rec in report.get("samples") or []:
+        if not isinstance(sample_rec, dict):
+            continue
+        cid = sample_rec.get("candidate_id")
+        files = sample_rec.get("l4_reconstructed_files")
+        if isinstance(cid, str) and isinstance(files, list):
+            l4_sha_index[cid] = {
+                int(item["display_order"]): str(item["sha256"])
+                for item in files
+                if isinstance(item, dict) and isinstance(item.get("display_order"), int) and isinstance(item.get("sha256"), str)
+            }
+    return l4_sha_index
+
+
 def build_contact_sheets_and_audit(
     *,
     lineage_path: Path | str,
     output_dir: Path | str,
     l4_dir: Path | str | None = None,
+    runtime_report_path: Path | str | None = None,
     roi_manifest_path: Path | str | None = None,
     repo_root: Path = REPO_ROOT,
     l0_dir: Path | str | None = None,
@@ -521,6 +571,24 @@ def build_contact_sheets_and_audit(
     has_l4 = l4_root is not None
 
     lineage_rows = load_frame_lineage_jsonl(lin_path)
+
+    # Cross-check runtime_verify_report.json when explicitly provided or co-located beside l4_dir.
+    l4_sha_index: dict[str, dict[int, str]] | None = None
+    effective_runtime_report: Path | None = None
+    if runtime_report_path is not None:
+        if not has_l4:
+            raise InputError("--runtime-report requires --l4-dir")
+        effective_runtime_report = Path(runtime_report_path)
+    elif l4_root is not None:
+        candidate_report = l4_root.resolve().parent / "runtime_verify_report.json"
+        if candidate_report.exists():
+            effective_runtime_report = candidate_report
+    if effective_runtime_report is not None:
+        l4_sha_index = _load_and_verify_runtime_report_for_l4(
+            runtime_report_path=effective_runtime_report,
+            lineage_path=lin_path,
+            lineage_rows=lineage_rows,
+        )
     if candidate_ids:
         wanted = list(dict.fromkeys(candidate_ids))
         by_cid = {r["candidate_id"]: r for r in lineage_rows}
@@ -590,6 +658,18 @@ def build_contact_sheets_and_audit(
                 l4_path = l4_root / cid / f"frame_{order:02d}.png"
                 if l4_path.is_symlink() or not l4_path.is_file():
                     raise InputError(f"{cid}: missing non-symlink L4 reconstructed PNG at {l4_path}")
+                if l4_sha_index is not None:
+                    expected_l4_sha = (l4_sha_index.get(cid) or {}).get(order)
+                    if expected_l4_sha is None:
+                        raise InputError(
+                            f"{cid}: frame {order} absent from verified runtime_verify_report.json"
+                        )
+                    actual_l4_sha = sha256_file(l4_path)
+                    if actual_l4_sha != expected_l4_sha:
+                        raise InputError(
+                            f"{cid}: L4 PNG sha256 mismatch at {l4_path} "
+                            f"(expected {expected_l4_sha}, got {actual_l4_sha})"
+                        )
                 with Image.open(l4_path) as im_l4:
                     imgs_for_row["L4"] = im_l4.convert("RGB").copy()
 
@@ -703,6 +783,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--lineage", required=True, help="Path to frame_lineage.jsonl from build_dataset.py")
     parser.add_argument("--output-dir", required=True, help="Output directory for full-K-row PNG sheets and correspondence_audit.json")
     parser.add_argument("--l4-dir", help="Optional l4_reconstructed/ directory from verify_runtime_input.py (enables 5th L4 column)")
+    parser.add_argument("--runtime-report", help="Optional runtime_verify_report.json to verify L4 lineage/channel/SHA-256 (auto-detected beside --l4-dir if present)")
     parser.add_argument("--roi-manifest", help="Optional override for data/roi/manifest.json")
     parser.add_argument("--repo-root", default=str(REPO_ROOT), help="Repository root path")
     parser.add_argument("--l0-dir", help="Optional override for L0 original videos directory")
@@ -723,6 +804,7 @@ def main(argv: list[str] | None = None) -> int:
             lineage_path=args.lineage,
             output_dir=args.output_dir,
             l4_dir=args.l4_dir,
+            runtime_report_path=args.runtime_report,
             roi_manifest_path=args.roi_manifest,
             repo_root=Path(args.repo_root),
             l0_dir=args.l0_dir,

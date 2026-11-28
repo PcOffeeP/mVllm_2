@@ -241,6 +241,49 @@ def test_real_build_dataset_render_config_verify_runtime_both_channels(tmp_path:
             processor_runner=_video_runner,
         )
 
+    # 5. L4 output colliding with input L3 PNGs MUST fail closed even with overwrite=True
+    colliding_out = fdir16.parent / "colliding_verify_out"
+    l3_alias_root = colliding_out / "l4_reconstructed"
+    # Build a bundle whose L3 frames literally reside under <colliding_out>/l4_reconstructed
+    l3_alias_root.mkdir(parents=True)
+    col_fdir, col_rec = _write_fake_frames_and_manifest(
+        colliding_out / "_src_tmp", ctx.manifest_sha256, sample_meta, 16
+    )
+    # Move L3 frames into colliding_out/l4_reconstructed and rewrite manifest directly there
+    import shutil
+    for cid in sum16["exported_candidate_ids"]:
+        shutil.copytree(col_fdir / cid, l3_alias_root / cid)
+    col_bundle = tmp_path / "bundle_collide_l3"
+    col_sum = build_fold_sft_dataset(
+        fold=0,
+        modality="video",
+        num_frames=16,
+        output_dir=col_bundle,
+        frames_manifest=col_rec,
+        frames_dir=l3_alias_root,
+        repo_root=root,
+    )
+    col_yaml = tmp_path / "fold0_collide.yaml"
+    render_config_bundle(
+        fold=0,
+        modality="video",
+        num_frames=16,
+        dataset_dir=str(col_bundle),
+        dataset_name=col_sum["dataset_name"],
+        train_output_dir=str(tmp_path / "adapter_collide"),
+        output_yaml=col_yaml,
+    )
+    first_l3_png = l3_alias_root / sum16["exported_candidate_ids"][0] / "frame_00.png"
+    orig_l3_bytes = first_l3_png.read_bytes()
+    with pytest.raises(InputError, match="refusing to overwrite input file"):
+        run_runtime_verification(
+            yaml_path=col_yaml,
+            output_dir=colliding_out,
+            overwrite=True,
+            processor_runner=_video_runner,
+        )
+    assert first_l3_png.read_bytes() == orig_l3_bytes
+
 
 def test_run_runtime_verification_failure_guards(tmp_path: Path) -> None:
     ds_name = "tensile_five_label_fold0_video_16f"

@@ -655,20 +655,33 @@ def test_frame_lineage_tampering_and_adapter_provenance_serve_guard(tmp_path: Pa
     with pytest.raises(InputError, match="frame_lineage.jsonl: sha256 mismatch"):
         verify_rendered_launch(cmd_json)
     lin_path.write_bytes(orig_lin)
-    assert verify_rendered_launch(cmd_json)["verified"] is True
 
-    # 2. Pre-serve fails before adapter provenance is stamped
+    # 2. First-time stamping WITHOUT pre-launch verification token MUST fail closed
     adapter_dir.mkdir(parents=True)
+    (adapter_dir / "adapter_config.json").write_text(json.dumps({"r": 16, "lora_alpha": 32}), encoding="utf-8")
+    (adapter_dir / "adapter_model.safetensors").write_bytes(b"preexisting-unverified-weights")
+    with pytest.raises(InputError, match="missing pre-launch verification token"):
+        stamp_adapter_provenance(cmd_json, expected_yaml_path=yaml_path)
+
+    # Clean adapter_dir, run pre-launch verification (issues one-time launch token), then simulate training output
+    (adapter_dir / "adapter_config.json").unlink()
+    (adapter_dir / "adapter_model.safetensors").unlink()
+    assert verify_rendered_launch(cmd_json, expected_yaml_path=yaml_path)["verified"] is True
+
+    # Pre-serve fails before adapter provenance is stamped
     (adapter_dir / "adapter_config.json").write_text(json.dumps({"r": 16, "lora_alpha": 32}), encoding="utf-8")
     (adapter_dir / "adapter_model.safetensors").write_bytes(b"fake-safetensors-weights")
     with pytest.raises(InputError, match=ADAPTER_PROVENANCE_FILENAME):
         verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
 
-    # 3. Stamp provenance via CLI & verify pre-serve passes
+    # 3. Stamp provenance via CLI (consumes launch token), verify idempotent retry & pre-serve pass
     assert render_main(["--stamp-adapter-provenance", str(cmd_json), "--verify-yaml", str(yaml_path)]) == 0
+    # Idempotent retry on unchanged artifacts succeeds
+    prov_retry = stamp_adapter_provenance(cmd_json, expected_yaml_path=yaml_path)
     prov = verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
     assert prov["schema"] == ADAPTER_PROVENANCE_SCHEMA
     assert prov["fold"] == 0
+    assert prov_retry == prov
     assert render_main([
         "--verify-serve-commands-json",
         str(cmd_json),
@@ -682,13 +695,29 @@ def test_frame_lineage_tampering_and_adapter_provenance_serve_guard(tmp_path: Pa
     with pytest.raises(InputError, match="pre-serve fold mismatch"):
         verify_serve_launch(cmd_json, expected_fold=1, expected_adapter_dir=adapter_dir)
 
-    # 5. Swapped adapter weights after stamping fails closed
+    # 5. Swapping weights with same-rank Fold 1 weights: BOTH verify_serve_launch AND re-stamping MUST fail closed!
     (adapter_dir / "adapter_model.safetensors").write_bytes(b"swapped-cross-fold-weights")
     with pytest.raises(InputError, match="sha256 mismatch"):
         verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
+    with pytest.raises(InputError, match="refusing to re-stamp modified or cross-fold adapter provenance"):
+        stamp_adapter_provenance(cmd_json, expected_yaml_path=yaml_path)
 
-    # 6. Mismatched adapter_config rank r vs YAML lora_rank fails closed
-    (adapter_dir / "adapter_config.json").write_text(json.dumps({"r": 64}), encoding="utf-8")
-    stamp_adapter_provenance(cmd_json, expected_yaml_path=yaml_path)
+    # 6. Stamping mismatched adapter_config rank r vs YAML lora_rank fails closed immediately
+    adapter_dir2 = tmp_path / "fold0_adapter_badrank"
+    yaml_path2 = tmp_path / "fold0_badrank.yaml"
+    render_config_bundle(
+        fold=0,
+        modality="video",
+        num_frames=16,
+        dataset_dir=str(bundle_dir),
+        dataset_name=ds_name,
+        train_output_dir=str(adapter_dir2),
+        output_yaml=yaml_path2,
+    )
+    cmd_json2 = Path(f"{yaml_path2}.commands.json")
+    verify_rendered_launch(cmd_json2, expected_yaml_path=yaml_path2)
+    adapter_dir2.mkdir(parents=True)
+    (adapter_dir2 / "adapter_config.json").write_text(json.dumps({"r": 64}), encoding="utf-8")
+    (adapter_dir2 / "adapter_model.safetensors").write_bytes(b"rank64-weights")
     with pytest.raises(InputError, match="adapter rank r=64 != YAML lora_rank=16"):
-        verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
+        stamp_adapter_provenance(cmd_json2, expected_yaml_path=yaml_path2)

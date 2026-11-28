@@ -10,7 +10,8 @@ from PIL import Image
 import pytest
 
 from script.five_label_eval.errors import InputError
-from script.five_label_sft.constants import CORRESPONDENCE_AUDIT_SCHEMA, FRAME_LINEAGE_SCHEMA
+from script.five_label_sft.constants import CORRESPONDENCE_AUDIT_SCHEMA, FRAME_LINEAGE_SCHEMA, RUNTIME_VERIFY_SCHEMA
+from script.five_label_sft.data_guards import sha256_file
 from script.five_label_sft.contact_sheet import (
     DEC005_BOUNDARY_NOTICE_ZH,
     align_l0_and_l1_for_ncc,
@@ -268,10 +269,69 @@ def test_stratified_selector_and_protected_output_guard(tmp_path: Path) -> None:
     assert picked_ids == {"c_short", "c_long", "c_tiny", "c_huge", "c_pad", "c_fps60"}
 
     # Protected output path must fail closed
-    lin, roi, _, _ = _write_synthetic_lineage_fixture(tmp_path / "p", modality="images", num_frames=8, with_l4=False)
+    lin, roi, l4_dir, store = _write_synthetic_lineage_fixture(tmp_path / "p", modality="images", num_frames=8, with_l4=True)
     with pytest.raises(InputError, match="protected path"):
         build_contact_sheets_and_audit(
             lineage_path=lin,
             output_dir=tmp_path / "data/sub_video/evil_sheets",
             roi_manifest_path=roi,
+        )
+
+    # Runtime report cross-check blocks channel/lineage mixups and tampered L4 PNGs
+    assert l4_dir is not None
+    cid = "video_0021_fracture_01"
+    good_rt_report = {
+        "schema": RUNTIME_VERIFY_SCHEMA,
+        "modality": "images",
+        "num_frames": 8,
+        "failed_sample_count": 0,
+        "bundle_verification": {"frame_lineage_sha256": sha256_file(lin)},
+        "samples": [
+            {
+                "candidate_id": cid,
+                "l4_reconstructed_files": [
+                    {
+                        "display_order": i,
+                        "sha256": sha256_file(l4_dir / cid / f"frame_{i:02d}.png"),
+                    }
+                    for i in range(8)
+                ],
+            }
+        ],
+    }
+    rt_path = l4_dir.parent / "runtime_verify_report.json"
+    rt_path.write_text(json.dumps(good_rt_report), encoding="utf-8")
+
+    l0_p, l1_p, l2_p = tmp_path / "p/l0", tmp_path / "p/l1", tmp_path / "p/l2"
+    def _ext_p(vpath: Path, indices: list[int]) -> dict[int, Image.Image]:
+        layer = "L0" if vpath.parent == l0_p else ("L1" if vpath.parent == l1_p else "L2")
+        return {i: store[(layer, i)] for i in indices}
+
+    # Matching co-located runtime_verify_report.json passes
+    ok_audit = build_contact_sheets_and_audit(
+        lineage_path=lin,
+        output_dir=tmp_path / "p_ok",
+        l4_dir=l4_dir,
+        roi_manifest_path=roi,
+        l0_dir=l0_p,
+        l1_dir=l1_p,
+        l2_dir=l2_p,
+        frame_extractor=_ext_p,
+    )
+    assert ok_audit["columns"] == 5
+
+    # Mismatched lineage SHA-256 (e.g. mixing 16f L4 into 8f lineage) fails closed
+    bad_rt = json.loads(rt_path.read_text(encoding="utf-8"))
+    bad_rt["bundle_verification"]["frame_lineage_sha256"] = "0" * 64
+    rt_path.write_text(json.dumps(bad_rt), encoding="utf-8")
+    with pytest.raises(InputError, match="frame_lineage_sha256 mismatch"):
+        build_contact_sheets_and_audit(
+            lineage_path=lin,
+            output_dir=tmp_path / "p_bad_rt",
+            l4_dir=l4_dir,
+            roi_manifest_path=roi,
+            l0_dir=l0_p,
+            l1_dir=l1_p,
+            l2_dir=l2_p,
+            frame_extractor=_ext_p,
         )

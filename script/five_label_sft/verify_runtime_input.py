@@ -559,16 +559,45 @@ def run_runtime_verification(
     if not selected_pairs:
         raise InputError("no samples selected for runtime verification")
 
+    l4_root = out_dir / "l4_reconstructed"
     report_path = out_dir / "runtime_verify_report.json"
+
+    # Enumerate EVERY planned output (report + all K reconstructed L4 PNGs per candidate)
+    # and EVERY input file (including every L3 PNG referenced by the dataset bundle) BEFORE writing.
+    planned_outputs: list[Path] = [report_path]
+    for lineage_row, _ in selected_pairs:
+        cid_safe = validate_safe_path_component(lineage_row.get("candidate_id"), "candidate_id")
+        validate_safe_path_component(lineage_row.get("source_id"), "source_id")
+        for idx in range(num_frames):
+            planned_outputs.append(l4_root / cid_safe / f"frame_{idx:02d}.png")
+
+    all_input_paths: list[Path | str | None] = [
+        y_path,
+        summary_path,
+        dataset_path,
+        preflight_path,
+        lineage_path,
+    ]
+    verified_shas = summary.get("verified_frame_sha256s")
+    if isinstance(verified_shas, dict):
+        all_input_paths.extend(verified_shas.keys())
+    for drow in dataset_rows:
+        if isinstance(drow, dict):
+            if modality == "images" and isinstance(drow.get("images"), list):
+                all_input_paths.extend(drow["images"])
+            elif modality == "video" and isinstance(drow.get("videos"), list):
+                for seq in drow["videos"]:
+                    if isinstance(seq, list):
+                        all_input_paths.extend(seq)
+
     assert_no_input_output_collision(
-        [report_path],
-        [y_path, summary_path, dataset_path, preflight_path, lineage_path],
+        planned_outputs,
+        all_input_paths,
         context="verify_runtime_input",
     )
 
     runner = processor_runner if processor_runner is not None else _build_llamafactory_cpu_runner(cfg, modality=modality)
 
-    l4_root = out_dir / "l4_reconstructed"
     sample_reports: list[dict[str, Any]] = []
     failed_cids: list[str] = []
 

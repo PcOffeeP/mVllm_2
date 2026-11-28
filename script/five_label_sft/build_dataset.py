@@ -13,6 +13,7 @@ from typing import Any
 from script.five_label_eval.errors import InputError
 from script.five_label_eval.exclusions import candidate_ids_sha256
 from script.five_label_eval.frames import (
+    CLIP_TO_MODEL_INPUT,
     DEFAULT_RESIZE,
     LEGACY_MAPPING_KEYS,
     MAPPING_NODE_KEYS,
@@ -23,6 +24,7 @@ from script.five_label_eval.frames import (
     read_records,
     sample_frame_indices,
     size_bucket,
+    verify_lineage,
 )
 from script.five_label_eval.prompt_id import load_prompt
 from script.five_label_eval.score import FIELDS, decode_file, extract, flatten
@@ -268,6 +270,16 @@ def _resolve_sample_frames_from_manifest(
             f"for total_frames={sample.total_frames}, num_frames={num_frames}"
         )
 
+    # Full semantic four-layer lineage verification via authoritative frames.verify_lineage()
+    # (catches contradictory clip_to_roi.offset, roi_to_original, verification.method/conditions, and media digests).
+    lineage_failures = verify_lineage(record)
+    if lineage_failures:
+        raise InputError(
+            f"{cid}: frames.verify_lineage failed: {' | '.join(lineage_failures)}"
+        )
+
+    expected_clip_to_model = {**CLIP_TO_MODEL_INPUT, "target_frame_count": num_frames}
+
     raw_verification = record.get("verification")
     if isinstance(raw_verification, dict):
         lineage_verification = {
@@ -336,6 +348,13 @@ def _resolve_sample_frames_from_manifest(
             raise InputError(
                 f"{cid}: frames[{expected_order}].frame_index_mapping missing required nodes {missing_nodes}"
             )
+        actual_c2m = mapping["clip_to_model_input"]
+        for c2m_key, c2m_expected in expected_clip_to_model.items():
+            if actual_c2m.get(c2m_key) != c2m_expected:
+                raise InputError(
+                    f"{cid}: frames[{expected_order}].frame_index_mapping.clip_to_model_input.{c2m_key} "
+                    f"{actual_c2m.get(c2m_key)!r} != expected {c2m_expected!r}"
+                )
 
         image_name = _validate_safe_component(entry.get("image"), f"{cid}: frames[{expected_order}].image")
         if image_name in seen_names:

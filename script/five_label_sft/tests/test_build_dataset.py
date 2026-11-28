@@ -12,6 +12,7 @@ import pytest
 
 from script.five_label_eval.errors import InputError
 from script.five_label_eval.frames import (
+    CLIP_TO_MODEL_INPUT,
     RECORD_SCHEMA,
     SAMPLING_RULE,
     SHORT_CLIP_POLICY,
@@ -228,6 +229,8 @@ def _write_fake_frames_and_manifest(
     manifest_sha: str,
     samples: list[dict[str, Any]],
     num_frames: int,
+    *,
+    verified_lineage: bool = False,
 ) -> tuple[Path, Path]:
     frames_dir = root / "l3_frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
@@ -237,35 +240,67 @@ def _write_fake_frames_and_manifest(
         cid = s["candidate_id"]
         w = int(s.get("width", 1))
         h = int(s.get("height", 1))
+        total_frames = int(s["total_frames"])
+        source_start = int(s.get("source_start_frame", 100))
+        l01_total = source_start + total_frames + 50
         cdir = frames_dir / cid
         cdir.mkdir(parents=True, exist_ok=True)
-        indices = sample_frame_indices(s["total_frames"], num_frames)
+        indices = sample_frame_indices(total_frames, num_frames)
+        c2m = {**CLIP_TO_MODEL_INPUT, "target_frame_count": num_frames}
         frame_rows = []
         for order, fidx in enumerate(indices):
             fname = f"frame_{order:02d}.png"
             raw = _make_valid_png(w, h, s_idx + 1, order, fidx % 256)
             (cdir / fname).write_bytes(raw)
+            if verified_lineage:
+                roi_idx: int | None = source_start + fidx
+                orig_idx: int | None = roi_idx
+                c2r = {"kind": "manifest_replay", "offset": source_start, "reason": None}
+                r2o = {"kind": "offset", "method": "source_replay_mapping", "offset": 0, "reason": None}
+            else:
+                roi_idx = None
+                orig_idx = None
+                c2r = {"kind": "unverified", "offset": None, "reason": "replay_unverified"}
+                r2o = {"kind": "unverified", "method": "unverified", "offset": None, "reason": "replay_unverified"}
             frame_rows.append(
                 {
                     "display_order": order,
                     "decode_order": order,
                     "clip_frame_index": fidx,
                     "pts_seconds": round(fidx / 30.0, 6),
-                    "roi_frame_index": None,
-                    "original_source_frame_index": None,
+                    "roi_frame_index": roi_idx,
+                    "original_source_frame_index": orig_idx,
                     "frame_index_mapping": {
-                        "clip_to_model_input": {"status": "verified", "method": "direct_decode"},
-                        "clip_to_roi": {"status": "unverified", "reason": "not_replayed"},
-                        "roi_to_original": {"status": "unverified", "reason": "not_replayed"},
+                        "clip_to_model_input": dict(c2m),
+                        "clip_to_roi": c2r,
+                        "roi_to_original": r2o,
                     },
                     "image": fname,
                     "sha256": hashlib.sha256(raw).hexdigest(),
                 }
             )
+        l0_sha = hashlib.sha256(f"l0:{cid}".encode()).hexdigest()
+        l1_sha = hashlib.sha256(f"l1:{cid}".encode()).hexdigest()
+        l2_sha = s["clip_sha256"]
+        if verified_lineage:
+            verification: dict[str, Any] = {
+                "method": "source_replay_mapping",
+                "verdict_id": "verdict:test",
+                "evidence_sha256": hashlib.sha256(f"ev:{cid}".encode()).hexdigest(),
+                "conditions": {"source_replay": [True, True, True]},
+                "failed_conditions": [],
+            }
+        else:
+            verification = {
+                "method": "unverified",
+                "verdict_id": "unverified",
+                "evidence_sha256": None,
+                "failed_conditions": ["replay_unverified"],
+            }
         rec = {
             "record_schema": RECORD_SCHEMA,
             "candidate_id": cid,
-            "clip_sha256": s["clip_sha256"],
+            "clip_sha256": l2_sha,
             "manifest_sha256": manifest_sha,
             "sampling": {
                 "sampling_rule": SAMPLING_RULE,
@@ -273,11 +308,19 @@ def _write_fake_frames_and_manifest(
                 "short_clip_policy": SHORT_CLIP_POLICY,
                 "resize": None,
             },
-            "verification": {
-                "method": "unverified",
-                "verdict_id": "unverified",
-                "evidence_sha256": None,
-                "failed_conditions": ["no_replay_evidence"],
+            "verification": verification,
+            "media": {
+                "role": "clip",
+                "sha256": l2_sha,
+                "width": w,
+                "height": h,
+                "total_frames": total_frames,
+                "fps": 30.0,
+            },
+            "lineage_media": {
+                "l0": {"sha256": l0_sha, "declared_sha256": l0_sha, "total_frames": l01_total, "total_frames_source": "decoded"},
+                "l1": {"sha256": l1_sha, "declared_sha256": l1_sha, "total_frames": l01_total, "total_frames_source": "decoded"},
+                "l2": {"sha256": l2_sha, "declared_sha256": l2_sha, "total_frames": total_frames, "total_frames_source": "decoded"},
             },
             "frames": frame_rows,
         }
@@ -949,7 +992,42 @@ def test_frame_lineage_emission_legacy_rejection_and_input_collision_guard(tmp_p
             repo_root=root,
         )
 
-    # 4. Input-output collision MUST be refused even with overwrite=True
+    # 4. Contradictory verified clip_to_roi.offset (keeping input_id & PNG SHA-256 valid) MUST fail closed via frames.verify_lineage()
+    fdir_ver, rec_ver = _write_fake_frames_and_manifest(
+        tmp_path / "lin16_verified", ctx.manifest_sha256, sample_meta, 16, verified_lineage=True
+    )
+    ver_rows = [json.loads(l) for l in rec_ver.read_text(encoding="utf-8").splitlines() if l.strip()]
+    ver_rows[0]["frames"][1]["frame_index_mapping"]["clip_to_roi"]["offset"] += 1
+    bad_offset_rec = tmp_path / "lin16_bad_offset.jsonl"
+    bad_offset_rec.write_text("\n".join(json.dumps(r) for r in ver_rows) + "\n", encoding="utf-8")
+    with pytest.raises(InputError, match="frames.verify_lineage failed|added-increment mapping broken"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            output_dir=tmp_path / "fail_bad_offset",
+            frames_manifest=bad_offset_rec,
+            frames_dir=fdir_ver,
+            repo_root=root,
+        )
+
+    # 5. Tampered clip_to_model_input (e.g. target_frame_count mismatch) MUST fail closed
+    bad_c2m_rows = [json.loads(l) for l in rec_ver.read_text(encoding="utf-8").splitlines() if l.strip()]
+    bad_c2m_rows[0]["frames"][0]["frame_index_mapping"]["clip_to_model_input"]["target_frame_count"] = 8
+    bad_c2m_rec = tmp_path / "lin16_bad_c2m.jsonl"
+    bad_c2m_rec.write_text("\n".join(json.dumps(r) for r in bad_c2m_rows) + "\n", encoding="utf-8")
+    with pytest.raises(InputError, match="clip_to_model_input.target_frame_count"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            output_dir=tmp_path / "fail_bad_c2m",
+            frames_manifest=bad_c2m_rec,
+            frames_dir=fdir_ver,
+            repo_root=root,
+        )
+
+    # 6. Input-output collision MUST be refused even with overwrite=True
     colliding_dir = tmp_path / "colliding_io"
     colliding_dir.mkdir()
     colliding_manifest = colliding_dir / "frame_lineage.jsonl"

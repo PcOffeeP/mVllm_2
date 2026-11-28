@@ -6,8 +6,10 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import secrets
 import shlex
 import sys
+import time
 from typing import Any
 
 import yaml
@@ -44,6 +46,11 @@ from .data_guards import (
 )
 
 ADAPTER_PROVENANCE_FILENAME = "sft_adapter_provenance.json"
+LAUNCH_TOKEN_SCHEMA = "five-label-sft-launch-token/1"
+
+
+def _launch_token_path(commands_json_path: Path) -> Path:
+    return Path(f"{commands_json_path}.launch_token.json")
 
 
 def _require_pos_int(value: Any, name: str) -> int:
@@ -442,13 +449,17 @@ def verify_rendered_launch(
     commands_json_path: Path | str,
     *,
     expected_yaml_path: Path | str | None = None,
+    issue_launch_token: bool = True,
 ) -> dict[str, Any]:
     """Re-verify rendered YAML and pinned dataset bundle hashes immediately before training launch.
 
     Fail-closed guard preventing a stale YAML from ever launching against an overwritten or
     swapped fold dataset directory, or validating a different YAML than the one being launched.
+    When ``issue_launch_token=True``, writes a one-time sibling launch token bound to this
+    verified pre-launch state so post-train ``stamp_adapter_provenance`` only accepts artifacts
+    created after this clean-directory verification.
     """
-    _, commands, yaml_path, cfg, _ = _load_and_verify_commands_and_yaml(
+    cmd_path, commands, yaml_path, cfg, yaml_sha = _load_and_verify_commands_and_yaml(
         commands_json_path,
         expected_yaml_path=expected_yaml_path,
     )
@@ -481,6 +492,30 @@ def verify_rendered_launch(
                 f"pre-launch dataset verification failed for {yaml_path}: {key} drifted "
                 f"(pinned={pinned.get(key)!r}, live={live.get(key)!r}); re-render config before training"
             )
+    if issue_launch_token:
+        token_path = _launch_token_path(cmd_path)
+        token_payload = {
+            "schema": LAUNCH_TOKEN_SCHEMA,
+            "nonce": secrets.token_hex(16),
+            "launched_at_ns": time.time_ns(),
+            "fold": commands["fold"],
+            "modality": commands["modality"],
+            "num_frames": commands["num_frames"],
+            "yaml_path": str(yaml_path),
+            "yaml_sha256": yaml_sha,
+            "commands_json_path": str(cmd_path),
+            "commands_json_sha256": sha256_file(cmd_path),
+            "dataset_sha256": live["dataset_sha256"],
+            "frame_lineage_sha256": live["frame_lineage_sha256"],
+            "adapter_dir": str(Path(cfg["output_dir"]).resolve()),
+        }
+        assert_no_input_output_collision([token_path], [cmd_path, yaml_path], context="verify_rendered_launch")
+        safe_write_bytes(
+            token_path,
+            (json.dumps(token_payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"),
+            overwrite=True,
+            label="launch_token",
+        )
     return live
 
 
@@ -502,7 +537,16 @@ def stamp_adapter_provenance(
     *,
     expected_yaml_path: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Write fold/dataset/weight provenance into ``train_output_dir/sft_adapter_provenance.json`` after training."""
+    """Write fold/dataset/weight provenance into ``train_output_dir/sft_adapter_provenance.json`` after training.
+
+    Fail-closed rules:
+    - If ``sft_adapter_provenance.json`` already exists, re-stamping is strictly idempotent:
+      every training identity field AND live ``adapter_config_sha256`` / ``adapter_weights_sha256``
+      must match the existing provenance verbatim (refuses re-stamping swapped weights or cross-fold artifacts).
+    - First-time stamping requires a matching one-time pre-launch token emitted by
+      ``verify_rendered_launch`` and verifies that adapter config & weights were written after
+      clean-directory pre-launch verification (``mtime_ns >= launched_at_ns``), then consumes the token.
+    """
     cmd_path, commands, yaml_path, cfg, yaml_sha = _load_and_verify_commands_and_yaml(
         commands_json_path,
         expected_yaml_path=expected_yaml_path,
@@ -516,16 +560,18 @@ def stamp_adapter_provenance(
         raise InputError(f"trained adapter missing non-symlink adapter_config.json: {adapter_cfg_path}")
     weights_path = _find_adapter_weights_file(adapter_dir)
 
-    prov_path = adapter_dir / ADAPTER_PROVENANCE_FILENAME
-    if prov_path.exists() and not prov_path.is_symlink():
-        existing = decode_file(prov_path.read_text(encoding="utf-8"), str(prov_path))
-        if isinstance(existing, dict) and existing.get("fold") not in (None, commands["fold"]):
+    actual_cfg_sha = sha256_file(adapter_cfg_path)
+    actual_weights_sha = sha256_file(weights_path)
+    actual_cmd_sha = sha256_file(cmd_path)
+
+    adapter_cfg = decode_file(adapter_cfg_path.read_text(encoding="utf-8"), str(adapter_cfg_path))
+    if isinstance(adapter_cfg, dict) and isinstance(adapter_cfg.get("r"), int):
+        if adapter_cfg["r"] != cfg.get("lora_rank"):
             raise InputError(
-                f"refusing to overwrite existing fold_{existing.get('fold')} adapter provenance "
-                f"in {prov_path} with fold_{commands['fold']}"
+                f"{adapter_cfg_path}: adapter rank r={adapter_cfg['r']} != YAML lora_rank={cfg.get('lora_rank')}"
             )
 
-    provenance = {
+    expected_provenance_core = {
         "schema": ADAPTER_PROVENANCE_SCHEMA,
         "fold": commands["fold"],
         "modality": commands["modality"],
@@ -538,20 +584,96 @@ def stamp_adapter_provenance(
         "yaml_path": str(yaml_path),
         "yaml_sha256": yaml_sha,
         "commands_json_path": str(cmd_path),
-        "commands_json_sha256": sha256_file(cmd_path),
+        "commands_json_sha256": actual_cmd_sha,
         "adapter_dir": str(adapter_dir.resolve()),
-        "adapter_config_sha256": sha256_file(adapter_cfg_path),
+        "adapter_config_sha256": actual_cfg_sha,
         "adapter_weights_file": weights_path.name,
-        "adapter_weights_sha256": sha256_file(weights_path),
+        "adapter_weights_sha256": actual_weights_sha,
         "eval_scope_warning": commands["eval_scope_warning"],
     }
-    assert_no_input_output_collision([prov_path], [cmd_path, yaml_path, adapter_cfg_path, weights_path], context="stamp_adapter_provenance")
+
+    prov_path = adapter_dir / ADAPTER_PROVENANCE_FILENAME
+    if prov_path.is_symlink():
+        raise InputError(f"adapter provenance must not be a symlink: {prov_path}")
+    if prov_path.exists():
+        existing = decode_file(prov_path.read_text(encoding="utf-8"), str(prov_path))
+        if not isinstance(existing, dict) or existing.get("schema") != ADAPTER_PROVENANCE_SCHEMA:
+            raise InputError(f"refusing to overwrite invalid existing provenance file: {prov_path}")
+        for key, expected_val in expected_provenance_core.items():
+            if existing.get(key) != expected_val:
+                raise InputError(
+                    f"refusing to re-stamp modified or cross-fold adapter provenance in {prov_path}: "
+                    f"{key} mismatch (existing={existing.get(key)!r}, live={expected_val!r})"
+                )
+        # Strictly idempotent retry on identical training identity & artifact digests.
+        return existing
+
+    # First-time stamp MUST bind to a matching one-time pre-launch verification token.
+    token_path = _launch_token_path(cmd_path)
+    if token_path.is_symlink() or not token_path.is_file():
+        raise InputError(
+            f"missing pre-launch verification token {token_path}; "
+            "run --verify-commands-json immediately before training so adapter provenance is bound to a verified clean launch"
+        )
+    token = decode_file(token_path.read_text(encoding="utf-8"), str(token_path))
+    if not isinstance(token, dict) or token.get("schema") != LAUNCH_TOKEN_SCHEMA:
+        raise InputError(f"{token_path}: invalid launch token schema")
+    for t_key, t_exp in (
+        ("fold", commands["fold"]),
+        ("modality", commands["modality"]),
+        ("num_frames", commands["num_frames"]),
+        ("yaml_path", str(yaml_path)),
+        ("yaml_sha256", yaml_sha),
+        ("commands_json_path", str(cmd_path)),
+        ("commands_json_sha256", actual_cmd_sha),
+        ("dataset_sha256", pinned["dataset_sha256"]),
+        ("frame_lineage_sha256", pinned["frame_lineage_sha256"]),
+        ("adapter_dir", str(adapter_dir.resolve())),
+    ):
+        if token.get(t_key) != t_exp:
+            raise InputError(
+                f"launch token mismatch in {token_path}: {t_key}={token.get(t_key)!r} != expected {t_exp!r}"
+            )
+    launched_at_ns = token.get("launched_at_ns")
+    nonce = token.get("nonce")
+    if (
+        isinstance(launched_at_ns, bool)
+        or not isinstance(launched_at_ns, int)
+        or launched_at_ns <= 0
+        or not isinstance(nonce, str)
+        or len(nonce) < 16
+    ):
+        raise InputError(f"{token_path}: malformed launched_at_ns or nonce")
+
+    # Allow 1-second coarse filesystem mtime granularity margin while rejecting pre-existing stale files.
+    mtime_floor_ns = launched_at_ns - 1_000_000_000
+    for artifact_label, artifact_path in (("adapter_config.json", adapter_cfg_path), (weights_path.name, weights_path)):
+        if artifact_path.stat().st_mtime_ns < mtime_floor_ns:
+            raise InputError(
+                f"refusing to stamp pre-existing {artifact_label} ({artifact_path}) older than pre-launch "
+                f"verification token ({token_path})"
+            )
+
+    provenance = {
+        **expected_provenance_core,
+        "launch_token_nonce": nonce,
+    }
+    assert_no_input_output_collision(
+        [prov_path],
+        [cmd_path, yaml_path, adapter_cfg_path, weights_path, token_path],
+        context="stamp_adapter_provenance",
+    )
     safe_write_bytes(
         prov_path,
         (json.dumps(provenance, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"),
-        overwrite=True,
+        overwrite=False,
         label="adapter_provenance",
     )
+    # One-time consume launch token so it cannot be replayed later.
+    try:
+        token_path.unlink()
+    except OSError:
+        pass
     return provenance
 
 
