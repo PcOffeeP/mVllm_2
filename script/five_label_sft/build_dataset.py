@@ -14,9 +14,13 @@ from script.five_label_eval.errors import InputError
 from script.five_label_eval.exclusions import candidate_ids_sha256
 from script.five_label_eval.frames import (
     DEFAULT_RESIZE,
+    LEGACY_MAPPING_KEYS,
+    MAPPING_NODE_KEYS,
     RECORD_SCHEMA,
     SAMPLING_RULE,
     SHORT_CLIP_POLICY,
+    compute_record_input_id,
+    read_records,
     sample_frame_indices,
     size_bucket,
 )
@@ -26,6 +30,8 @@ from script.five_label_eval.score import FIELDS, decode_file, extract, flatten
 from .constants import (
     BUILD_SUMMARY_SCHEMA,
     DEFAULT_PROMPT_REL,
+    FRAME_LINEAGE_SCHEMA,
+    QWEN3_VL_TEMPORAL_PATCH_SIZE,
     REPO_ROOT,
     SUPPORTED_FOLDS,
     SUPPORTED_MODALITIES,
@@ -38,6 +44,7 @@ from .data_guards import (
     RESERVED_DATASET_NAMES,
     SelectedTrainSample,
     assert_no_fold_leakage,
+    assert_no_input_output_collision,
     assert_no_symlink_components,
     load_fold_isolation_context,
     safe_write_bytes,
@@ -84,16 +91,11 @@ def _rel_or_abs(path: Path, root: Path) -> str:
 
 def _load_frames_manifest(path: Path) -> dict[str, dict[str, Any]]:
     try:
-        text = path.read_text(encoding="utf-8")
+        rows = read_records(path)
     except OSError as exc:
         raise InputError(f"cannot read frames manifest {path}: {exc}") from exc
     by_cid: dict[str, dict[str, Any]] = {}
-    for lineno, raw in enumerate(text.splitlines(), 1):
-        if not raw.strip():
-            continue
-        obj = decode_file(raw, f"{path}:{lineno}")
-        if not isinstance(obj, dict):
-            raise InputError(f"{path}:{lineno}: expected JSON object")
+    for lineno, obj in enumerate(rows, 1):
         cid = obj.get("candidate_id")
         if not isinstance(cid, str) or not cid.strip():
             raise InputError(f"{path}:{lineno}: missing candidate_id")
@@ -101,6 +103,61 @@ def _load_frames_manifest(path: Path) -> dict[str, dict[str, Any]]:
             raise InputError(f"{path}:{lineno}: duplicate candidate_id {cid!r}")
         by_cid[cid] = obj
     return by_cid
+
+
+def compute_video_temporal_timestamps(num_frames: int, video_fps: float) -> list[tuple[int, float, str]]:
+    """Mirror Qwen3VLPlugin._calculate_timestamps(list(range(K)), fps, merge_size=2).
+
+    Returns one ``(temporal_pair_index, timestamp_sec, label)`` per frame ``0..num_frames-1``.
+    """
+    if num_frames % QWEN3_VL_TEMPORAL_PATCH_SIZE != 0:
+        raise InputError(f"video num_frames must be even, got {num_frames}")
+    if video_fps <= 0:
+        raise InputError(f"video_fps must be positive, got {video_fps}")
+    out: list[tuple[int, float, str]] = []
+    for order in range(num_frames):
+        pair_idx = order // QWEN3_VL_TEMPORAL_PATCH_SIZE
+        # Qwen3VLProcessor._calculate_timestamps averages the two frame timestamps in each temporal pair.
+        t0 = (pair_idx * QWEN3_VL_TEMPORAL_PATCH_SIZE) / video_fps
+        t1 = (pair_idx * QWEN3_VL_TEMPORAL_PATCH_SIZE + 1) / video_fps
+        ts = (t0 + t1) / 2.0
+        out.append((pair_idx, ts, f"<{ts:.1f} seconds>"))
+    return out
+
+
+def _build_frame_lineage_entry(
+    *,
+    sample_index: int,
+    sample: SelectedTrainSample,
+    modality: str,
+    num_frames: int,
+    video_fps: float | None,
+    manifest_sha256: str,
+    input_id: str | None,
+    lineage_verification: dict[str, Any],
+    frame_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "schema": FRAME_LINEAGE_SCHEMA,
+        "sample_index": sample_index,
+        "candidate_id": sample.candidate_id,
+        "source_id": sample.source_id,
+        "input_id": input_id,
+        "modality": modality,
+        "num_frames": num_frames,
+        "video_fps": video_fps if modality == "video" else None,
+        "clip_sha256": sample.clip_sha256,
+        "manifest_sha256": manifest_sha256,
+        "review_id": sample.review_id,
+        "review_revision_sha256": sample.revision_sha256,
+        "width": sample.width,
+        "height": sample.height,
+        "total_frames": sample.total_frames,
+        "fps": sample.fps,
+        "source_start_frame": sample.source_start_frame,
+        "lineage_verification": lineage_verification,
+        "frames": frame_rows,
+    }
 
 
 def _format_emitted_frame_path(
@@ -156,11 +213,13 @@ def _resolve_sample_frames_from_manifest(
     record: dict[str, Any],
     *,
     ctx: FoldIsolationContext,
+    modality: str,
     num_frames: int,
+    video_fps: float | None,
     frames_dir: Path,
     frame_path_prefix: str | None,
     allow_missing_frames_dry_run: bool,
-) -> tuple[list[str], dict[str, str]]:
+) -> tuple[list[str], dict[str, str], list[dict[str, Any]], str, dict[str, Any]]:
     cid = _validate_safe_component(sample.candidate_id, "candidate_id")
     if record.get("record_schema") != RECORD_SCHEMA:
         raise InputError(f"{cid}: record_schema {record.get('record_schema')!r} != {RECORD_SCHEMA!r}")
@@ -171,6 +230,15 @@ def _resolve_sample_frames_from_manifest(
     if record.get("clip_sha256") != sample.clip_sha256:
         raise InputError(
             f"{cid}: record clip_sha256 {record.get('clip_sha256')!r} != {sample.clip_sha256!r}"
+        )
+    recorded_input_id = record.get("input_id")
+    if not isinstance(recorded_input_id, str) or not recorded_input_id.startswith("input@sha256:"):
+        raise InputError(f"{cid}: record missing valid input_id (expected 'input@sha256:...')")
+    expected_input_id = compute_record_input_id(record)
+    if recorded_input_id != expected_input_id:
+        raise InputError(
+            f"{cid}: record input_id {recorded_input_id!r} != computed {expected_input_id!r}; "
+            "re-extract records with frames.py"
         )
     sampling = record.get("sampling")
     if not isinstance(sampling, dict):
@@ -200,6 +268,28 @@ def _resolve_sample_frames_from_manifest(
             f"for total_frames={sample.total_frames}, num_frames={num_frames}"
         )
 
+    raw_verification = record.get("verification")
+    if isinstance(raw_verification, dict):
+        lineage_verification = {
+            "method": raw_verification.get("method", "unverified"),
+            "verdict_id": raw_verification.get("verdict_id", "unverified"),
+            "evidence_sha256": raw_verification.get("evidence_sha256"),
+            "failed_conditions": list(raw_verification.get("failed_conditions") or []),
+        }
+    else:
+        lineage_verification = {
+            "method": "unverified",
+            "verdict_id": "unverified",
+            "evidence_sha256": None,
+            "failed_conditions": ["missing_verification_block"],
+        }
+
+    temporal_meta = (
+        compute_video_temporal_timestamps(num_frames, video_fps or 2.0)
+        if modality == "video"
+        else None
+    )
+
     root_dir = frames_dir.resolve()
     raw_clip_dir = frames_dir / cid
     if not allow_missing_frames_dry_run:
@@ -216,6 +306,7 @@ def _resolve_sample_frames_from_manifest(
     seen_names: set[str] = set()
     emitted: list[str] = []
     verified_shas: dict[str, str] = {}
+    frame_lineage_rows: list[dict[str, Any]] = []
     for expected_order, entry in enumerate(ordered):
         if not isinstance(entry, dict):
             raise InputError(f"{cid}: frames[{expected_order}] must be object")
@@ -223,6 +314,29 @@ def _resolve_sample_frames_from_manifest(
             raise InputError(
                 f"{cid}: frames display_order must be contiguous 0..{num_frames - 1}, got {entry.get('display_order')!r}"
             )
+        mapping = entry.get("frame_index_mapping")
+        if not isinstance(mapping, dict):
+            raise InputError(
+                f"{cid}: frames[{expected_order}].frame_index_mapping missing; expected {list(MAPPING_NODE_KEYS)}"
+            )
+        legacy_present = [k for k in LEGACY_MAPPING_KEYS if k in mapping]
+        if legacy_present:
+            raise InputError(
+                f"{cid}: frames[{expected_order}].frame_index_mapping contains legacy keys {legacy_present}; "
+                f"expected {list(MAPPING_NODE_KEYS)}"
+            )
+        extra_keys = sorted(set(mapping.keys()) - set(MAPPING_NODE_KEYS))
+        if extra_keys:
+            raise InputError(
+                f"{cid}: frames[{expected_order}].frame_index_mapping contains unexpected keys {extra_keys}; "
+                f"expected {list(MAPPING_NODE_KEYS)}"
+            )
+        missing_nodes = [k for k in MAPPING_NODE_KEYS if not isinstance(mapping.get(k), dict)]
+        if missing_nodes:
+            raise InputError(
+                f"{cid}: frames[{expected_order}].frame_index_mapping missing required nodes {missing_nodes}"
+            )
+
         image_name = _validate_safe_component(entry.get("image"), f"{cid}: frames[{expected_order}].image")
         if image_name in seen_names:
             raise InputError(f"{cid}: duplicate frame image filename {image_name!r}")
@@ -255,17 +369,40 @@ def _resolve_sample_frames_from_manifest(
             )
             emitted.append(emitted_path)
             verified_shas[emitted_path] = expected_sha
+            row_png_sha: str | None = expected_sha
         else:
-            emitted.append(
-                _format_emitted_frame_path(
-                    resolved_path=None,
-                    candidate_id=cid,
-                    image_name=image_name,
-                    frames_dir=frames_dir,
-                    frame_path_prefix=frame_path_prefix,
-                )
+            emitted_path = _format_emitted_frame_path(
+                resolved_path=None,
+                candidate_id=cid,
+                image_name=image_name,
+                frames_dir=frames_dir,
+                frame_path_prefix=frame_path_prefix,
             )
-    return emitted, verified_shas
+            emitted.append(emitted_path)
+            row_png_sha = None
+
+        clip_idx = int(entry["clip_frame_index"])
+        derived_roi = sample.source_start_frame + clip_idx if sample.source_start_frame is not None else None
+        pair_idx, ts_sec, ts_label = temporal_meta[expected_order] if temporal_meta is not None else (None, None, None)
+        frame_lineage_rows.append(
+            {
+                "display_order": expected_order,
+                "emitted_path": emitted_path,
+                "png_sha256": row_png_sha,
+                "clip_frame_index": clip_idx,
+                "pts_seconds": entry.get("pts_seconds"),
+                "verified_roi_frame_index": entry.get("roi_frame_index"),
+                "verified_original_frame_index": entry.get("original_source_frame_index"),
+                "derived_roi_frame_index": derived_roi,
+                "derived_original_frame_index": derived_roi,
+                "derived_index_status": "derived_planned" if derived_roi is not None else "unavailable",
+                "temporal_pair_index": pair_idx,
+                "injected_timestamp_sec": ts_sec,
+                "injected_timestamp_label": ts_label,
+                "frame_index_mapping": {k: mapping[k] for k in MAPPING_NODE_KEYS},
+            }
+        )
+    return emitted, verified_shas, frame_lineage_rows, recorded_input_id, lineage_verification
 
 
 def _resolve_sample_frames_from_dir(
@@ -471,6 +608,7 @@ def build_fold_sft_dataset(
     image_min_pixels: int | None = None,
     video_max_pixels: int | None = None,
     video_min_pixels: int | None = None,
+    video_fps: float | None = None,
     max_safe_train_frame_pixels: int | None = None,
     fail_on_lf_downscale: bool = False,
     overwrite: bool = False,
@@ -547,19 +685,31 @@ def build_fold_sft_dataset(
         if f_dir_path is None:
             f_dir_path = f_manifest_path.resolve().parent
 
+    eff_video_fps: float | None = None
+    if modality == "video":
+        eff_video_fps = float(video_fps if video_fps is not None else (preset.video_fps or 2.0))
+        if eff_video_fps <= 0:
+            raise InputError(f"video_fps must be positive, got {eff_video_fps!r}")
+
     dataset_rows: list[dict[str, Any]] = []
+    lineage_rows: list[dict[str, Any]] = []
     verified_frame_sha256s: dict[str, str] = {}
-    for sample in samples:
+    lineage_methods: Counter[str] = Counter()
+    lineage_failed_tokens: Counter[str] = Counter()
+
+    for sample_index, sample in enumerate(samples):
         if manifest_records is not None:
             rec = manifest_records.get(sample.candidate_id)
             if rec is None:
                 raise InputError(f"{sample.candidate_id}: missing from --frames-manifest {f_manifest_path}")
             assert f_dir_path is not None
-            frame_paths, sample_shas = _resolve_sample_frames_from_manifest(
+            frame_paths, sample_shas, frame_lineage_rows, rec_input_id, lineage_ver = _resolve_sample_frames_from_manifest(
                 sample,
                 rec,
                 ctx=ctx,
+                modality=modality,
                 num_frames=num_frames,
+                video_fps=eff_video_fps,
                 frames_dir=f_dir_path,
                 frame_path_prefix=frame_path_prefix,
                 allow_missing_frames_dry_run=allow_missing_frames_dry_run,
@@ -573,6 +723,59 @@ def build_fold_sft_dataset(
                 frame_path_prefix=frame_path_prefix,
                 allow_missing_frames_dry_run=allow_missing_frames_dry_run,
             )
+            indices = sample_frame_indices(sample.total_frames, num_frames)
+            temporal_meta = (
+                compute_video_temporal_timestamps(num_frames, eff_video_fps or 2.0)
+                if modality == "video"
+                else None
+            )
+            rec_input_id = None
+            lineage_ver = {
+                "method": "dry_run_no_manifest",
+                "verdict_id": "unverified",
+                "evidence_sha256": None,
+                "failed_conditions": ["dry_run_no_frames_manifest"],
+            }
+            frame_lineage_rows = []
+            for order, (fpath, clip_idx) in enumerate(zip(frame_paths, indices)):
+                derived_roi = sample.source_start_frame + clip_idx if sample.source_start_frame is not None else None
+                pair_idx, ts_sec, ts_label = temporal_meta[order] if temporal_meta is not None else (None, None, None)
+                frame_lineage_rows.append(
+                    {
+                        "display_order": order,
+                        "emitted_path": fpath,
+                        "png_sha256": None,
+                        "clip_frame_index": clip_idx,
+                        "pts_seconds": None,
+                        "verified_roi_frame_index": None,
+                        "verified_original_frame_index": None,
+                        "derived_roi_frame_index": derived_roi,
+                        "derived_original_frame_index": derived_roi,
+                        "derived_index_status": "derived_planned" if derived_roi is not None else "unavailable",
+                        "temporal_pair_index": pair_idx,
+                        "injected_timestamp_sec": ts_sec,
+                        "injected_timestamp_label": ts_label,
+                        "frame_index_mapping": None,
+                    }
+                )
+
+        lineage_methods[str(lineage_ver.get("method", "unverified"))] += 1
+        for tok in lineage_ver.get("failed_conditions") or []:
+            lineage_failed_tokens[str(tok)] += 1
+
+        lineage_rows.append(
+            _build_frame_lineage_entry(
+                sample_index=sample_index,
+                sample=sample,
+                modality=modality,
+                num_frames=num_frames,
+                video_fps=eff_video_fps,
+                manifest_sha256=ctx.manifest_sha256,
+                input_id=rec_input_id,
+                lineage_verification=lineage_ver,
+                frame_rows=frame_lineage_rows,
+            )
+        )
         dataset_rows.append(
             build_sharegpt_record(
                 modality=modality,
@@ -593,14 +796,19 @@ def build_fold_sft_dataset(
     dataset_bytes = (json.dumps(dataset_rows, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
     dataset_info_bytes = (json.dumps(dataset_info, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
     preflight_bytes = (json.dumps(preflight_report, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+    frame_lineage_bytes = (
+        "\n".join(json.dumps(row, ensure_ascii=False, allow_nan=False) for row in lineage_rows) + "\n"
+    ).encode("utf-8")
 
     summary: dict[str, Any] = {
         "schema": BUILD_SUMMARY_SCHEMA,
         "dataset_name": ds_name,
         "dataset_file": dataset_file_name,
+        "frame_lineage_file": "frame_lineage.jsonl",
         "fold": fold,
         "modality": modality,
         "num_frames": num_frames,
+        "video_fps": eff_video_fps,
         "dry_run_missing_frames": bool(allow_missing_frames_dry_run),
         "strict_target_json_verified": True,
         "inputs": {
@@ -632,11 +840,17 @@ def build_fold_sft_dataset(
         },
         "isolation_checks": isolation_checks,
         "skipped_revisions": guard_meta["skipped"],
+        "lineage_verification_summary": {
+            "sample_count": len(lineage_rows),
+            "methods": dict(sorted(lineage_methods.items())),
+            "failed_conditions": dict(sorted(lineage_failed_tokens.items())),
+        },
         "distributions": _compute_distributions(samples),
         "fingerprints": {
             "dataset_sha256": sha256_bytes(dataset_bytes),
             "dataset_info_sha256": sha256_bytes(dataset_info_bytes),
             "preflight_report_sha256": sha256_bytes(preflight_bytes),
+            "frame_lineage_sha256": sha256_bytes(frame_lineage_bytes),
             "candidate_ids_sha256": candidate_ids_sha256([s.candidate_id for s in samples]),
         },
         "preflight_summary": {
@@ -665,10 +879,28 @@ def build_fold_sft_dataset(
         (out_dir / "dataset_info.json", dataset_info_bytes, "dataset_info"),
         (out_dir / "build_summary.json", summary_bytes, "build_summary"),
         (out_dir / "preflight_report.json", preflight_bytes, "preflight_report"),
+        (out_dir / "frame_lineage.jsonl", frame_lineage_bytes, "frame_lineage"),
     ]
     resolved_targets_ci = [str(p.resolve()).lower() for p, _, _ in targets]
     if len(set(resolved_targets_ci)) != len(targets):
         raise InputError(f"output artifact paths collide (case-insensitive): {[str(p) for p, _, _ in targets]}")
+    assert_no_input_output_collision(
+        [p for p, _, _ in targets],
+        [
+            ctx.manifest_path,
+            ctx.reviews_path,
+            ctx.exclusions_path,
+            ctx.exclusions.extra_path,
+            ctx.fold_train_path,
+            ctx.fold_val_path,
+            ctx.test_path,
+            ctx.eval_dev_path,
+            ctx.eval_test_path,
+            p_path,
+            f_manifest_path,
+        ],
+        context="build_dataset",
+    )
     for path, _, label in targets:
         validate_safe_output_path(path, label=label)
         assert_no_symlink_components(path, label=label)
@@ -721,6 +953,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--image-min-pixels", type=int, help="Override image_min_pixels (images mode)")
     parser.add_argument("--video-max-pixels", type=int, help="Override video_max_pixels (video mode)")
     parser.add_argument("--video-min-pixels", type=int, help="Override video_min_pixels (video mode)")
+    parser.add_argument("--video-fps", type=float, help="Override video_fps recorded in frame_lineage.jsonl (video mode; default 2.0)")
     parser.add_argument("--max-safe-train-frame-pixels", type=int, help="Override RTX 4090 safe single-frame pixel guard")
     parser.add_argument("--fail-on-lf-downscale", "--fail-on-vllm-mismatch", dest="fail_on_lf_downscale", action="store_true",
                         help="Fail closed if any sample triggers LlamaFactory pre-resize or vLLM grid mismatch")
@@ -751,6 +984,7 @@ def main(argv: list[str] | None = None) -> int:
             image_min_pixels=args.image_min_pixels,
             video_max_pixels=args.video_max_pixels,
             video_min_pixels=args.video_min_pixels,
+            video_fps=args.video_fps,
             max_safe_train_frame_pixels=args.max_safe_train_frame_pixels,
             fail_on_lf_downscale=args.fail_on_lf_downscale,
             overwrite=args.overwrite,

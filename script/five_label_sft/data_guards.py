@@ -60,8 +60,53 @@ def _has_segment_sequence(parts: tuple[str, ...], seq: tuple[str, ...]) -> bool:
     return False
 
 
-RESERVED_DATASET_NAMES = frozenset({"dataset_info", "build_summary", "preflight_report"})
+RESERVED_DATASET_NAMES = frozenset({"dataset_info", "build_summary", "preflight_report", "frame_lineage"})
 _DATASET_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+
+
+def validate_safe_path_component(value: Any, label: str = "path_component") -> str:
+    """Validate that ``value`` is a single safe path segment without separators or traversal."""
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or value in (".", "..")
+        or "/" in value
+        or "\\" in value
+        or Path(value).name != value
+    ):
+        raise InputError(f"{label} must be a single safe path component, got {value!r}")
+    return value
+
+
+def assert_no_input_output_collision(
+    output_paths: Iterable[Path | str],
+    input_paths: Iterable[Path | str | None],
+    *,
+    context: str = "output",
+) -> None:
+    """Refuse any output path that collides (case-insensitively on resolved path) with an input file."""
+    resolved_inputs: dict[str, str] = {}
+    for inp in input_paths:
+        if inp is None:
+            continue
+        p = Path(inp)
+        try:
+            key = str(p.resolve()).lower()
+        except OSError:
+            key = str(p).lower()
+        resolved_inputs[key] = str(p)
+
+    for out in output_paths:
+        p = Path(out)
+        try:
+            out_key = str(p.resolve()).lower()
+        except OSError:
+            out_key = str(p).lower()
+        if out_key in resolved_inputs:
+            raise InputError(
+                f"{context}: refusing to overwrite input file {resolved_inputs[out_key]!r} "
+                f"with output target {str(p)!r}"
+            )
 
 
 def validate_dataset_name(name: Any, *, label: str = "dataset_name") -> str:
@@ -268,6 +313,8 @@ class SelectedTrainSample:
     height: int
     total_frames: int
     fps: float
+    source_start_frame: int | None
+    output_start_frame: int | None
     labels: dict[str, Any]
     target_json: str
 
@@ -653,6 +700,20 @@ def select_confirmed_fold_train_samples(
         if isinstance(fps, bool) or not isinstance(fps, (int, float)) or fps <= 0:
             raise InputError(f"{cid}: invalid output.media.fps={fps!r}")
 
+        frame_mapping = output_meta.get("frame_mapping") if isinstance(output_meta.get("frame_mapping"), dict) else {}
+        raw_src_start = frame_mapping.get("source_start_frame")
+        raw_out_start = frame_mapping.get("output_start_frame")
+        source_start_frame = (
+            raw_src_start
+            if isinstance(raw_src_start, int) and not isinstance(raw_src_start, bool) and raw_src_start >= 0
+            else None
+        )
+        output_start_frame = (
+            raw_out_start
+            if isinstance(raw_out_start, int) and not isinstance(raw_out_start, bool) and raw_out_start >= 0
+            else None
+        )
+
         ordered_labels, target_json = canonicalize_and_verify_target_json(
             rev.get("labels"),
             context=f"{cid} (review_id={rev.get('review_id')})",
@@ -671,6 +732,8 @@ def select_confirmed_fold_train_samples(
                 height=height,
                 total_frames=total_frames,
                 fps=float(fps),
+                source_start_frame=source_start_frame,
+                output_start_frame=output_start_frame,
                 labels=ordered_labels,
                 target_json=target_json,
             )

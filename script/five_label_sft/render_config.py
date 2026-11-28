@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -15,12 +16,14 @@ from script.five_label_eval.errors import InputError
 from script.five_label_eval.score import decode_file
 
 from .constants import (
+    ADAPTER_PROVENANCE_SCHEMA,
     BUILD_SUMMARY_SCHEMA,
     CONFIG_MANIFEST_SCHEMA,
     CUDA_ALLOC_CONF,
     DEFAULT_BASE_MODEL_PATH,
     DEFAULT_SERVED_MODEL_NAME,
     DEFAULT_TEMPLATE,
+    FRAME_LINEAGE_SCHEMA,
     PURE_SYSTEM_PATH,
     SUPPORTED_FOLDS,
     SUPPORTED_MODALITIES,
@@ -31,6 +34,7 @@ from .constants import (
     get_channel_preset,
 )
 from .data_guards import (
+    assert_no_input_output_collision,
     assert_no_symlink_components,
     safe_write_bytes,
     sha256_file,
@@ -38,6 +42,8 @@ from .data_guards import (
     validate_fold,
     validate_safe_output_path,
 )
+
+ADAPTER_PROVENANCE_FILENAME = "sft_adapter_provenance.json"
 
 
 def _require_pos_int(value: Any, name: str) -> int:
@@ -69,7 +75,14 @@ def _assert_clean_train_output_dir(output_dir: Path | str) -> None:
         p.name
         for p in out_path.iterdir()
         if p.name.startswith("checkpoint-")
-        or p.name in ("adapter_model.safetensors", "adapter_model.bin", "adapter_config.json", "trainer_state.json")
+        or p.name
+        in (
+            "adapter_model.safetensors",
+            "adapter_model.bin",
+            "adapter_config.json",
+            "trainer_state.json",
+            ADAPTER_PROVENANCE_FILENAME,
+        )
     )
     if existing_artifacts:
         raise InputError(
@@ -83,12 +96,12 @@ def _verify_referenced_frame_pngs(
     summary: dict[str, Any],
     *,
     modality: str,
-) -> int:
+) -> tuple[int, list[dict[str, Any]]]:
     """Re-verify every L3 PNG path referenced in the dataset JSON against ``verified_frame_sha256s``."""
     raw_map = summary.get("verified_frame_sha256s")
     if not isinstance(raw_map, dict) or not raw_map:
         raise InputError(
-            f"build_summary.json missing non-empty verified_frame_sha256s; re-export with build_dataset.py"
+            "build_summary.json missing non-empty verified_frame_sha256s; re-export with build_dataset.py"
         )
     rows = decode_file(dataset_path.read_text(encoding="utf-8"), str(dataset_path))
     if not isinstance(rows, list) or not rows:
@@ -129,7 +142,72 @@ def _verify_referenced_frame_pngs(
                 raise InputError(
                     f"training frame PNG sha256 mismatch for {fp}: expected {expected_sha}, got {actual_sha}"
                 )
-    return len(seen_paths)
+    return len(seen_paths), rows
+
+
+def _verify_frame_lineage_jsonl(
+    lineage_path: Path,
+    dataset_rows: list[dict[str, Any]],
+    summary: dict[str, Any],
+    *,
+    modality: str,
+    num_frames: int,
+) -> int:
+    """Cross-check ``frame_lineage.jsonl`` 1:1 against ShareGPT dataset rows and ``build_summary.json``."""
+    raw_lines = [line for line in lineage_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if len(raw_lines) != len(dataset_rows):
+        raise InputError(
+            f"{lineage_path}: row count ({len(raw_lines)}) != dataset row count ({len(dataset_rows)})"
+        )
+    expected_cids = summary.get("exported_candidate_ids")
+    if not isinstance(expected_cids, list) or len(expected_cids) != len(raw_lines):
+        raise InputError(f"{lineage_path}: build_summary exported_candidate_ids count mismatch")
+    manifest_sha = (summary.get("inputs") or {}).get("manifest_sha256")
+    verified_shas = summary.get("verified_frame_sha256s") or {}
+    expected_fps = summary.get("video_fps")
+
+    for idx, (line, drow, expected_cid) in enumerate(zip(raw_lines, dataset_rows, expected_cids)):
+        try:
+            lrow = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise InputError(f"{lineage_path}:{idx + 1}: invalid JSON: {exc}") from exc
+        if not isinstance(lrow, dict) or lrow.get("schema") != FRAME_LINEAGE_SCHEMA:
+            raise InputError(f"{lineage_path}:{idx + 1}: invalid schema {lrow.get('schema') if isinstance(lrow, dict) else None!r}")
+        if lrow.get("sample_index") != idx:
+            raise InputError(f"{lineage_path}:{idx + 1}: sample_index {lrow.get('sample_index')!r} != {idx}")
+        if lrow.get("candidate_id") != expected_cid:
+            raise InputError(f"{lineage_path}:{idx + 1}: candidate_id {lrow.get('candidate_id')!r} != {expected_cid!r}")
+        if lrow.get("modality") != modality or lrow.get("num_frames") != num_frames:
+            raise InputError(
+                f"{lineage_path}:{idx + 1}: modality/num_frames mismatch "
+                f"({lrow.get('modality')!r}/{lrow.get('num_frames')!r} vs {modality!r}/{num_frames!r})"
+            )
+        if manifest_sha and lrow.get("manifest_sha256") != manifest_sha:
+            raise InputError(f"{lineage_path}:{idx + 1}: manifest_sha256 mismatch")
+        if modality == "video" and expected_fps is not None and lrow.get("video_fps") != expected_fps:
+            raise InputError(
+                f"{lineage_path}:{idx + 1}: video_fps {lrow.get('video_fps')!r} != build_summary {expected_fps!r}"
+            )
+
+        expected_frames = drow["images"] if modality == "images" else drow["videos"][0]
+        lframes = lrow.get("frames")
+        if not isinstance(lframes, list) or len(lframes) != num_frames:
+            raise InputError(f"{lineage_path}:{idx + 1}: expected {num_frames} frames, got {type(lframes).__name__}")
+        for order, (lf, expected_path) in enumerate(zip(lframes, expected_frames)):
+            if not isinstance(lf, dict):
+                raise InputError(f"{lineage_path}:{idx + 1}: frames[{order}] must be object")
+            if lf.get("display_order") != order:
+                raise InputError(f"{lineage_path}:{idx + 1}: frames[{order}].display_order != {order}")
+            if lf.get("emitted_path") != expected_path:
+                raise InputError(
+                    f"{lineage_path}:{idx + 1}: frames[{order}].emitted_path {lf.get('emitted_path')!r} "
+                    f"!= dataset path {expected_path!r}"
+                )
+            if lf.get("png_sha256") != verified_shas.get(expected_path):
+                raise InputError(
+                    f"{lineage_path}:{idx + 1}: frames[{order}].png_sha256 mismatch against verified_frame_sha256s"
+                )
+    return len(raw_lines)
 
 
 def verify_dataset_bundle(
@@ -144,11 +222,12 @@ def verify_dataset_bundle(
     image_min_pixels: int | None = None,
     video_max_pixels: int | None = None,
     video_min_pixels: int | None = None,
+    video_fps: float | None = None,
 ) -> dict[str, Any]:
-    """Fail-closed cross-check of ``build_summary.json``, ``dataset_info.json``, ``preflight_report.json``, and dataset JSON.
+    """Fail-closed cross-check of ``build_summary.json``, ``dataset_info.json``, ``preflight_report.json``, ``frame_lineage.jsonl``, and dataset JSON.
 
     Prevents cross-fold leakage (e.g., training Fold 1 config on Fold 0 dataset), modality/frame
-    mismatch, pixel/cutoff drift vs verified preflight, tampered dataset bytes, or dry-run bundles.
+    mismatch, pixel/cutoff/fps drift vs verified preflight/lineage, tampered dataset bytes, or dry-run bundles.
     """
     raw_dir = Path(dataset_dir)
     if raw_dir.is_symlink() or not raw_dir.is_dir():
@@ -162,10 +241,12 @@ def verify_dataset_bundle(
     summary_path = bundle_dir / "build_summary.json"
     info_path = bundle_dir / "dataset_info.json"
     preflight_path = bundle_dir / "preflight_report.json"
+    lineage_path = bundle_dir / "frame_lineage.jsonl"
     for label, p in (
         ("build_summary.json", summary_path),
         ("dataset_info.json", info_path),
         ("preflight_report.json", preflight_path),
+        ("frame_lineage.jsonl", lineage_path),
     ):
         if p.is_symlink() or not p.is_file():
             raise InputError(f"dataset bundle missing required non-symlink {label}: {p}")
@@ -174,7 +255,9 @@ def verify_dataset_bundle(
     info = decode_file(info_path.read_text(encoding="utf-8"), str(info_path))
     preflight = decode_file(preflight_path.read_text(encoding="utf-8"), str(preflight_path))
     if not isinstance(summary, dict) or summary.get("schema") != BUILD_SUMMARY_SCHEMA:
-        raise InputError(f"{summary_path}: invalid build_summary schema {summary.get('schema') if isinstance(summary, dict) else None!r}")
+        raise InputError(
+            f"{summary_path}: invalid build_summary schema {summary.get('schema') if isinstance(summary, dict) else None!r}"
+        )
     if summary.get("dry_run_missing_frames") is not False:
         raise InputError(
             f"{summary_path}: refusing to render runnable training config for dry-run dataset "
@@ -193,6 +276,12 @@ def verify_dataset_bundle(
         if actual != expected:
             raise InputError(
                 f"dataset bundle mismatch in {summary_path}: {field}={actual!r} != requested {expected!r}"
+            )
+    if modality == "video" and video_fps is not None and summary.get("video_fps") is not None:
+        if float(summary["video_fps"]) != float(video_fps):
+            raise InputError(
+                f"dataset bundle video_fps mismatch in {summary_path}: "
+                f"summary={summary['video_fps']!r} != YAML {video_fps!r}"
             )
 
     isolation = summary.get("isolation_checks")
@@ -237,6 +326,11 @@ def verify_dataset_bundle(
         raise InputError(
             f"{preflight_path}: sha256 mismatch (expected {fingerprints.get('preflight_report_sha256')!r}, got {actual_preflight_sha!r})"
         )
+    actual_lineage_sha = sha256_file(lineage_path)
+    if fingerprints.get("frame_lineage_sha256") != actual_lineage_sha:
+        raise InputError(
+            f"{lineage_path}: sha256 mismatch (expected {fingerprints.get('frame_lineage_sha256')!r}, got {actual_lineage_sha!r})"
+        )
     dataset_path = bundle_dir / dataset_file
     if dataset_path.is_symlink() or not dataset_path.is_file():
         raise InputError(f"dataset bundle missing required non-symlink dataset file: {dataset_path}")
@@ -274,7 +368,14 @@ def verify_dataset_bundle(
             f"cutoff_len ({cutoff_len}) is smaller than dataset max estimated tokens ({est['max']})"
         )
 
-    verified_frame_count = _verify_referenced_frame_pngs(dataset_path, summary, modality=modality)
+    verified_frame_count, dataset_rows = _verify_referenced_frame_pngs(dataset_path, summary, modality=modality)
+    _verify_frame_lineage_jsonl(
+        lineage_path,
+        dataset_rows,
+        summary,
+        modality=modality,
+        num_frames=num_frames,
+    )
 
     return {
         "verified": True,
@@ -284,22 +385,18 @@ def verify_dataset_bundle(
         "dataset_sha256": actual_ds_sha,
         "dataset_info_sha256": actual_info_sha,
         "preflight_report_sha256": actual_preflight_sha,
+        "frame_lineage_sha256": actual_lineage_sha,
         "verified_frame_count": verified_frame_count,
         "exported_candidate_count": isolation.get("exported_candidate_count"),
         "exported_source_count": isolation.get("exported_source_count"),
     }
 
 
-def verify_rendered_launch(
+def _load_and_verify_commands_and_yaml(
     commands_json_path: Path | str,
     *,
     expected_yaml_path: Path | str | None = None,
-) -> dict[str, Any]:
-    """Re-verify rendered YAML and pinned dataset bundle hashes immediately before training launch.
-
-    Fail-closed guard preventing a stale YAML from ever launching against an overwritten or
-    swapped fold dataset directory, or validating a different YAML than the one being launched.
-    """
+) -> tuple[Path, dict[str, Any], Path, dict[str, Any], str]:
     cmd_path = Path(commands_json_path)
     if cmd_path.is_symlink() or not cmd_path.is_file():
         raise InputError(f"missing non-symlink commands manifest: {cmd_path}")
@@ -309,7 +406,7 @@ def verify_rendered_launch(
 
     pinned = commands.get("dataset_bundle_verification")
     if not isinstance(pinned, dict) or pinned.get("verified") is not True:
-        raise InputError(f"{cmd_path}: refusing to launch unverified/remote dataset config")
+        raise InputError(f"{cmd_path}: refusing to use unverified/remote dataset config")
 
     yaml_path_str = commands.get("yaml_path")
     if not isinstance(yaml_path_str, str) or not yaml_path_str.strip():
@@ -338,7 +435,25 @@ def verify_rendered_launch(
     if not isinstance(out_dir_str, str) or not Path(out_dir_str).is_absolute():
         raise InputError(f"{yaml_path}: output_dir must be a pinned absolute path, got {out_dir_str!r}")
     validate_safe_output_path(out_dir_str, label="train_output_dir")
-    _assert_clean_train_output_dir(out_dir_str)
+    return cmd_path.resolve(), commands, yaml_path.resolve(), cfg, actual_yaml_sha
+
+
+def verify_rendered_launch(
+    commands_json_path: Path | str,
+    *,
+    expected_yaml_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Re-verify rendered YAML and pinned dataset bundle hashes immediately before training launch.
+
+    Fail-closed guard preventing a stale YAML from ever launching against an overwritten or
+    swapped fold dataset directory, or validating a different YAML than the one being launched.
+    """
+    _, commands, yaml_path, cfg, _ = _load_and_verify_commands_and_yaml(
+        commands_json_path,
+        expected_yaml_path=expected_yaml_path,
+    )
+    pinned = commands["dataset_bundle_verification"]
+    _assert_clean_train_output_dir(cfg["output_dir"])
 
     live = verify_dataset_bundle(
         dataset_dir=cfg["dataset_dir"],
@@ -351,6 +466,7 @@ def verify_rendered_launch(
         image_min_pixels=cfg.get("image_min_pixels"),
         video_max_pixels=cfg.get("video_max_pixels"),
         video_min_pixels=cfg.get("video_min_pixels"),
+        video_fps=cfg.get("video_fps"),
     )
     for key in (
         "resolved_dataset_dir",
@@ -358,6 +474,7 @@ def verify_rendered_launch(
         "dataset_sha256",
         "dataset_info_sha256",
         "preflight_report_sha256",
+        "frame_lineage_sha256",
     ):
         if live.get(key) != pinned.get(key):
             raise InputError(
@@ -365,6 +482,160 @@ def verify_rendered_launch(
                 f"(pinned={pinned.get(key)!r}, live={live.get(key)!r}); re-render config before training"
             )
     return live
+
+
+def _find_adapter_weights_file(adapter_dir: Path) -> Path:
+    for candidate_name in ("adapter_model.safetensors", "adapter_model.bin"):
+        p = adapter_dir / candidate_name
+        if p.is_symlink():
+            raise InputError(f"adapter weights file must not be a symlink: {p}")
+        if p.is_file():
+            return p
+    raise InputError(
+        f"adapter directory {adapter_dir} missing trained weights "
+        "(expected adapter_model.safetensors or adapter_model.bin)"
+    )
+
+
+def stamp_adapter_provenance(
+    commands_json_path: Path | str,
+    *,
+    expected_yaml_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Write fold/dataset/weight provenance into ``train_output_dir/sft_adapter_provenance.json`` after training."""
+    cmd_path, commands, yaml_path, cfg, yaml_sha = _load_and_verify_commands_and_yaml(
+        commands_json_path,
+        expected_yaml_path=expected_yaml_path,
+    )
+    pinned = commands["dataset_bundle_verification"]
+    adapter_dir = Path(cfg["output_dir"])
+    if adapter_dir.is_symlink() or not adapter_dir.is_dir():
+        raise InputError(f"trained adapter output_dir missing or symlink: {adapter_dir}")
+    adapter_cfg_path = adapter_dir / "adapter_config.json"
+    if adapter_cfg_path.is_symlink() or not adapter_cfg_path.is_file():
+        raise InputError(f"trained adapter missing non-symlink adapter_config.json: {adapter_cfg_path}")
+    weights_path = _find_adapter_weights_file(adapter_dir)
+
+    prov_path = adapter_dir / ADAPTER_PROVENANCE_FILENAME
+    if prov_path.exists() and not prov_path.is_symlink():
+        existing = decode_file(prov_path.read_text(encoding="utf-8"), str(prov_path))
+        if isinstance(existing, dict) and existing.get("fold") not in (None, commands["fold"]):
+            raise InputError(
+                f"refusing to overwrite existing fold_{existing.get('fold')} adapter provenance "
+                f"in {prov_path} with fold_{commands['fold']}"
+            )
+
+    provenance = {
+        "schema": ADAPTER_PROVENANCE_SCHEMA,
+        "fold": commands["fold"],
+        "modality": commands["modality"],
+        "num_frames": commands["num_frames"],
+        "lora_module_name": commands["lora_module_name"],
+        "dataset_name": cfg["dataset"],
+        "dataset_dir": pinned["resolved_dataset_dir"],
+        "dataset_sha256": pinned["dataset_sha256"],
+        "frame_lineage_sha256": pinned["frame_lineage_sha256"],
+        "yaml_path": str(yaml_path),
+        "yaml_sha256": yaml_sha,
+        "commands_json_path": str(cmd_path),
+        "commands_json_sha256": sha256_file(cmd_path),
+        "adapter_dir": str(adapter_dir.resolve()),
+        "adapter_config_sha256": sha256_file(adapter_cfg_path),
+        "adapter_weights_file": weights_path.name,
+        "adapter_weights_sha256": sha256_file(weights_path),
+        "eval_scope_warning": commands["eval_scope_warning"],
+    }
+    assert_no_input_output_collision([prov_path], [cmd_path, yaml_path, adapter_cfg_path, weights_path], context="stamp_adapter_provenance")
+    safe_write_bytes(
+        prov_path,
+        (json.dumps(provenance, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"),
+        overwrite=True,
+        label="adapter_provenance",
+    )
+    return provenance
+
+
+def verify_serve_launch(
+    commands_json_path: Path | str,
+    *,
+    expected_fold: int | None = None,
+    expected_adapter_dir: Path | str | None = None,
+) -> dict[str, Any]:
+    """Fail-closed pre-serve provenance guard preventing cross-fold or swapped LoRA adapter serving."""
+    cmd_path, commands, yaml_path, cfg, yaml_sha = _load_and_verify_commands_and_yaml(commands_json_path)
+    if expected_fold is not None:
+        validate_fold(expected_fold)
+        if commands["fold"] != expected_fold:
+            raise InputError(
+                f"pre-serve fold mismatch: commands manifest is fold_{commands['fold']} != requested fold_{expected_fold}"
+            )
+
+    adapter_dir = Path(cfg["output_dir"])
+    if expected_adapter_dir is not None:
+        if Path(expected_adapter_dir).resolve() != adapter_dir.resolve():
+            raise InputError(
+                f"pre-serve adapter_dir mismatch: requested {Path(expected_adapter_dir).resolve()} != "
+                f"YAML output_dir {adapter_dir.resolve()}"
+            )
+    if adapter_dir.is_symlink() or not adapter_dir.is_dir():
+        raise InputError(f"pre-serve adapter directory missing or symlink: {adapter_dir}")
+
+    prov_path = adapter_dir / ADAPTER_PROVENANCE_FILENAME
+    if prov_path.is_symlink() or not prov_path.is_file():
+        raise InputError(
+            f"missing non-symlink {ADAPTER_PROVENANCE_FILENAME} in {adapter_dir}; "
+            "stamp provenance immediately after training before serving LoRA"
+        )
+    prov = decode_file(prov_path.read_text(encoding="utf-8"), str(prov_path))
+    if not isinstance(prov, dict) or prov.get("schema") != ADAPTER_PROVENANCE_SCHEMA:
+        raise InputError(f"{prov_path}: invalid adapter provenance schema")
+
+    pinned = commands["dataset_bundle_verification"]
+    expected_checks = {
+        "fold": commands["fold"],
+        "modality": commands["modality"],
+        "num_frames": commands["num_frames"],
+        "lora_module_name": commands["lora_module_name"],
+        "dataset_name": cfg["dataset"],
+        "dataset_dir": pinned["resolved_dataset_dir"],
+        "dataset_sha256": pinned["dataset_sha256"],
+        "frame_lineage_sha256": pinned["frame_lineage_sha256"],
+        "yaml_path": str(yaml_path),
+        "yaml_sha256": yaml_sha,
+        "commands_json_path": str(cmd_path),
+        "commands_json_sha256": sha256_file(cmd_path),
+        "adapter_dir": str(adapter_dir.resolve()),
+    }
+    for key, exp_val in expected_checks.items():
+        if prov.get(key) != exp_val:
+            raise InputError(
+                f"pre-serve adapter provenance mismatch in {prov_path}: {key}={prov.get(key)!r} != expected {exp_val!r}"
+            )
+
+    adapter_cfg_path = adapter_dir / "adapter_config.json"
+    if adapter_cfg_path.is_symlink() or not adapter_cfg_path.is_file():
+        raise InputError(f"pre-serve adapter missing non-symlink adapter_config.json: {adapter_cfg_path}")
+    actual_cfg_sha = sha256_file(adapter_cfg_path)
+    if prov.get("adapter_config_sha256") != actual_cfg_sha:
+        raise InputError(f"{adapter_cfg_path}: sha256 mismatch against provenance")
+    adapter_cfg = decode_file(adapter_cfg_path.read_text(encoding="utf-8"), str(adapter_cfg_path))
+    if isinstance(adapter_cfg, dict) and isinstance(adapter_cfg.get("r"), int):
+        if adapter_cfg["r"] != cfg.get("lora_rank"):
+            raise InputError(
+                f"{adapter_cfg_path}: adapter rank r={adapter_cfg['r']} != YAML lora_rank={cfg.get('lora_rank')}"
+            )
+
+    weights_file = prov.get("adapter_weights_file")
+    if weights_file not in ("adapter_model.safetensors", "adapter_model.bin"):
+        raise InputError(f"{prov_path}: invalid adapter_weights_file {weights_file!r}")
+    weights_path = adapter_dir / weights_file
+    if weights_path.is_symlink() or not weights_path.is_file():
+        raise InputError(f"pre-serve adapter weights missing or symlink: {weights_path}")
+    actual_weights_sha = sha256_file(weights_path)
+    if prov.get("adapter_weights_sha256") != actual_weights_sha:
+        raise InputError(f"{weights_path}: sha256 mismatch against provenance")
+
+    return prov
 
 
 def build_qlora_config(
@@ -537,7 +808,12 @@ def build_runtime_commands(
             f"--verify-commands-json {shlex.quote(commands_json_path)} "
             f"--verify-yaml {shlex.quote(yaml_path)}"
         )
-        train_cmd = f"{verify_cmd} && {raw_train_cmd}"
+        stamp_cmd = (
+            f"{VLM_SFT_PYTHON_BIN} -m script.five_label_sft.render_config "
+            f"--stamp-adapter-provenance {shlex.quote(commands_json_path)} "
+            f"--verify-yaml {shlex.quote(yaml_path)}"
+        )
+        train_cmd = f"{verify_cmd} && {raw_train_cmd} && {stamp_cmd}"
     else:
         train_cmd = raw_train_cmd
 
@@ -586,7 +862,18 @@ def build_runtime_commands(
             ]
         )
 
-    vllm_serve_cmd = " \\\n  ".join(vllm_parts)
+    raw_vllm_serve_cmd = " \\\n  ".join(vllm_parts)
+    if commands_json_path is not None:
+        verify_serve_cmd = (
+            f"{VLM_SFT_PYTHON_BIN} -m script.five_label_sft.render_config "
+            f"--verify-serve-commands-json {shlex.quote(commands_json_path)} "
+            f"--expected-fold {fold} "
+            f"--expected-adapter-dir {shlex.quote(train_output_dir)}"
+        )
+        vllm_serve_cmd = f"{verify_serve_cmd} && \\\n  {raw_vllm_serve_cmd}"
+    else:
+        vllm_serve_cmd = raw_vllm_serve_cmd
+
     return {
         "schema": CONFIG_MANIFEST_SCHEMA,
         "fold": fold,
@@ -665,6 +952,7 @@ def render_config_bundle(
             image_min_pixels=cfg.get("image_min_pixels"),
             video_max_pixels=cfg.get("video_max_pixels"),
             video_min_pixels=cfg.get("video_min_pixels"),
+            video_fps=cfg.get("video_fps"),
         )
         # Pin exact verified absolute dataset_dir and train_output_dir in YAML so cwd changes or
         # pre-existing cross-fold checkpoints can never silently contaminate training.
@@ -693,18 +981,21 @@ def render_config_bundle(
 
     if bundle_verification.get("verified") is True:
         bdir = Path(bundle_verification["resolved_dataset_dir"])
-        bundle_files_ci = {
-            str((bdir / name).resolve()).lower()
+        bundle_inputs = [
+            bdir / name
             for name in (
                 "build_summary.json",
                 "dataset_info.json",
                 "preflight_report.json",
+                "frame_lineage.jsonl",
                 bundle_verification["dataset_file"],
             )
-        }
-        for label, p in (("output_yaml", yaml_path), ("commands_json", commands_path)):
-            if str(p.resolve()).lower() in bundle_files_ci:
-                raise InputError(f"{label} collides with verified dataset bundle artifact: {p}")
+        ]
+        assert_no_input_output_collision(
+            [yaml_path, commands_path],
+            bundle_inputs,
+            context="render_config",
+        )
 
     resolved_yaml_str = str(yaml_path.resolve())
     resolved_commands_str = str(commands_path.resolve())
@@ -736,7 +1027,6 @@ def render_config_bundle(
     )
     yaml_text = header + yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True)
     yaml_bytes = yaml_text.encode("utf-8")
-    import hashlib
     commands["yaml_sha256"] = hashlib.sha256(yaml_bytes).hexdigest()
     commands_text = json.dumps(commands, ensure_ascii=False, indent=2) + "\n"
     safe_write_bytes(yaml_path, yaml_bytes, overwrite=overwrite, label="output_yaml")
@@ -747,7 +1037,11 @@ def render_config_bundle(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verify-commands-json", help="Pre-launch verification mode: verify rendered YAML & dataset bundle hashes before training")
+    parser.add_argument("--stamp-adapter-provenance", help="Post-train mode: stamp fold/dataset/weight provenance into adapter output_dir")
+    parser.add_argument("--verify-serve-commands-json", help="Pre-serve verification mode: verify adapter provenance & fold match before vllm serve")
     parser.add_argument("--verify-yaml", help="Explicit YAML path being launched (must match commands manifest yaml_path)")
+    parser.add_argument("--expected-fold", type=int, choices=SUPPORTED_FOLDS, help="Expected fold for --verify-serve-commands-json")
+    parser.add_argument("--expected-adapter-dir", help="Expected adapter directory for --verify-serve-commands-json")
     parser.add_argument("--fold", type=int, choices=SUPPORTED_FOLDS, help="CV fold (0, 1, or 2)")
     parser.add_argument("--modality", choices=SUPPORTED_MODALITIES, help="Channel modality: images or video")
     parser.add_argument("--num-frames", type=int, choices=SUPPORTED_NUM_FRAMES, help="Number of L3 frames per clip")
@@ -769,17 +1063,46 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--num-train-epochs", type=float, default=3.0, help="Epochs (default 3.0)")
     parser.add_argument("--gradient-accumulation-steps", type=int, default=8, help="Grad accumulation steps (default 8)")
     parser.add_argument("--port", type=int, default=18080, help="Loopback vLLM serving port (default 18080)")
-    parser.add_argument("--allow-remote-dataset-dir", action="store_true",
-                        help="Skip local build_summary.json/dataset_info.json verification when rendering for a remote host path")
+    parser.add_argument(
+        "--allow-remote-dataset-dir",
+        action="store_true",
+        help="Skip local build_summary.json/dataset_info.json verification when rendering for a remote host path",
+    )
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing output files")
     args = parser.parse_args(argv)
 
     try:
+        modes = sum(
+            bool(x)
+            for x in (args.verify_commands_json, args.stamp_adapter_provenance, args.verify_serve_commands_json)
+        )
+        if modes > 1:
+            raise InputError(
+                "pass at most one of --verify-commands-json, --stamp-adapter-provenance, --verify-serve-commands-json"
+            )
         if args.verify_commands_json:
             live = verify_rendered_launch(args.verify_commands_json, expected_yaml_path=args.verify_yaml)
             print(
                 f"OK: pre-launch verification passed for {args.verify_commands_json} "
-                f"(dataset_sha256={live['dataset_sha256'][:12]}...)"
+                f"(dataset_sha256={live['dataset_sha256'][:12]}..., lineage_sha256={live['frame_lineage_sha256'][:12]}...)"
+            )
+            return 0
+        if args.stamp_adapter_provenance:
+            prov = stamp_adapter_provenance(args.stamp_adapter_provenance, expected_yaml_path=args.verify_yaml)
+            print(
+                f"OK: stamped adapter provenance in {prov['adapter_dir']}/{ADAPTER_PROVENANCE_FILENAME} "
+                f"(fold={prov['fold']}, weights={prov['adapter_weights_file']})"
+            )
+            return 0
+        if args.verify_serve_commands_json:
+            prov = verify_serve_launch(
+                args.verify_serve_commands_json,
+                expected_fold=args.expected_fold,
+                expected_adapter_dir=args.expected_adapter_dir,
+            )
+            print(
+                f"OK: pre-serve adapter provenance verified for fold_{prov['fold']} "
+                f"({prov['lora_module_name']} @ {prov['adapter_dir']})"
             )
             return 0
         missing = [
@@ -823,8 +1146,9 @@ def main(argv: list[str] | None = None) -> int:
             overwrite=args.overwrite,
         )
         print(
-            f"Wrote {args.output_yaml} & {args.output_yaml}.commands.json "
-            f"(template={cfg['template']}, cutoff_len={cfg['cutoff_len']}, lora={commands['lora_module_name']})"
+            f"Wrote {args.output_yaml} and {args.output_yaml}.commands.json "
+            f"(fold={args.fold}, modality={args.modality}, num_frames={args.num_frames}, "
+            f"cutoff_len={cfg['cutoff_len']}, lora={commands['lora_module_name']})"
         )
         return 0
     except (InputError, ValueError, OSError, UnicodeError) as exc:

@@ -1,12 +1,12 @@
-# `script/five_label_sft`：双通道三折隔离 SFT 数据准备与 QLoRA 配置管线
+# `script/five_label_sft`：双通道三折隔离 SFT 数据准备、帧血缘核验与 QLoRA 配置管线
 
-**失效条件：** 当 `docs/decisions/0008-finetune-base-model-and-sft-recipe.md` 变更首轮主基座或 QLoRA 配方、`docs/eval/output-contract.md` / `script/five_label_eval/score.py` 变更输出契约（`five-label-score/3`）、`LlamaFactory` 子模块升级改变 `Qwen3VLPlugin` 缩放/占位符行为、或 `data/splits/three-fold/*.json` / `data/splits/dev-exclusions.json` 发生结构变更时，本模块的参数与守卫须同步复核。
+**失效条件：** 当 `docs/decisions/0008-finetune-base-model-and-sft-recipe.md` 变更首轮主基座或 QLoRA 配方、`docs/eval/output-contract.md` / `script/five_label_eval/score.py` 变更输出契约（`five-label-score/3`）、`script/five_label_eval/frames.py` 变更 `frame-extract/3` 记录结构、`LlamaFactory` 或 `transformers` 升级改变 `Qwen3VLPlugin` 缩放/占位符/patch 轴序（`gt, gh//m, gw//m, m, m, C, tp, p, p`）、或 `data/splits/three-fold/*.json` / `data/splits/dev-exclusions.json` / `data/roi/manifest.json` 发生结构变更时，本模块的参数、重构轴序与守卫须同步复核。
 
 ---
 
 ## 1. 功能总览
 
-本模块为 `Qwen3-VL-8B-Instruct` 五类标签 SFT 提供离线数据准备、长度/对齐预检与训练/评测配置生成，同时支持两条无损预抽 L3 PNG 通道：
+本模块为 `Qwen3-VL-8B-Instruct` 五类标签 SFT 提供离线数据准备、长度/对齐预检、全链路帧血缘导出（`L0 → L1 → L2 → L3 → L4`）、纯 CPU 运行时输入验真、全 K 帧对照 Contact Sheet 审计与训练/评测配置生成，同时支持两条无损预抽 L3 PNG 通道：
 
 | 通道 | 占位符与数据列 | 训练参数（RTX 4090 QLoRA） | 推理参数（`vLLM 0.34.0`） | 适用场景 |
 | --- | --- | --- | --- | --- |
@@ -22,29 +22,41 @@
 
 ---
 
-## 2. 三折隔离与防泄漏红线（全部 fail-closed）
+## 2. 三折隔离、帧血缘与写保护红线（全部 fail-closed）
 
-对任意目标折 $k \in \{0, 1, 2\}$，导出器强制执行以下检查，任一违约即中止且不写出任何文件：
+对任意目标折 $k \in \{0, 1, 2\}$，导出器与校验器强制执行以下检查，任一违约即中止且不写出任何文件：
 
 1. **当前批次确认身份校验**：复用 `script/subvideo_review/server.py` 的 `ReviewApp` 与 `ReviewApp.matches`（校核 `revision_sha256`、`review_subject_sha256`、`manifest_sha256`、`clip_sha256`、`label_rules_sha256`、`split_identity_sha256`），仅纳入当前批次最新修订为 `confirmed` 的记录，自动跳过历史隔离记录与 `draft` / `question` / `returned` / 未审记录。
 2. **DEC-007 排除守卫**：强制加载 `data/splits/dev-exclusions.json`，排除 `video_0006`、`video_0079` 及其 20 条子视频和 15 条隔离虚拟视频。
 3. **零交集断言**：仅从 `fold_{k}_train.json` 扣除 `DEC-007` 后的 **58 个干净开发源**取样，并显式断言导出集与 `fold_{k}_val.json`、`test.json`、`eval-dev-v1 ∩ fold_{k}_val`、`eval-test-v1.json`、`dev-exclusions.json` 交集全为 `∅`。
 4. **目标输出严格单 JSON 核验**：每条 `assistant` 目标串经 `script.five_label_eval.score.extract()` 实时校验，要求 100% `strict_format_valid == True`、`issues == []`、`conflicts == []`。
-5. **L3 帧血缘与写保护（全 fail-closed）**：非 dry-run 正式导出**强制要求提供 `frames.py` 生成的 `--frames-manifest`（`records*.jsonl`）**，逐帧核验 `manifest_sha256`、`clip_sha256`、采样序与 PNG SHA-256；校验 `total_frames >= num_frames`（`fail_closed`，且 `video` 通道要求偶数帧）与 `cutoff_len` / 4090 单帧面积守卫；所有写盘操作均拒绝符号链接目标、拒绝保留产物撞名、拒绝写入受保护目录，覆写使用同目录临时文件原子替换。
-6. **配置与数据包跨折互校**：`render_config.py` 默认强制校验 `--dataset-dir` 下的 `build_summary.json`、`dataset_info.json` 与数据集 JSON SHA-256，确认折号、通道、帧数与 `dataset_name` 完全一致且非 dry-run 产物，杜绝跨折配置错配（仅在跨机渲染远端路径模板时才可显式传 `--allow-remote-dataset-dir`）。
+5. **L3 帧血缘、三节点映射与 `frame_lineage.jsonl`**：非 dry-run 正式导出**强制要求提供 `frames.py` 生成的 `--frames-manifest`（`records*.jsonl`）**，通过 `read_records` 与 `compute_record_input_id` 校验 `input_id` 与三节点 `frame_index_mapping`（`clip_to_model_input` / `clip_to_roi` / `roi_to_original`），显式拒绝旧 v2 schema 与旧字段；同目录输出与 `<dataset>.json` 1:1 对应的 `frame_lineage.jsonl`（明确区分 `verified_*` 与 `derived_*` `derived_planned` 字段，不冒充已验证），并将 `frame_lineage_sha256` 纳入 `build_summary.json` 与 `render_config.py` 启动前哈希校验。
+6. **输入输出防撞写与跨折 Adapter 溯源守卫**：所有写盘操作均拒绝符号链接目标、拒绝保留产物撞名、拒绝写入受保护目录、并拒绝覆盖任何输入文件（即使传入 `--overwrite`）；`render_config.py` 在训练命令末尾串联 `--stamp-adapter-provenance`（写入 `sft_adapter_provenance.json`），在 `vllm serve` 命令前串联 `--verify-serve-commands-json`，杜绝跨折错挂或权重被替换的 LoRA Adapter。
 
 ---
 
-## 3. 常用命令
+## 3. 三层帧对应验证体系（`DEC-005` 边界）
 
-### 3.1 离线长度与短片预检（含未来 B3 全量开发集）
+| 层级 | 模块 | 作用与保证 |
+| --- | --- | --- |
+| **第 1 层：血缘导出与静态强校验** | `build_dataset.py` + `render_config.py` | 校验 `frames.py` `input_id` / 三节点 `frame_index_mapping` / PNG SHA-256，产出 `frame_lineage.jsonl` 并锁入 `build_summary.json` 与启动前验证 |
+| **第 2 层：纯 CPU 真实模型输入验真** | `verify_runtime_input.py` | 强制 `CUDA_VISIBLE_DEVICES=""`，真实加载 `LlamaFactory` `Qwen3VLPlugin` + `qwen3_vl_nothink` 核验 `grid_thw`、`input_ids <= cutoff_len`、`<\|video_pad\|>`/`<\|image_pad\|>` 与 `<t.t seconds>` 时间戳，并从 `pixel_values` / `pixel_values_videos` 还原全部 K 帧 L4 RGB PNG |
+| **第 3 层：全 K 帧 5 列 Contact Sheet + NCC 审计** | `contact_sheet.py` | 渲染**全部 K 行**（8f=8行、16f=16行，绝不截断为 3 帧）× 5 列 `L0 原视频 \| L1 ROI \| L2 子视频 \| L3 预抽 PNG \| L4 模型张量还原图`（无 `--l4-dir` 时降级 4 列），结合 `data/roi/manifest.json` 裁剪/去黑边后计算 64×64 灰度零均值 NCC，低于阈值（默认 `0.80`）标红并写入 `correspondence_audit.json` |
+
+> **DEC-005 边界声明**：第 3 层 Contact Sheet 与 NCC 审计**仅供人工视觉核验与错位预警，不构成 `full` 逐帧机器重放证明**；机器级像素/网格/时间戳证明由第 1 层 SHA-256 血缘与第 2 层真实处理器张量验真共同承担。
+
+---
+
+## 4. 常用命令
+
+### 4.1 离线长度与短片预检（含未来 B3 全量开发集）
 
 ```bash
 .venv/bin/python -m script.five_label_sft.preflight \
   --fold 0 --scope all_clean_dev --modality video --num-frames 16 --fail-on-lf-downscale
 ```
 
-### 3.2 导出 Fold 0 SFT 数据集（训练机真实 L3 帧 / 本机 dry-run）
+### 4.2 导出 Fold 0 SFT 数据集与 `frame_lineage.jsonl`
 
 ```bash
 # 本机无 L3 PNG 时的只读 dry-run 核验
@@ -62,7 +74,7 @@
   --fail-on-lf-downscale
 ```
 
-### 3.3 生成 LlamaFactory QLoRA YAML 与配套 vLLM 评测命令（仅生成配置，不启动训练）
+### 4.3 生成 LlamaFactory QLoRA YAML 与配套 vLLM 评测命令（仅生成配置，不启动训练）
 
 ```bash
 .venv/bin/python -m script.five_label_sft.render_config \
@@ -70,4 +82,22 @@
   --dataset-dir trains/sft-fold0-video16f/input \
   --train-output-dir trains/sft-fold0-video16f/adapter \
   --output-yaml trains/sft-fold0-video16f/qlora_fold0_video16f.yaml
+```
+
+### 4.4 训练机纯 CPU 运行时输入验真与 L4 帧还原（`vlm-sft`）
+
+```bash
+CUDA_VISIBLE_DEVICES="" /home/liuyang/miniconda3/envs/vlm-sft/bin/python -m script.five_label_sft.verify_runtime_input \
+  --yaml trains/sft-fold0-video16f/qlora_fold0_video16f.yaml \
+  --output-dir trains/sft-fold0-video16f/runtime_verify
+```
+
+### 4.5 生成全 K 帧 5 列 Contact Sheet 与 `correspondence_audit.json`
+
+```bash
+.venv/bin/python -m script.five_label_sft.contact_sheet \
+  --lineage trains/sft-fold0-video16f/input/frame_lineage.jsonl \
+  --l4-dir trains/sft-fold0-video16f/runtime_verify/l4_reconstructed \
+  --output-dir trains/sft-fold0-video16f/contact_sheets \
+  --sample-count 6 --ncc-mode all --ncc-threshold 0.80
 ```

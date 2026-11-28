@@ -12,13 +12,22 @@ import pytest
 import yaml
 
 from script.five_label_eval.errors import InputError
-from script.five_label_sft.constants import BUILD_SUMMARY_SCHEMA, PURE_SYSTEM_PATH, VLM_EVAL_VLLM_BIN
+from script.five_label_sft.constants import (
+    ADAPTER_PROVENANCE_SCHEMA,
+    BUILD_SUMMARY_SCHEMA,
+    FRAME_LINEAGE_SCHEMA,
+    PURE_SYSTEM_PATH,
+    VLM_EVAL_VLLM_BIN,
+)
 from script.five_label_sft.render_config import (
+    ADAPTER_PROVENANCE_FILENAME,
     build_qlora_config,
     build_runtime_commands,
     main as render_main,
     render_config_bundle,
+    stamp_adapter_provenance,
     verify_rendered_launch,
+    verify_serve_launch,
 )
 
 
@@ -101,6 +110,13 @@ def _create_verified_bundle(
             "video_min_pixels": 256 if video_min_pixels is None else video_min_pixels,
         }
     )
+    cid = f"video_000{fold + 2}_fracture_01"
+    sid = f"video_000{fold + 2}"
+    manifest_sha = hashlib.sha256(f"manifest:{fold}".encode()).hexdigest()
+    # Mirror real preflight.py schema: images uses grid_thw=[num_frames, gh, gw], video uses [num_frames//2, gh, gw]
+    # and resized_size=[resized_width, resized_height].
+    grid = [num_frames // 2, 4, 4] if modality == "video" else [num_frames, 4, 4]
+    vis_pad = (grid[0] * grid[1] * grid[2] // 4) if modality == "video" else (num_frames * (grid[1] * grid[2] // 4))
     preflight_obj = {
         "schema": "five-label-sft-preflight/1",
         "modality": modality,
@@ -111,21 +127,82 @@ def _create_verified_bundle(
         "exceeds_cutoff_count": 0,
         "exceeds_gpu_frame_pixel_guard_count": 0,
         "estimated_total_tokens": {"max": max_est_tokens},
+        "samples": [
+            {
+                "candidate_id": cid,
+                "source_id": sid,
+                "grid_thw": grid,
+                "visual_pad_tokens": vis_pad,
+                "resized_size": [grid[2] * 16, grid[1] * 16],
+                "estimated_total_tokens": max_est_tokens,
+            }
+        ],
     }
     preflight_bytes = (json.dumps(preflight_obj, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     (bundle_dir / "preflight_report.json").write_bytes(preflight_bytes)
+
+    lineage_row = {
+        "schema": FRAME_LINEAGE_SCHEMA,
+        "sample_index": 0,
+        "candidate_id": cid,
+        "source_id": sid,
+        "input_id": "input@sha256:" + "1" * 64,
+        "modality": modality,
+        "num_frames": num_frames,
+        "video_fps": 2.0 if modality == "video" else None,
+        "clip_sha256": "2" * 64,
+        "manifest_sha256": manifest_sha,
+        "review_id": "rev-1",
+        "review_revision_sha256": "3" * 64,
+        "width": 64,
+        "height": 64,
+        "total_frames": 60,
+        "fps": 30.0,
+        "source_start_frame": 100,
+        "lineage_verification": {"method": "unverified", "verdict_id": "unverified", "failed_conditions": []},
+        "frames": [
+            {
+                "display_order": idx,
+                "emitted_path": frame_paths[idx],
+                "png_sha256": verified_frame_shas[frame_paths[idx]],
+                "clip_frame_index": idx * 3,
+                "pts_seconds": round((idx * 3) / 30.0, 6),
+                "verified_roi_frame_index": None,
+                "verified_original_frame_index": None,
+                "derived_roi_frame_index": 100 + idx * 3,
+                "derived_original_frame_index": 100 + idx * 3,
+                "derived_index_status": "derived_planned",
+                "temporal_pair_index": idx // 2 if modality == "video" else None,
+                "injected_timestamp_sec": ((idx // 2) + 0.25) if modality == "video" else None,
+                "injected_timestamp_label": f"<{(idx // 2) + 0.25:.1f} seconds>" if modality == "video" else None,
+                "frame_index_mapping": {
+                    "clip_to_model_input": {"status": "verified"},
+                    "clip_to_roi": {"status": "unverified"},
+                    "roi_to_original": {"status": "unverified"},
+                },
+            }
+            for idx in range(num_frames)
+        ],
+    }
+    lineage_bytes = (json.dumps(lineage_row, ensure_ascii=False) + "\n").encode("utf-8")
+    (bundle_dir / "frame_lineage.jsonl").write_bytes(lineage_bytes)
 
     summary_obj: dict[str, Any] = {
         "schema": BUILD_SUMMARY_SCHEMA,
         "dataset_name": dataset_name,
         "dataset_file": ds_file,
+        "frame_lineage_file": "frame_lineage.jsonl",
         "fold": fold,
         "modality": modality,
         "num_frames": num_frames,
+        "video_fps": 2.0 if modality == "video" else None,
         "dry_run_missing_frames": dry_run,
         "strict_target_json_verified": True,
+        "inputs": {
+            "manifest_sha256": manifest_sha,
+        },
         "isolation_checks": {
-            "exported_candidate_count": 2,
+            "exported_candidate_count": 1,
             "exported_source_count": 1,
             "fold_val_source_overlap": 0,
             "test_source_overlap": 0,
@@ -138,10 +215,12 @@ def _create_verified_bundle(
             "dataset_sha256": hashlib.sha256(ds_bytes).hexdigest(),
             "dataset_info_sha256": hashlib.sha256(info_bytes).hexdigest(),
             "preflight_report_sha256": hashlib.sha256(preflight_bytes).hexdigest(),
+            "frame_lineage_sha256": hashlib.sha256(lineage_bytes).hexdigest(),
         },
         "preflight_summary": {
             "estimated_total_tokens": {"max": max_est_tokens},
         },
+        "exported_candidate_ids": [cid],
         "verified_frame_sha256s": verified_frame_shas,
     }
     (bundle_dir / "build_summary.json").write_text(
@@ -543,3 +622,73 @@ def test_render_propagates_custom_lora_rank_to_vllm_command() -> None:
     )
     assert "--max-lora-rank \\\n  32" in cmds["vllm_serve_lora_command"]
     assert "fold_1_val" in cmds["eval_scope_warning"]
+
+
+def test_frame_lineage_tampering_and_adapter_provenance_serve_guard(tmp_path: Path) -> None:
+    ds_name = "tensile_five_label_fold0_video_16f"
+    bundle_dir = _create_verified_bundle(
+        tmp_path / "bundle_prov",
+        fold=0,
+        modality="video",
+        num_frames=16,
+        dataset_name=ds_name,
+    )
+    adapter_dir = tmp_path / "fold0_adapter"
+    yaml_path = tmp_path / "fold0_prov.yaml"
+    _, cmds = render_config_bundle(
+        fold=0,
+        modality="video",
+        num_frames=16,
+        dataset_dir=str(bundle_dir),
+        dataset_name=ds_name,
+        train_output_dir=str(adapter_dir),
+        output_yaml=yaml_path,
+    )
+    cmd_json = Path(f"{yaml_path}.commands.json")
+    assert "--stamp-adapter-provenance" in cmds["train_command_manual_only"]
+    assert "--verify-serve-commands-json" in cmds["vllm_serve_lora_command"]
+
+    # 1. Tampering frame_lineage.jsonl fails closed pre-launch
+    lin_path = bundle_dir / "frame_lineage.jsonl"
+    orig_lin = lin_path.read_bytes()
+    lin_path.write_bytes(b"{}\n")
+    with pytest.raises(InputError, match="frame_lineage.jsonl: sha256 mismatch"):
+        verify_rendered_launch(cmd_json)
+    lin_path.write_bytes(orig_lin)
+    assert verify_rendered_launch(cmd_json)["verified"] is True
+
+    # 2. Pre-serve fails before adapter provenance is stamped
+    adapter_dir.mkdir(parents=True)
+    (adapter_dir / "adapter_config.json").write_text(json.dumps({"r": 16, "lora_alpha": 32}), encoding="utf-8")
+    (adapter_dir / "adapter_model.safetensors").write_bytes(b"fake-safetensors-weights")
+    with pytest.raises(InputError, match=ADAPTER_PROVENANCE_FILENAME):
+        verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
+
+    # 3. Stamp provenance via CLI & verify pre-serve passes
+    assert render_main(["--stamp-adapter-provenance", str(cmd_json), "--verify-yaml", str(yaml_path)]) == 0
+    prov = verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
+    assert prov["schema"] == ADAPTER_PROVENANCE_SCHEMA
+    assert prov["fold"] == 0
+    assert render_main([
+        "--verify-serve-commands-json",
+        str(cmd_json),
+        "--expected-fold",
+        "0",
+        "--expected-adapter-dir",
+        str(adapter_dir),
+    ]) == 0
+
+    # 4. Cross-fold serve attempt fails closed
+    with pytest.raises(InputError, match="pre-serve fold mismatch"):
+        verify_serve_launch(cmd_json, expected_fold=1, expected_adapter_dir=adapter_dir)
+
+    # 5. Swapped adapter weights after stamping fails closed
+    (adapter_dir / "adapter_model.safetensors").write_bytes(b"swapped-cross-fold-weights")
+    with pytest.raises(InputError, match="sha256 mismatch"):
+        verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)
+
+    # 6. Mismatched adapter_config rank r vs YAML lora_rank fails closed
+    (adapter_dir / "adapter_config.json").write_text(json.dumps({"r": 64}), encoding="utf-8")
+    stamp_adapter_provenance(cmd_json, expected_yaml_path=yaml_path)
+    with pytest.raises(InputError, match="adapter rank r=64 != YAML lora_rank=16"):
+        verify_serve_launch(cmd_json, expected_fold=0, expected_adapter_dir=adapter_dir)

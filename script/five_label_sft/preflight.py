@@ -424,6 +424,7 @@ def run_preflight_on_samples(
             "max": tot_sorted[-1] if tot_sorted else 0,
         },
         "top_samples_by_tokens": [r.to_dict() for r in top_samples],
+        "samples": [r.to_dict() for r in results],
     }
 
     if fail_on_short_clip and short_clips:

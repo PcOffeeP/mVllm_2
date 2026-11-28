@@ -11,16 +11,23 @@ import zlib
 import pytest
 
 from script.five_label_eval.errors import InputError
-from script.five_label_eval.frames import RECORD_SCHEMA, SAMPLING_RULE, SHORT_CLIP_POLICY, sample_frame_indices
+from script.five_label_eval.frames import (
+    RECORD_SCHEMA,
+    SAMPLING_RULE,
+    SHORT_CLIP_POLICY,
+    compute_record_input_id,
+    sample_frame_indices,
+)
 from script.five_label_eval.score import extract
 from script.five_label_sft.build_dataset import (
     PNG_MAGIC,
     build_dataset_info_fragment,
     build_fold_sft_dataset,
     build_sharegpt_record,
+    compute_video_temporal_timestamps,
     main as build_main,
 )
-from script.five_label_sft.constants import REPO_ROOT
+from script.five_label_sft.constants import FRAME_LINEAGE_SCHEMA, REPO_ROOT
 from script.five_label_sft.data_guards import (
     assert_no_fold_leakage,
     canonicalize_and_verify_target_json,
@@ -127,6 +134,7 @@ def _create_synthetic_repo(tmp_path: Path) -> dict[str, Any]:
             "output": {
                 "sha256": hashlib.sha256(f"clip:{cid}".encode()).hexdigest(),
                 "media": {"width": w, "height": h, "total_frames": tf, "fps": 30.0},
+                "frame_mapping": {"source_start_frame": 100, "output_start_frame": 0},
             },
         }
 
@@ -242,6 +250,14 @@ def _write_fake_frames_and_manifest(
                     "display_order": order,
                     "decode_order": order,
                     "clip_frame_index": fidx,
+                    "pts_seconds": round(fidx / 30.0, 6),
+                    "roi_frame_index": None,
+                    "original_source_frame_index": None,
+                    "frame_index_mapping": {
+                        "clip_to_model_input": {"status": "verified", "method": "direct_decode"},
+                        "clip_to_roi": {"status": "unverified", "reason": "not_replayed"},
+                        "roi_to_original": {"status": "unverified", "reason": "not_replayed"},
+                    },
                     "image": fname,
                     "sha256": hashlib.sha256(raw).hexdigest(),
                 }
@@ -257,8 +273,15 @@ def _write_fake_frames_and_manifest(
                 "short_clip_policy": SHORT_CLIP_POLICY,
                 "resize": None,
             },
+            "verification": {
+                "method": "unverified",
+                "verdict_id": "unverified",
+                "evidence_sha256": None,
+                "failed_conditions": ["no_replay_evidence"],
+            },
             "frames": frame_rows,
         }
+        rec["input_id"] = compute_record_input_id(rec)
         lines.append(json.dumps(rec, ensure_ascii=False))
     records_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return frames_dir, records_path
@@ -436,7 +459,7 @@ def test_build_dataset_refuses_protected_output_dirs_reserved_names_and_symlink_
             )
 
     # Reserved artifact names (including case-insensitive aliases on APFS/Windows) must be rejected
-    for reserved in ("dataset_info", "DATASET_INFO", "Build_Summary", "build_summary", "preflight_report"):
+    for reserved in ("dataset_info", "DATASET_INFO", "Build_Summary", "build_summary", "preflight_report", "frame_lineage", "FRAME_LINEAGE"):
         with pytest.raises(InputError, match="reserved bundle artifact"):
             build_fold_sft_dataset(
                 fold=0,
@@ -799,6 +822,10 @@ def test_real_repo_fold0_dry_run_both_channels(tmp_path: Path) -> None:
     assert sum_img["isolation_checks"]["dec007_excluded_overlap"] == 0
     assert sum_img["preflight_summary"]["exceeds_cutoff_count"] == 0
     assert sum_img["preflight_summary"]["short_clip_count"] == 0
+    assert (out_img / "frame_lineage.jsonl").is_file()
+    assert sum_img["fingerprints"]["frame_lineage_sha256"] == hashlib.sha256(
+        (out_img / "frame_lineage.jsonl").read_bytes()
+    ).hexdigest()
 
     out_vid = tmp_path / "real_fold0_video_16f"
     rc_vid = build_main(
@@ -822,3 +849,119 @@ def test_real_repo_fold0_dry_run_both_channels(tmp_path: Path) -> None:
     assert sum_vid["isolation_checks"]["exported_candidate_count"] == sum_img["isolation_checks"]["exported_candidate_count"]
     assert sum_vid["preflight_summary"]["vllm_alignment_clean"] is True
     assert sum_vid["preflight_summary"]["exceeds_cutoff_count"] == 0
+    assert (out_vid / "frame_lineage.jsonl").is_file()
+
+
+def test_frame_lineage_emission_legacy_rejection_and_input_collision_guard(tmp_path: Path) -> None:
+    fx = _create_synthetic_repo(tmp_path)
+    root = fx["root"]
+    ctx = load_fold_isolation_context(0, repo_root=root)
+    samples, _ = select_confirmed_fold_train_samples(ctx)
+    sample_meta = [
+        {
+            "candidate_id": s.candidate_id,
+            "clip_sha256": s.clip_sha256,
+            "total_frames": s.total_frames,
+            "width": s.width,
+            "height": s.height,
+        }
+        for s in samples
+    ]
+
+    # 1. Verify frame_lineage.jsonl content on 16f video export
+    fdir16, rec16 = _write_fake_frames_and_manifest(tmp_path / "lin16", ctx.manifest_sha256, sample_meta, 16)
+    out16 = tmp_path / "out_lin16"
+    summary16 = build_fold_sft_dataset(
+        fold=0,
+        modality="video",
+        num_frames=16,
+        output_dir=out16,
+        frames_manifest=rec16,
+        frames_dir=fdir16,
+        repo_root=root,
+    )
+    lineage_lines = [
+        json.loads(line)
+        for line in (out16 / "frame_lineage.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(lineage_lines) == 2
+    assert summary16["frame_lineage_file"] == "frame_lineage.jsonl"
+    assert summary16["lineage_verification_summary"]["sample_count"] == 2
+    first = lineage_lines[0]
+    assert first["schema"] == FRAME_LINEAGE_SCHEMA
+    assert first["sample_index"] == 0
+    assert first["input_id"].startswith("input@sha256:")
+    assert first["video_fps"] == 2.0
+    assert len(first["frames"]) == 16
+    assert first["frames"][0]["verified_roi_frame_index"] is None
+    assert first["frames"][0]["derived_index_status"] == "derived_planned"
+    assert first["frames"][0]["derived_roi_frame_index"] == 100 + first["frames"][0]["clip_frame_index"]
+    assert first["frames"][0]["injected_timestamp_label"] == "<0.2 seconds>"
+    assert first["frames"][15]["injected_timestamp_label"] == "<7.2 seconds>"
+    assert compute_video_temporal_timestamps(16, 2.0)[-1] == (7, 7.25, "<7.2 seconds>")
+
+    # 2. Tampered input_id in frames_manifest MUST fail closed
+    tampered_rec = tmp_path / "lin16_tampered.jsonl"
+    rows = [json.loads(l) for l in rec16.read_text(encoding="utf-8").splitlines() if l.strip()]
+    rows[0]["input_id"] = "input@sha256:" + "0" * 64
+    tampered_rec.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    with pytest.raises(InputError, match="input_id"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            output_dir=tmp_path / "fail_input_id",
+            frames_manifest=tampered_rec,
+            frames_dir=fdir16,
+            repo_root=root,
+        )
+
+    # 3. Legacy v2 schema / legacy frame_index_mapping keys MUST fail closed
+    legacy_rec = tmp_path / "lin16_legacy.jsonl"
+    rows_leg = [json.loads(l) for l in rec16.read_text(encoding="utf-8").splitlines() if l.strip()]
+    rows_leg[0]["frames"][0]["frame_index_mapping"]["media_to_clip"] = {"status": "legacy"}
+    rows_leg[0]["input_id"] = compute_record_input_id(rows_leg[0])
+    legacy_rec.write_text("\n".join(json.dumps(r) for r in rows_leg) + "\n", encoding="utf-8")
+    with pytest.raises(InputError, match="legacy|frame_index_mapping|unexpected"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            output_dir=tmp_path / "fail_legacy",
+            frames_manifest=legacy_rec,
+            frames_dir=fdir16,
+            repo_root=root,
+        )
+
+    legacy_v2 = tmp_path / "lin16_v2.jsonl"
+    rows_v2 = [json.loads(l) for l in rec16.read_text(encoding="utf-8").splitlines() if l.strip()]
+    rows_v2[0]["record_schema"] = "frame-extract/2"
+    legacy_v2.write_text("\n".join(json.dumps(r) for r in rows_v2) + "\n", encoding="utf-8")
+    with pytest.raises(InputError, match="record_schema|frame-extract"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            output_dir=tmp_path / "fail_v2",
+            frames_manifest=legacy_v2,
+            frames_dir=fdir16,
+            repo_root=root,
+        )
+
+    # 4. Input-output collision MUST be refused even with overwrite=True
+    colliding_dir = tmp_path / "colliding_io"
+    colliding_dir.mkdir()
+    colliding_manifest = colliding_dir / "frame_lineage.jsonl"
+    colliding_manifest.write_bytes(rec16.read_bytes())
+    with pytest.raises(InputError, match="refusing to overwrite input file"):
+        build_fold_sft_dataset(
+            fold=0,
+            modality="video",
+            num_frames=16,
+            output_dir=colliding_dir,
+            frames_manifest=colliding_manifest,
+            frames_dir=fdir16,
+            repo_root=root,
+            overwrite=True,
+        )

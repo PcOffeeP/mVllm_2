@@ -9,6 +9,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BUILD_SUMMARY_SCHEMA = "five-label-sft-build-summary/1"
 PREFLIGHT_REPORT_SCHEMA = "five-label-sft-preflight/1"
 CONFIG_MANIFEST_SCHEMA = "five-label-sft-config-manifest/1"
+FRAME_LINEAGE_SCHEMA = "five-label-sft-frame-lineage/1"
+RUNTIME_VERIFY_SCHEMA = "five-label-sft-runtime-verify/1"
+CORRESPONDENCE_AUDIT_SCHEMA = "five-label-sft-correspondence-audit/1"
+ADAPTER_PROVENANCE_SCHEMA = "five-label-sft-adapter-provenance/1"
 
 SUPPORTED_FOLDS = (0, 1, 2)
 SUPPORTED_MODALITIES = ("images", "video")
@@ -23,6 +27,8 @@ DEFAULT_EXCLUSIONS_REL = "data/splits/dev-exclusions.json"
 DEFAULT_EVAL_DEV_REL = "data/eval-subsets/eval-dev-v1.json"
 DEFAULT_EVAL_TEST_REL = "data/eval-subsets/eval-test-v1.json"
 DEFAULT_PROMPT_REL = "script/five_label_eval/prompts/five_label_v2.txt"
+DEFAULT_ROI_MANIFEST_REL = "data/roi/manifest.json"
+DEFAULT_NCC_THRESHOLD = 0.80
 
 # Qwen3-VL-8B-Instruct model & vision geometry constants (transformers 4.57.6 / 5.22.2).
 DEFAULT_BASE_MODEL_PATH = "/data/models/Qwen3-VL-8B-Instruct"
